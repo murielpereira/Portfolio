@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt_BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="calculadora.css">
+    <link href='https://fonts.googleapis.com/css?family=Orbitron' rel='stylesheet' type='text/css'>
+    <link rel="icon" href="imagens/icone.png"  type="image/x-icon">
+    <script src="calculadora.js"></script>
+    <title>Calculadora</title>
+</head>
+<body>
+
+    <div class="menu">
+        <a href="../index.html">MENU</a>
+    </div>
+
+    <div class="listras">
+        <div class="listra"></div>
+        <div class="listra"></div>
+        <div class="listra"></div>
+    </div>
+    
+    <div class="calculadora">
+
+        <div class="campo_visor">
+            <div class="visor">
+                <div class="conta_atual">
+                    <input type="text" class="resultado" id="resultado" disabled="disabled">
+                </div>
+                <div class="campo_historico">
+                    <input type="text" class="historico" id="historico">
+                </div>
+            </div>
+
+        </div>
+
+        <div class="area_logo">
+            <div class="area_botao_clear">
+                <button type="button" class="botao_funcoes" onclick="calcular('acao', 'c')" id="clear" accesskey="c">
+                <div class="botao_funcoes_bottom">
+                    <div class="botao_funcoes_top">C</div>
+                </div>
+            </button>
+            </div>
+            <div class="area_logo2">
+                <div class="logo">NAZARÉ 3000</div>
+            </div>
+        </div>
+        <div class="fundo_numeros">
+            <button type="button" class="botao_funcoes">
+                <div class="botao_funcoes_bottom">
+                    <div class="botao_funcoes_top">MC</div>
+                </div>
+            </button>
+            <button type="button" class="botao_funcoes">
+                <div class="botao_funcoes_bottom">
+                    <div class="botao_funcoes_top">M+</div>
+                </div>
+            </button>
+            <button type="button" class="botao_funcoes">
+                <div class="botao_funcoes_bottom">
+                    <div class="botao_funcoes_top">M-</div>
+                </div>
+            </button>
+            <button type="button" class="botao_funcoes">
+                <div class="botao_funcoes_bottom">
+                    <div class="botao_funcoes_top">MR</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('valor', 7)" accesskey="7">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">7</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('valor', 8)">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">8</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('valor', 9)">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">9</div>
+                </div>
+            </button>
+            <button type="button" class="botao_operadores" onclick="calcular('acao', '-')">
+                <div class="botao_operadores_bottom">
+                    <div class="botao_operadores_top">-</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('valor', 4)">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">4</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('valor', 5)">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">5</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('valor', 6)">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">6</div>
+                </div>
+            </button>
+            <button type="button" class="botao_operadores" onclick="calcular('acao', '/')">
+                <div class="botao_operadores_bottom">
+                    <div class="botao_operadores_top">÷</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('valor', 1)">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">1</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('valor', 2)">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">2</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('valor', 3)">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">3</div>
+                </div>
+            </button>
+            <button type="button" class="botao_operadores" onclick="calcular('acao', '*')">
+                <div class="botao_operadores_bottom">
+                    <div class="botao_operadores_top">x</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('valor', 0)">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">0</div>
+                </div>
+            </button>
+            <button type="button" class="botao_numeros" onclick="calcular('acao', '.')">
+                <div class="botao_numeros_bottom">
+                    <div class="botao_numeros_top">.</div>
+                </div>
+            </button>
+            <button type="button" class="botao_operadores" onclick="calcular('acao', '=')">
+                <div class="botao_operadores_bottom">
+                    <div class="botao_operadores_top">=</div>
+                </div>
+            </button>
+            <button type="button" class="botao_operadores" onclick="calcular('acao', '+')">
+                <div class="botao_operadores_bottom">
+                    <div class="botao_operadores_top">+</div>
+                </div>
+            </button>
+        </div>
+    </div>    
+</body>
+</html>

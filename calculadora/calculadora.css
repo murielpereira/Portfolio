@@ -1,0 +1,298 @@
+@font-face{
+ font-family:'clock';
+ src: url('fontes/clock.ttf');
+}
+
+* {
+    font-family: 'Courier New', Courier, monospace;
+    padding: 0px;
+    margin: 0px;
+    box-sizing: border-box;
+    /*font-weight: bold;*/
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100%;
+}
+
+.calculadora {
+    background: #cfcec1;
+    padding: 10px 20px 20px 20px;
+    border-radius: 0px 0px 5px 5px;
+}
+
+.fundo_numeros {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); 
+    background: black;
+    border-left: 4px inset #B7B3A0;
+    border-right: 4px inset #B7B3A0;
+    border-bottom: 4px inset #B7B3A0;
+    border-radius: 0px 0px 3px 3px;
+    padding: 1px;
+}
+
+.botao_operadores {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 62px;
+    height: 62px;
+    background: black;
+    border: none;
+}
+
+.botao_operadores_bottom {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 60px;
+    height: 60px;
+    background: #B7B3A0;
+    background: linear-gradient(130deg, rgba(183, 179, 160, 1) 0%, rgba(254, 253, 245, 1) 100%);
+    border: none;
+    cursor: pointer;
+    border-radius: 5%;
+}
+
+.botao_operadores_top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 20%;
+    background: #B7B3A0;
+    background: linear-gradient(269deg, rgba(183, 179, 160, 1) 0%, rgba(254, 253, 245, 1) 100%);
+    color: #625d5a;
+    font-size: 22px;
+}
+
+.botao_operadores_top:active {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+}
+
+.botao_operadores:active {
+    background: linear-gradient(130deg, rgba(183, 179, 160, 1) 0%, rgba(254, 253, 245, 1) 100%);
+    border-radius: 3px;
+}
+
+.botao_numeros {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 62px;
+    height: 62px;
+    background: black;
+    border: none;
+}
+
+.botao_numeros_bottom {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 60px;
+    height: 60px;
+    background: #2A2B26;
+    background: linear-gradient(130deg, rgba(42, 43, 38, 1) 0%, rgba(113, 119, 110, 1) 100%);
+    border: none;
+    cursor: pointer;
+    border-radius: 5%;
+}
+
+.botao_numeros_top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 20%;
+    background: #2A2B26;
+    background: linear-gradient(269deg, rgba(42, 43, 38, 1) 0%, rgba(113, 119, 110, 1) 100%);
+    color: white;
+    font-size: 22px;
+}
+
+.botao_numeros_top:active {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+}
+
+.botao_numeros:active {
+    background: linear-gradient(130deg, rgba(42, 43, 38, 1) 0%, rgba(113, 119, 110, 1) 100%);
+    border-radius: 3px;
+}
+
+.botao_funcoes {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 62px;
+    height: 62px;
+    background: black;
+    border: none;
+}
+
+.botao_funcoes_bottom {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 60px;
+    height: 60px;
+    background: #924909;
+    background: linear-gradient(130deg, rgba(146, 73, 9, 1) 0%, rgba(233, 143, 66, 1) 100%);
+    border: none;
+    cursor: pointer;
+    border-radius: 5%;
+}
+
+.botao_funcoes_top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 20%;
+    background: #924909;
+    background: linear-gradient(269deg, rgba(146, 73, 9, 1) 0%, rgba(233, 143, 66, 1) 100%);
+    color: white;
+    font-size: 22px;
+}
+
+.botao_funcoes_top:active {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+}
+
+.botao_funcoes:active {
+    background: linear-gradient(130deg, rgba(146, 73, 9, 1) 0%, rgba(233, 143, 66, 1) 100%);
+    border-radius: 3px;
+}
+
+.area_logo {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.area_botao_clear {
+    background: black;
+    padding: 1px 1px 0px 1px;
+    border-left: 4px inset #B7B3A0;
+    border-top: 4px inset #B7B3A0;
+    border-right: 4px inset #B7B3A0;
+    border-radius: 3px 3px 0px 0px;
+}
+
+.area_logo2 {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 67px;
+    border-bottom: 4px inset #B7B3A0;
+}
+
+.logo {
+    padding: 5px 10px;
+    background-image: url(imagens/fundo2.jpg);
+    border: 1px inset #B7B3A0;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.campo_visor {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.visor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #1b1211;
+    background-image: url(imagens/visor.png);
+    background-position: center;
+    background-size: 110%;
+    width: 250px;
+    height: 70px;
+}
+
+.conta_atual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 65%;
+    width: 100%;
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.062); 
+}
+
+.resultado {
+    width: 90%;
+    margin-left: 10px;
+    margin-right: 10px;
+    color: #fea524;
+    text-shadow: 3px 2px 3px rgba(224,133,43,0.36);
+    letter-spacing: 3px;
+    font-size: 30px;
+    font-family: 'clock';
+    background: none;
+    border: none;
+    text-align: right;
+}
+
+.campo_historico {
+    display: flex;
+    align-items: center;
+    justify-content: right;
+    margin-right: 15px;
+    width: 100%;
+    height: 30%;
+}
+
+.historico {
+    color: #fea524;
+    text-shadow: 3px 2px 3px rgba(224,133,43,0.36);
+    letter-spacing: 3px;
+    font-size: 10px;
+    font-family: 'clock';
+    background: none;
+    border: none;
+    text-align: right;
+}
+
+.listras {
+    width: 296px;
+    background: #cfcec1;
+    border-radius: 5px 5px 0px 0px;
+}
+
+.listra {   
+    height: 3px;
+    background: #69685b ;
+    content: "";
+    margin-bottom: 5px;
+    padding: 0px;
+}
+
+.listra:first-child {
+    margin-top: 15px
+}
+
+.menu {
+    position: relative;
+    top: 76%;
+    left: 40%;
+}

@@ -1,0 +1,362 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css?family=Roboto&display=swap');
+
+:root{
+    --cor-fundo: white;
+    --cor-fundo2: #c5c5c5;
+    --cor-fundo3: #c7f304;
+    --cor-fundo-invertido: black;
+    --cor-texto: black;
+    --cor-texto-invertido: white;
+    --cor-borda: #dcdcdcb0;
+    --cor-fundo-produto: #F4F4F4;
+    --cor-allure: #84B1E3;
+    --cor-camel: #8A5232;
+    --cor-azul: #a4dedf;
+    --cor-verde: green;
+    --cor-amarelo: yellow;
+    --cor-branco: white;
+    --cor-chiclete: #d95b8b;
+    --cor-lavanda: #c286c2;
+    --cor-header: #E8E3DF;
+    --cor-icones: #735e59;
+    --cor-adbar: #735E59;
+  }
+
+*{ 
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+    letter-spacing: 0.1rem;
+}
+
+body{
+    width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.container {
+    justify-content: center;
+    align-items: center;
+}
+
+.esquerda {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 20px;
+}
+
+.imagem {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: auto;
+}
+
+.imagem img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+.direita {
+    width: 100%;
+    padding: 20px;
+    border: 1px solid black;
+}
+
+.radio {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.radio label {
+    margin-top: 6px;
+    margin-bottom: 15px;
+    font-size: 10px;
+}
+
+.cor1, .cor2, .cor3, .cor4, .cor5 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.cor1 input, .cor2 input, .cor3 input, .cor4 input, .cor5 input {
+    appearance: none;
+    height: 30px;
+    width: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.cor1 input:hover, .cor2 input:hover, .cor3 input:hover, .cor4 input:hover, .cor5 input:hover {
+    transform: scale(1.1);
+    transition: 0.3s;
+}
+
+.cor1 input:checked, .cor2 input:checked, .cor3 input:checked, .cor4 input:checked, .cor5 input:checked {
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px black;
+    transform: scale(1.1);
+    transition: 0.3s;
+}
+
+/* cores dos botões */
+
+#allure{
+    background-color: var(--cor-allure);
+}
+
+#camel{
+    background-color: var(--cor-camel);
+}
+
+#azulbb{
+    background-color: var(--cor-azul);
+}
+
+#chiclete{
+    background-color: var(--cor-chiclete);
+}
+
+#lavanda{
+    background-color: var(--cor-lavanda);
+}
+
+#branco{
+    background-color: var(--cor-branco);
+}
+
+/* cores dos botões */
+
+.container-descricao{
+    display: flex;
+    padding: 20px;
+    margin-left: 10%;
+    margin-right: 10%;
+    border: 2px solid black;
+}
+
+/* produto */
+
+.produto{
+    width: 350px;
+    height: 350px;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    background-image: url(imagens/vitoria/vitoria.png);
+    background-size: 350px 350px; 
+}
+
+#coleira{
+    width: 350px;
+    height: 350px;
+    background-image: none;
+    position: absolute;
+    background-size: 350px 350px;
+}
+
+#detalhe{
+    width: 350px;
+    height: 350px;
+    background-image: none;
+    position: absolute;
+    background-size: 350px 350px;
+}
+
+#metal{
+    width: 350px;
+    height: 350px;
+    background-image: none;
+    background-size: 350px 350px;
+}
+
+#caixa-texto{
+    width: 180px;
+    height: 16px;
+    background-color: white;
+    position: absolute;
+}
+
+.bandeira p{
+    font-size: 8px;
+    color: black;
+    align-items: center;
+    z-index: 10;
+    text-transform: uppercase;
+}
+
+#texto {
+    height: 40px;
+    width: 350px;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    margin-top: 10px;
+}
+
+#texto:focus {
+    outline: none;
+    border: 2px solid var(--cor-fundo3);
+}
+
+#contador {
+    opacity: 0.5;
+    font-size: 10px;
+    position: relative;
+    right: 60px;
+}
+
+.limite-atingido {
+    color: red;
+}
+
+.cor-metal, .cor-pedras {
+    display: flex;
+}
+
+.button input {
+    font-size: 10px;
+    margin-right: 8px;
+    appearance: none;
+    padding: 8px 20px;
+    border: 1px solid rgba(0, 0, 0, 0.164);
+    background: white;
+}
+
+.button input:hover {
+    cursor: pointer;
+}
+
+.botao-selecionado {
+    border: 2px solid greenyellow;
+}
+
+#nome-pet {
+    font-size: 15px;
+    font-weight: bolder;
+    margin-top: 347px;
+    z-index: 10;
+}
+
+/* header */
+
+.container-header {
+    position: fixed;
+    top: 0;
+    left: auto;
+    right: auto;
+    width: 400px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    background-color: var(--cor-header);
+    height: 70px;
+}
+
+.header-esquerda {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 20%;
+    margin-left: 10px;
+}
+
+.header-centro {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 60%;
+}
+
+.header-direita {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 20%;
+    margin-right: 10px;
+}
+
+.logo img {
+    height: 40px;
+}
+
+svg {
+    fill: var(--cor-icones);
+    height: 30px;
+    margin: 8px;
+}
+
+.qtd-carrinho {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background-color: var(--cor-icones);
+    color: var(--cor-texto-invertido);
+    border-radius: 50%;
+    padding: 3px 4px;
+    font-size: 9px;
+}
+
+.ad-bar {
+    margin-top: 70px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 36px;
+    background-color: var(--cor-adbar);
+    color: var(--cor-texto-invertido);
+    font-family: On Mono,menlo,consolas,roboto mono,ubuntu monospace,noto mono,oxygen mono,liberation mono,monospace;
+    font-size: .75rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.ad-bar p {
+    margin-left: 50px;
+}
+
+.ad-bar-content {
+    display: flex;
+    flex-direction: row;
+    animation: marquee 20s linear infinite;
+  }
+  
+  @keyframes marquee {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+}
+
+.nome-variação {
+    font-size: 12px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.info {
+    display: flex;
+    justify-content: space-between;
+}
+
+.info h1 {
+    font-size: 16px;
+    font-weight: bolder;
+}
+
+.info h2 {
+    font-size: 13px;
+    font-weight: normal;
+}
