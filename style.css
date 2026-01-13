@@ -1,34 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --cor-fundo: #0B0D13;
+    --cor-destaque: #00E699;
+    --cor-destaque-opacidade-30: #00E6994D;
+    --cor-destaque-opacidade-10: #33FFBB1A;
+    --cor-destaque-opacidade-5: #33FFBB0D;
+    --cor-texto-primario: #818898;
+    --cor-texto-secundario: #f0f2f5;
+}
+
 * {
-    font-family: 'Courier New', Courier, monospace;
+    font-family: "JetBrains Mono", "monospace", "Inter", "system-ui", "sans-serif";
     padding: 0px;
     margin: 0px;
     box-sizing: border-box;
-    /*font-weight: bold;*/
 }
 
 body {
+    width: 100vw;
+    background: var(--cor-fundo)
+}
+
+.top-header {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
     align-items: center;
-    height: 100vh;
-    width: 100%;
-    background: black;
+    height: 70px;
+    width: 100vw;
+    padding: 1rem;
+    border-bottom: 1px solid var(--cor-texto-primario);
 }
 
+.header-logo-container {
+    width: 30%;
+    margin-left: 20px;
+    font: 20px "JetBrains Mono";
+    font-weight: bolder;
+    letter-spacing: -3px;
+}
 
-a {
-    text-decoration: none;
-    padding: 10px 20px;
-    border: 0.5px solid rgb(251, 255, 0);
-    background: white;
+.header-logo span {
+    font: 20px "JetBrains Mono";
+}
+
+.logo-nome {
+    color: var(--cor-texto-secundario);
+    letter-spacing: 0.3px;
+    transition: color 0.3s ease;
+}
+
+.header-logo:hover .logo-nome {
+    color: var(--cor-destaque);
     cursor: pointer;
-    border-radius: 5px;
-    margin: 5px;
-    width: 250px;
-    color: black;
 }
 
-a:hover {
-    box-shadow: 3px 2px 3px rgba(252, 252, 251, 0.719);
+.header-menu {
+    display: flex;
+    justify-content: right;
+    align-items: center;
+    width: 70%;
+    margin-right: 20px;
+    gap: 25px;
+    color: var(--cor-texto-primario);
+    font: monospace;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    text-align: center;
+}
+
+.header-menu svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: var(--cor-destaque);
+}
+
+.header-menu button {
+    all: unset;
+    cursor: pointer;
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid var(--cor-destaque-opacidade-30);
+    /*border-width: 1px;
+    border-color: var(--cor-destaque-opacidade-30);*/
+    box-shadow: 0 0 15px var(--cor-destaque-opacidade-10), inset 0 0 15px var(--cor-destaque-opacidade-5);
 }
