@@ -11,8 +11,17 @@
 </head>
 <body>
 
+    <!--<div id="header-placeholder"></div>-->
+
     <div class="menu">
         <a href="../index.html">MENU</a>
+    </div>
+
+    <div id="easterEggPopup" class="popup-oculto">
+        <div class="popup-conteudo">
+            <img src="https://cdn.dicionariopopular.com/imagens/nazareconfusamatematica.gif" alt="Easter Egg GIF" class="gif-easter-egg">
+            <button onclick="fecharPopup()">Fechar</button>
+        </div>
     </div>
 
     <div class="listras">
@@ -44,7 +53,7 @@
             </button>
             </div>
             <div class="area_logo2">
-                <div class="logo">NAZARÉ 3000</div>
+                <div class="logo" onclick="verificarEasterEgg()">NAZARÉ 3000</div>
             </div>
         </div>
         <div class="fundo_numeros">
