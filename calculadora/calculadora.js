@@ -53,7 +53,7 @@ function verificarEasterEgg() {
 
     console.log("Cliques: " + contadorCliques);
 
-    if (contadorCliques === 2) {
+    if (contadorCliques === 10) {
         exibirPopup();
         contadorCliques = 0;
     }
