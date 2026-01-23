@@ -18,7 +18,7 @@ body {
     align-items: center;
     height: 100vh;
     width: 100%;
-    position: absolute;
+    /*position: absolute;*/
 }
 
 .calculadora {
@@ -74,13 +74,15 @@ body {
     font-size: 22px;
 }
 
-.botao_operadores_top:active {
+.botao_operadores_top:active, 
+.botao_operadores_top.teclado-ativo {
     width: 48px;
     height: 48px;
     font-size: 20px;
 }
 
-.botao_operadores:active {
+.botao_operadores:active,
+.botao_operadores.teclado-ativo {
     background: linear-gradient(130deg, rgba(183, 179, 160, 1) 0%, rgba(254, 253, 245, 1) 100%);
     border-radius: 3px;
 }
@@ -121,13 +123,15 @@ body {
     font-size: 22px;
 }
 
-.botao_numeros_top:active {
+.botao_numeros_top:active, 
+.botao_numeros_top.teclado-ativo {
     width: 48px;
     height: 48px;
     font-size: 20px;
 }
 
-.botao_numeros:active {
+.botao_numeros:active,
+.botao_numeros.teclado-ativo {
     background: linear-gradient(130deg, rgba(42, 43, 38, 1) 0%, rgba(113, 119, 110, 1) 100%);
     border-radius: 3px;
 }
@@ -168,13 +172,15 @@ body {
     font-size: 22px;
 }
 
-.botao_funcoes_top:active {
+.botao_funcoes_top:active, 
+.botao_funcoes_top.teclado-ativo {
     width: 48px;
     height: 48px;
     font-size: 20px;
 }
 
-.botao_funcoes:active {
+.botao_funcoes:active,
+.botao_funcoes.teclado-ativo {
     background: linear-gradient(130deg, rgba(146, 73, 9, 1) 0%, rgba(233, 143, 66, 1) 100%);
     border-radius: 3px;
 }

@@ -83,3 +83,34 @@ function fecharPopup() {
     popup.classList.remove('popup-visivel');
     popup.classList.add('popup-oculto');
 }
+
+//Código para receber inputs do teclado
+document.addEventListener('keydown', function(event) {
+    const tecla = event.key;
+
+    // Mapeamento de teclas numéricas
+    if (tecla >= 0 && tecla <= 9) {
+        calcular('valor', parseInt(tecla));
+    }
+
+    // Mapeamento de operadores e ações
+    if (tecla === '+' || tecla === '-' || tecla === '*' || tecla === '/' || tecla === '.') {
+        calcular('acao', tecla);
+    }
+
+    // Enter para calcular o resultado (=)
+    if (tecla === 'Enter') {
+        event.preventDefault(); // Impede o comportamento padrão do navegador
+        calcular('acao', '=');
+    }
+
+    // Backspace ou 'c' para limpar (C)
+    if (tecla === 'Backspace' || tecla.toLowerCase() === 'c') {
+        calcular('acao', 'c');
+    }
+
+    // Opcional: Esc para fechar o popup se estiver aberto
+    if (tecla === 'Escape') {
+        fecharPopup();
+    }
+});
