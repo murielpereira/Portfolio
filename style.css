@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
+
 :root {
     --cor-fundo: #0B0D13;
     --cor-destaque: #00E699;
@@ -27,7 +28,7 @@ body {
     align-items: center;
     height: 70px;
     width: 100vw;
-    padding: 1rem;
+    padding: 1rem 15rem;
     border-bottom: 1px solid var(--cor-texto-primario);
 }
 
@@ -40,7 +41,12 @@ body {
 }
 
 .header-logo span {
-    font: 20px "JetBrains Mono";
+    font: 20px "Inter";
+    font-weight: bolder;
+}
+
+.header-logo {
+    text-decoration: none;
 }
 
 .logo-nome {
@@ -60,12 +66,56 @@ body {
     align-items: center;
     width: 70%;
     margin-right: 20px;
-    gap: 25px;
-    color: var(--cor-texto-primario);
+    gap: 35px;
     font: monospace;
     font-size: 0.875rem;
     line-height: 1.25rem;
     text-align: center;
+}
+
+.header-menu a {
+    position: relative;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+    text-decoration: none;
+    color: var(--cor-texto-primario);
+}
+
+.header-menu a::before {
+    content: '//';
+    position: absolute;
+    right: 100%; /* Empurra o // exatamente para a esquerda do texto */
+    margin-right: 4px; /* Dá um pequeno espaço entre o // e a palavra */
+    color: var(--cor-destaque);
+    opacity: 0; /* Começa invisível */
+    transition: opacity 0.3s ease;
+}
+
+.header-menu a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; /* Posiciona a linha um pouco abaixo do texto */
+    left: -20px;
+    width: 0;
+    height: 1px; /* Espessura da linha */
+    background-color: var(--cor-destaque);
+    box-shadow: 0 0 8px #33FFBB1A; /* Aquele brilho suave na linha */
+    opacity: 0; /* Começa invisível */
+    transition: width 0.3s ease;
+}
+
+.header-menu a:hover {
+    color: var(--cor-destaque);
+    text-shadow: 0 0 10px rgba(0, 230, 153, 0.3); /* Brilho no texto */
+    cursor: pointer;
+}
+
+.header-menu a:hover::before {
+    opacity: 1;
+}
+.header-menu a:hover::after {
+    opacity: 1;
+    left: -20px; /* Puxa a linha para trás para cobrir os dois caracteres // */
+    width: calc(100% + 20px); /* Aumenta o tamanho da linha para compensar */
 }
 
 .header-menu svg {
@@ -90,3 +140,21 @@ body {
     box-shadow: 0 0 15px var(--cor-destaque-opacidade-10), inset 0 0 15px var(--cor-destaque-opacidade-5);
 }
 
+.links {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    margin-top: 40px;
+}
+
+.links a {
+    text-decoration: none;
+    color: white;
+}
+
+.links a:hover {
+    color: var(--cor-destaque);
+}
