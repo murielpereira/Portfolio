@@ -8,3 +8,7 @@ https://dribbble.com/shots/26875929-Two-wheeler-EMI-calculator-Designing-clarity
 • conversores
 • diferença entre datas
 • conversor de moedas
+
+git add .
+git commit -m "comentario"
+git push
