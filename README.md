@@ -2,17 +2,3 @@
 
 https://murielpereira.github.io/Portfolio/index.html
 
-inspiração: 
-https://dribbble.com/shots/4822276-Concept-Calculator
-https://dribbble.com/shots/728810-Vintage-Calculator-App
-https://dribbble.com/shots/26875929-Two-wheeler-EMI-calculator-Designing-clarity-for-real-users
-
-• light and dark mode
-• incrementar outros tipos de cálculos, como imc e etc
-• conversores
-• diferença entre datas
-• conversor de moedas
-
-git add .
-git commit -m "comentario"
-git push
