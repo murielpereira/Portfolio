@@ -14,14 +14,14 @@ app.use(cookieSession({
     name: 'sessao-automacao',
     keys: [process.env.CHAVE_SECRETA_SESSAO],
     maxAge: 24 * 60 * 60 * 1000,
-    secure: false, // Em produção na Vercel, o ideal é true se usar HTTPS, mas false funciona bem
+    secure: false, 
     sameSite: 'lax' 
 }));
 
 // Servir os arquivos do Front-end (painel)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// VARIÁVEIS NUVEMSHOP
+// VARIÁVEIS NUVEMSHOP E TINY
 const NUVEMSHOP_APP_ID = process.env.NUVEMSHOP_APP_ID;
 const NUVEMSHOP_CLIENT_SECRET = process.env.NUVEMSHOP_CLIENT_SECRET;
 const USER_AGENT = 'Waltz (murielpereirabr@gmail.com)';
@@ -110,16 +110,19 @@ app.get('/api/pedidos', async (req, res) => {
 });
 
 // =======================================================
-// ROTA DE WEBHOOK DO TINY (O Gatilho da Automação)
+// ROTAS DO TINY ERP (Webhook e Automação de Grupos)
 // =======================================================
+
 app.post('/api/webhook/tiny', async (req, res) => {
     try {
         const payload = req.body;
         
+        // 1. Defesa contra o Ping do Tiny
         if (!payload || Object.keys(payload).length === 0) {
             return res.status(200).send('OK');
         }
 
+        // 2. Extração Precisa 
         const dados = payload.dados;
         if (dados && dados.id && dados.cliente && dados.cliente.cpfCnpj) {
             const idPedidoTiny = dados.id;
@@ -127,11 +130,11 @@ app.post('/api/webhook/tiny', async (req, res) => {
 
             console.log(`\n📦 NOVO PEDIDO RECEBIDO! ID: ${idPedidoTiny} | CPF: ${cpfCliente}`);
             
-            // CORREÇÃO CRUCIAL: Adicionamos o 'await' para a Vercel não desligar o servidor!
+            // 3. Chama a inteligência da automação COM await para Vercel não desligar
             await processarGrupoClienteTiny(idPedidoTiny, cpfCliente);
         }
 
-        // Só responde 'OK' depois que TODO o trabalho terminou
+        // Responde o Tiny imediatamente
         res.status(200).send('OK');
 
     } catch (erro) {
@@ -140,10 +143,13 @@ app.post('/api/webhook/tiny', async (req, res) => {
     }
 });
 
+// =======================================================
+// INTELIGÊNCIA: Calcular Grupo e Atualizar Tiny
+// =======================================================
 async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const TOKEN = process.env.TINY_TOKEN;
 
-    // Limpamos o CPF (tira pontos e traço) para a busca na API não dar erro
+    // Limpamos o CPF (tira pontos e traço)
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
 
     try {
@@ -160,17 +166,16 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         }
 
         // PASSO 2: A Matemática dos Grupos
-        let grupo = "Primeira Compra";
+        let grupo = "Novato";
         if (totalPedidos >= 2 && totalPedidos <= 4) grupo = "Cliente Prata";
         if (totalPedidos >= 5 && totalPedidos <= 9) grupo = "Cliente Ouro";
         if (totalPedidos >= 10) grupo = "Cliente VIP";
 
         console.log(`📢 Identificado: ${totalPedidos} compra(s). Classificado como: [${grupo}]`);
 
-        // PASSO 3: Injetar a observação no pedido do Tiny
-        // A PEGADINHA DO TINY: No alterar.php, o pacote se chama "dados_pedido"
+        // PASSO 3: Injetar a observação no pedido do Tiny (CORREÇÃO DE DOCUMENTAÇÃO)
         const dadosAlteracao = {
-            dados_pedido: {
+            pedido: {
                 obs: `[GRUPO DO CLIENTE: ${grupo}] \n---`
             }
         };
@@ -178,11 +183,12 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         const params = new URLSearchParams();
         params.append('token', TOKEN);
         params.append('formato', 'JSON');
-        params.append('id', idPedido); // No alterar.php, o ID do pedido vai fora do pacote!
-        params.append('dados_pedido', JSON.stringify(dadosAlteracao)); 
+        params.append('id', idPedido); // O ID precisa ir solto como parâmetro, fora do JSON
+        params.append('pedido', JSON.stringify(dadosAlteracao)); // O nome do pacote DEVE ser "pedido"
 
         console.log(`⏳ Escrevendo grupo nas observações do pedido ${idPedido}...`);
         const urlAlteracao = 'https://api.tiny.com.br/api2/pedido.alterar.php';
+        
         const respostaAlteracao = await fetch(urlAlteracao, {
             method: 'POST',
             body: params
