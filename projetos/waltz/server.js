@@ -6,13 +6,13 @@ const path = require('path');
 const app = express();
 
 // =======================================================
-// TRADUTORES DE DADOS (Cruciais para Webhooks e APIs)
+// TRADUTORES DE DADOS
 // =======================================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // =======================================================
-// CONFIGURAÇÃO DO COOKIE (Para o seu painel de relatórios)
+// CONFIGURAÇÃO DO COOKIE
 // =======================================================
 app.use(cookieSession({
     name: 'sessao-automacao',
@@ -31,7 +31,7 @@ const NUVEMSHOP_CLIENT_SECRET = process.env.NUVEMSHOP_CLIENT_SECRET;
 const USER_AGENT = 'Waltz (murielpereirabr@gmail.com)';
 
 // =======================================================
-// ROTAS DA NUVEMSHOP (Autenticação e Busca de Pedidos)
+// ROTAS DA NUVEMSHOP
 // =======================================================
 
 app.get('/api/auth/nuvemshop', async (req, res) => {
@@ -121,12 +121,10 @@ app.post('/api/webhook/tiny', async (req, res) => {
     try {
         const payload = req.body;
         
-        // 1. Defesa contra o Ping do Tiny
         if (!payload || Object.keys(payload).length === 0) {
             return res.status(200).send('OK');
         }
 
-        // 2. Extração Precisa 
         const dados = payload.dados;
         if (dados && dados.id && dados.cliente && dados.cliente.cpfCnpj) {
             const idPedidoTiny = dados.id;
@@ -134,11 +132,9 @@ app.post('/api/webhook/tiny', async (req, res) => {
 
             console.log(`\n📦 NOVO PEDIDO RECEBIDO! ID: ${idPedidoTiny} | CPF: ${cpfCliente}`);
             
-            // 3. Chama a inteligência da automação COM await para Vercel não desligar
             await processarGrupoClienteTiny(idPedidoTiny, cpfCliente);
         }
 
-        // Responde o Tiny imediatamente
         res.status(200).send('OK');
 
     } catch (erro) {
@@ -147,17 +143,11 @@ app.post('/api/webhook/tiny', async (req, res) => {
     }
 });
 
-// =======================================================
-// INTELIGÊNCIA: Calcular Grupo e Atualizar Tiny
-// =======================================================
 async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const TOKEN = process.env.TINY_TOKEN;
-
-    // Limpamos o CPF (tira pontos e traço)
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
 
     try {
-        // PASSO 1: Perguntar ao Tiny quantos pedidos esse CPF tem
         console.log(`⏳ Buscando histórico de compras para o CPF ${cpfLimpo}...`);
         const urlBusca = `https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`;
         
@@ -169,7 +159,6 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
             totalPedidos = dadosBusca.retorno.pedidos.length;
         }
 
-        // PASSO 2: A Matemática dos Grupos
         let grupo = "Novato";
         if (totalPedidos >= 2 && totalPedidos <= 4) grupo = "Cliente Prata";
         if (totalPedidos >= 5 && totalPedidos <= 9) grupo = "Cliente Ouro";
@@ -177,29 +166,28 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
 
         console.log(`📢 Identificado: ${totalPedidos} compra(s). Classificado como: [${grupo}]`);
 
-        // PASSO 3: A ESTRUTURA BLINDADA ANTIBLOQUEIO
-        // Removemos os colchetes "[" e "]" para o Firewall do Tiny não bloquear o pacote
-        // Preenchemos ambas as observações para garantir que o Tiny aceite a alteração
+        // =====================================================
+        // PASSO 3: A ESTRUTURA CRUA E BLINDADA (Força Bruta)
+        // =====================================================
         const pacoteJson = {
             dados_pedido: {
-                obs: `Grupo do cliente: ${grupo}`,
-                obs_interna: `Automação identificou: ${grupo}`
+                obs: `[GRUPO DO CLIENTE: ${grupo}]`
             }
         };
 
-        const params = new URLSearchParams();
-        params.append('token', TOKEN);
-        params.append('formato', 'JSON');
-        params.append('id', idPedido); 
-        params.append('pedido', JSON.stringify(pacoteJson));
+        // Aqui montamos a URL de envio exatamente como o Tiny exige, codificando o JSON
+        const bodyCru = `token=${TOKEN}&formato=JSON&id=${idPedido}&pedido=${encodeURIComponent(JSON.stringify(pacoteJson))}`;
 
         console.log(`⏳ Escrevendo grupo nas observações do pedido ${idPedido}...`);
         const urlAlteracao = 'https://api.tiny.com.br/api2/pedido.alterar.php';
         
-        // Deixamos o Node.js montar o cabeçalho 'form-urlencoded' automaticamente
         const respostaAlteracao = await fetch(urlAlteracao, {
             method: 'POST',
-            body: params 
+            headers: {
+                // Forçamos o cabeçalho puro para o PHP do Tiny aceitar o pacote
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: bodyCru 
         });
 
         const resultadoAlteracao = await respostaAlteracao.json();
