@@ -177,11 +177,13 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
 
         console.log(`📢 Identificado: ${totalPedidos} compra(s). Classificado como: [${grupo}]`);
 
-        // PASSO 3: A ESTRUTURA EXATA DO PRINT DA DOCUMENTAÇÃO DO TINY
-        // O JSON interno começa com 'dados_pedido'
+        // PASSO 3: A ESTRUTURA BLINDADA ANTIBLOQUEIO
+        // Removemos os colchetes "[" e "]" para o Firewall do Tiny não bloquear o pacote
+        // Preenchemos ambas as observações para garantir que o Tiny aceite a alteração
         const pacoteJson = {
             dados_pedido: {
-                obs: `[GRUPO DO CLIENTE: ${grupo}]`
+                obs: `Grupo do cliente: ${grupo}`,
+                obs_interna: `Automação identificou: ${grupo}`
             }
         };
 
@@ -189,18 +191,15 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         params.append('token', TOKEN);
         params.append('formato', 'JSON');
         params.append('id', idPedido); 
-        // O parâmetro da URL TEM que se chamar 'pedido'
         params.append('pedido', JSON.stringify(pacoteJson));
 
         console.log(`⏳ Escrevendo grupo nas observações do pedido ${idPedido}...`);
         const urlAlteracao = 'https://api.tiny.com.br/api2/pedido.alterar.php';
         
+        // Deixamos o Node.js montar o cabeçalho 'form-urlencoded' automaticamente
         const respostaAlteracao = await fetch(urlAlteracao, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: params.toString() 
+            body: params 
         });
 
         const resultadoAlteracao = await respostaAlteracao.json();
