@@ -5,6 +5,7 @@ const path = require('path');
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // <-- ADICIONE ESTA LINHA PARA WEBHOOKS
 
 // CONFIGURAÇÃO DO COOKIE
 app.use(cookieSession({
@@ -122,31 +123,21 @@ app.post('/api/webhook/tiny', async (req, res) => {
     try {
         const dadosRecebidos = req.body;
         
-        // 1. Defesa contra o "Ping" de Teste do Tiny
-        // Se não tiver dados reais, apenas dizemos "OK" para ele salvar a URL
+        // 1. Defesa contra o "Ping"
         if (!dadosRecebidos || Object.keys(dadosRecebidos).length === 0) {
             console.log("🔔 Ping de validação do Tiny recebido com sucesso!");
             return res.status(200).send('OK');
         }
 
-        // 2. Extração segura dos dados
-        // O Tiny às vezes manda os dados soltos ou dentro de um objeto 'dados'
-        const idPedidoTiny = dadosRecebidos.id || (dadosRecebidos.dados && dadosRecebidos.dados.id);
-        const cliente = dadosRecebidos.cliente || (dadosRecebidos.dados && dadosRecebidos.dados.cliente);
-        const cpfCliente = cliente ? cliente.cpf_cnpj : null;
+        // 2. O RAIO-X: Imprime TUDO o que chegou
+        console.log("\n📥 PACOTE CRU RECEBIDO DO TINY:");
+        console.log(JSON.stringify(dadosRecebidos, null, 2));
 
-        if (idPedidoTiny && cpfCliente) {
-            console.log(`\n📦 Novo pedido no Tiny! ID: ${idPedidoTiny} | Cliente CPF: ${cpfCliente}`);
-            // Chamamos a função, mas NÃO usamos await aqui para não deixar o Tiny esperando
-            processarGrupoClienteTiny(idPedidoTiny, cpfCliente).catch(err => console.error("Erro no processamento:", err));
-        }
-
-        // 3. Resposta imediata de Sucesso
+        // Por enquanto, apenas confirmamos o recebimento
         res.status(200).send('OK');
 
     } catch (erro) {
         console.error("❌ Erro no Webhook do Tiny:", erro);
-        // Retornamos 200 mesmo no erro, senão o Tiny desativa o nosso Webhook!
         res.status(200).send('OK'); 
     }
 });
