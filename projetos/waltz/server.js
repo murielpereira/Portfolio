@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cookieSession = require('cookie-session');
 const path = require('path');
+const https = require('https'); // O MÓDULO RAIZ PARA BURLAR A REDE DA VERCEL
 
 const app = express();
 
@@ -22,10 +23,9 @@ app.use(cookieSession({
     sameSite: 'lax' 
 }));
 
-// Servir os arquivos do Front-end (painel)
+// Servir os arquivos do Front-end
 app.use(express.static(path.join(__dirname, 'public')));
 
-// VARIÁVEIS NUVEMSHOP E TINY
 const NUVEMSHOP_APP_ID = process.env.NUVEMSHOP_APP_ID;
 const NUVEMSHOP_CLIENT_SECRET = process.env.NUVEMSHOP_CLIENT_SECRET;
 const USER_AGENT = 'Waltz (murielpereirabr@gmail.com)';
@@ -114,7 +114,7 @@ app.get('/api/pedidos', async (req, res) => {
 });
 
 // =======================================================
-// ROTAS DO TINY ERP (Webhook e Automação de Grupos)
+// ROTAS DO TINY ERP
 // =======================================================
 
 app.post('/api/webhook/tiny', async (req, res) => {
@@ -166,31 +166,49 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
 
         console.log(`📢 Identificado: ${totalPedidos} compra(s). Classificado como: [${grupo}]`);
 
-        // =====================================================
-        // PASSO 3: A ESTRUTURA CRUA E BLINDADA (Força Bruta)
-        // =====================================================
+        // A estrutura exata da sua imagem de documentação
         const pacoteJson = {
             dados_pedido: {
-                obs: `[GRUPO DO CLIENTE: ${grupo}]`
+                obs: `Grupo: ${grupo}`
             }
         };
 
-        // Aqui montamos a URL de envio exatamente como o Tiny exige, codificando o JSON
-        const bodyCru = `token=${TOKEN}&formato=JSON&id=${idPedido}&pedido=${encodeURIComponent(JSON.stringify(pacoteJson))}`;
+        const postData = new URLSearchParams();
+        postData.append('token', TOKEN);
+        postData.append('formato', 'JSON');
+        postData.append('id', idPedido);
+        postData.append('pedido', JSON.stringify(pacoteJson));
+        
+        const bodyString = postData.toString();
 
         console.log(`⏳ Escrevendo grupo nas observações do pedido ${idPedido}...`);
-        const urlAlteracao = 'https://api.tiny.com.br/api2/pedido.alterar.php';
         
-        const respostaAlteracao = await fetch(urlAlteracao, {
-            method: 'POST',
-            headers: {
-                // Forçamos o cabeçalho puro para o PHP do Tiny aceitar o pacote
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: bodyCru 
-        });
+        // REQUISIÇÃO NATIVA: Sem Vercel Edge Fetch, forçando o Content-Length exato
+        const resultadoAlteracao = await new Promise((resolve, reject) => {
+            const req = https.request({
+                hostname: 'api.tiny.com.br',
+                path: '/api2/pedido.alterar.php',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Length': Buffer.byteLength(bodyString)
+                }
+            }, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    try {
+                        resolve(JSON.parse(data));
+                    } catch(e) {
+                        resolve({ retorno: { status: 'Erro', erros: [{erro: 'Falha fatal na leitura'}] } });
+                    }
+                });
+            });
 
-        const resultadoAlteracao = await respostaAlteracao.json();
+            req.on('error', reject);
+            req.write(bodyString);
+            req.end();
+        });
 
         if (resultadoAlteracao.retorno.status === 'OK') {
             console.log(`✅ SUCESSO ABSOLUTO! Observação salva no pedido ${idPedido}!`);
@@ -202,10 +220,6 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         console.error("❌ Falha na comunicação com a API do Tiny:", erro);
     }
 }
-
-// =======================================================
-// INICIALIZAÇÃO DO SERVIDOR
-// =======================================================
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
