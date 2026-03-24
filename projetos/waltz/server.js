@@ -110,19 +110,16 @@ app.get('/api/pedidos', async (req, res) => {
 });
 
 // =======================================================
-// ROTAS DO TINY ERP (Webhook e Automação de Grupos)
+// ROTA DE WEBHOOK DO TINY (O Gatilho da Automação)
 // =======================================================
-
 app.post('/api/webhook/tiny', async (req, res) => {
     try {
         const payload = req.body;
         
-        // 1. Defesa contra o Ping do Tiny
         if (!payload || Object.keys(payload).length === 0) {
             return res.status(200).send('OK');
         }
 
-        // 2. Extração Precisa (Baseada no Raio-X)
         const dados = payload.dados;
         if (dados && dados.id && dados.cliente && dados.cliente.cpfCnpj) {
             const idPedidoTiny = dados.id;
@@ -130,11 +127,11 @@ app.post('/api/webhook/tiny', async (req, res) => {
 
             console.log(`\n📦 NOVO PEDIDO RECEBIDO! ID: ${idPedidoTiny} | CPF: ${cpfCliente}`);
             
-            // 3. Chama a inteligência da automação (sem 'await' para não travar o Tiny)
-            processarGrupoClienteTiny(idPedidoTiny, cpfCliente).catch(err => console.error("Erro na automação:", err));
+            // CORREÇÃO CRUCIAL: Adicionamos o 'await' para a Vercel não desligar o servidor!
+            await processarGrupoClienteTiny(idPedidoTiny, cpfCliente);
         }
 
-        // Responde o Tiny imediatamente para ele dar baixa no envio
+        // Só responde 'OK' depois que TODO o trabalho terminou
         res.status(200).send('OK');
 
     } catch (erro) {
