@@ -30,7 +30,7 @@ app.get('/api/auth/nuvemshop', async (req, res) => {
     if (!code) return res.status(400).send('Erro ausente.');
 
     try {
-        console.log(`\n⏳ Pedindo Token para a Nuvemshop...`);
+        console.log(`\n⏳ Pedindo Token Nuvemshop...`);
         const resposta = await fetch('https://www.nuvemshop.com.br/apps/authorize/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -43,9 +43,7 @@ app.get('/api/auth/nuvemshop', async (req, res) => {
         });
 
         const dados = await resposta.json();
-
         if (dados.access_token) {
-            console.log("✅ Token recebido! Salvando no Cookie...");
             req.session.nuvemshopToken = dados.access_token;
             req.session.storeId = dados.user_id; 
             res.redirect('/');
@@ -122,7 +120,7 @@ app.post('/api/webhook/tiny', async (req, res) => {
     }
 });
 
-// A INTELIGÊNCIA COM A NOVA ABORDAGEM MULTIPART/FORM-DATA
+// A INTELIGÊNCIA COM A NOVA ESTRUTURA (Graças à sua documentação)
 async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const TOKEN = process.env.TINY_TOKEN;
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
@@ -146,28 +144,26 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         console.log(`📢 Identificado: ${totalPedidos} compra(s). Classificado como: [${grupo}]`);
 
         // ====================================================================
-        // A NOVA ABORDAGEM: FormData (O padrão de fato para APIs legadas PHP)
+        // A ESTRUTURA CORRETA (Sem wrapper, direto no alvo)
         // ====================================================================
         const pacoteJson = {
-            dados_pedido: {
-                id: idPedido, // Inserido internamente por garantia
-                obs: `Grupo: ${grupo}`
-            }
+            obs: `Grupo: ${grupo}`
         };
 
-        const form = new FormData();
-        form.append('token', TOKEN);
-        form.append('formato', 'JSON');
-        form.append('id', idPedido);
-        form.append('pedido', JSON.stringify(pacoteJson));
+        const params = new URLSearchParams();
+        params.append('token', TOKEN);
+        params.append('formato', 'JSON');
+        params.append('id', idPedido);
+        
+        // O NOME DO PARÂMETRO É 'dados_pedido' E NÃO 'pedido'!
+        params.append('dados_pedido', JSON.stringify(pacoteJson));
 
-        console.log(`⏳ Escrevendo grupo no pedido ${idPedido} usando FormData...`);
+        console.log(`⏳ Escrevendo grupo no pedido ${idPedido}...`);
         const urlAlteracao = 'https://api.tiny.com.br/api2/pedido.alterar.php';
         
-        // O NodeJS cria automaticamente os Headers pesados de Boundary que o PHP exige
         const respostaAlteracao = await fetch(urlAlteracao, {
             method: 'POST',
-            body: form 
+            body: params 
         });
 
         const resultadoAlteracao = await respostaAlteracao.json();
