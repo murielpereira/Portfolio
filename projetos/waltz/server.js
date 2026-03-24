@@ -160,7 +160,7 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         }
 
         // PASSO 2: A Matemática dos Grupos
-        let grupo = "Novato";
+        let grupo = "Primeira Compra";
         if (totalPedidos >= 2 && totalPedidos <= 4) grupo = "Cliente Prata";
         if (totalPedidos >= 5 && totalPedidos <= 9) grupo = "Cliente Ouro";
         if (totalPedidos >= 10) grupo = "Cliente VIP";
@@ -168,9 +168,9 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         console.log(`📢 Identificado: ${totalPedidos} compra(s). Classificado como: [${grupo}]`);
 
         // PASSO 3: Injetar a observação no pedido do Tiny
+        // A PEGADINHA DO TINY: No alterar.php, o pacote se chama "dados_pedido"
         const dadosAlteracao = {
-            pedido: {
-                id: idPedido,
+            dados_pedido: {
                 obs: `[GRUPO DO CLIENTE: ${grupo}] \n---`
             }
         };
@@ -178,7 +178,8 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         const params = new URLSearchParams();
         params.append('token', TOKEN);
         params.append('formato', 'JSON');
-        params.append('pedido', JSON.stringify(dadosAlteracao));
+        params.append('id', idPedido); // No alterar.php, o ID do pedido vai fora do pacote!
+        params.append('dados_pedido', JSON.stringify(dadosAlteracao)); 
 
         console.log(`⏳ Escrevendo grupo nas observações do pedido ${idPedido}...`);
         const urlAlteracao = 'https://api.tiny.com.br/api2/pedido.alterar.php';
@@ -192,7 +193,7 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         if (resultadoAlteracao.retorno.status === 'OK') {
             console.log(`✅ SUCESSO ABSOLUTO! Observação salva no pedido ${idPedido}!`);
         } else {
-            console.error(`❌ O Tiny recusou a alteração:`, resultadoAlteracao.retorno.erros);
+            console.error(`❌ O Tiny recusou a alteração:`, JSON.stringify(resultadoAlteracao.retorno.erros));
         }
 
     } catch (erro) {
