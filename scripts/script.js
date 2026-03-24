@@ -8,7 +8,7 @@ fetch('/snippets/header.html')
     })
     .catch(error => console.error('Erro ao carregar o header:', error));
 
-fetch(caminhoBase + '/snippets/first-section.html')
+fetch('/snippets/first-section.html')
     .then(response => response.text())
     .then(data => {
         const placeholder = document.getElementById('first-section-placeholder');

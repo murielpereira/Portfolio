@@ -119,24 +119,35 @@ app.get('/api/pedidos', async (req, res) => {
 
 // ROTA DE WEBHOOK DO TINY (O Tiny vai bater aqui)
 app.post('/api/webhook/tiny', async (req, res) => {
-    // O Tiny envia os dados do pedido dentro do corpo da requisição
-    const dadosRecebidos = req.body;
-    
-    // 1. Pegamos o ID do pedido e o CPF do cliente
-    const idPedidoTiny = dadosRecebidos.id;
-    const cpfCliente = dadosRecebidos.cliente.cpf_cnpj;
-
-    console.log(`\n📦 Novo pedido no Tiny! ID: ${idPedidoTiny} | Cliente CPF: ${cpfCliente}`);
-
     try {
-        // 2. Chamamos uma função para processar tudo (vamos criar abaixo)
-        await processarGrupoClienteTiny(idPedidoTiny, cpfCliente);
+        const dadosRecebidos = req.body;
         
-        // Respondemos 200 para o Tiny não ficar tentando reenviar
+        // 1. Defesa contra o "Ping" de Teste do Tiny
+        // Se não tiver dados reais, apenas dizemos "OK" para ele salvar a URL
+        if (!dadosRecebidos || Object.keys(dadosRecebidos).length === 0) {
+            console.log("🔔 Ping de validação do Tiny recebido com sucesso!");
+            return res.status(200).send('OK');
+        }
+
+        // 2. Extração segura dos dados
+        // O Tiny às vezes manda os dados soltos ou dentro de um objeto 'dados'
+        const idPedidoTiny = dadosRecebidos.id || (dadosRecebidos.dados && dadosRecebidos.dados.id);
+        const cliente = dadosRecebidos.cliente || (dadosRecebidos.dados && dadosRecebidos.dados.cliente);
+        const cpfCliente = cliente ? cliente.cpf_cnpj : null;
+
+        if (idPedidoTiny && cpfCliente) {
+            console.log(`\n📦 Novo pedido no Tiny! ID: ${idPedidoTiny} | Cliente CPF: ${cpfCliente}`);
+            // Chamamos a função, mas NÃO usamos await aqui para não deixar o Tiny esperando
+            processarGrupoClienteTiny(idPedidoTiny, cpfCliente).catch(err => console.error("Erro no processamento:", err));
+        }
+
+        // 3. Resposta imediata de Sucesso
         res.status(200).send('OK');
+
     } catch (erro) {
-        console.error("Erro no Webhook do Tiny:", erro);
-        res.status(500).send('Erro');
+        console.error("❌ Erro no Webhook do Tiny:", erro);
+        // Retornamos 200 mesmo no erro, senão o Tiny desativa o nosso Webhook!
+        res.status(200).send('OK'); 
     }
 });
 
