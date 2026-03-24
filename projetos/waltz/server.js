@@ -5,11 +5,11 @@ const path = require('path');
 
 const app = express();
 
-// TRADUTORES DE DADOS (Cruciais para Webhooks e APIs)
+// TRADUTORES DE DADOS
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CONFIGURAÇÃO DO COOKIE (Para o seu painel de relatórios)
+// CONFIGURAÇÃO DO COOKIE
 app.use(cookieSession({
     name: 'sessao-automacao',
     keys: [process.env.CHAVE_SECRETA_SESSAO],
@@ -18,16 +18,14 @@ app.use(cookieSession({
     sameSite: 'lax' 
 }));
 
-// Servir os arquivos do Front-end (painel)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// VARIÁVEIS NUVEMSHOP E TINY
 const NUVEMSHOP_APP_ID = process.env.NUVEMSHOP_APP_ID;
 const NUVEMSHOP_CLIENT_SECRET = process.env.NUVEMSHOP_CLIENT_SECRET;
 const USER_AGENT = 'Waltz (murielpereirabr@gmail.com)';
 
 // =======================================================
-// ROTAS DA NUVEMSHOP (Autenticação e Busca de Pedidos)
+// ROTAS DA NUVEMSHOP
 // =======================================================
 
 app.get('/api/auth/nuvemshop', async (req, res) => {
@@ -110,14 +108,13 @@ app.get('/api/pedidos', async (req, res) => {
 });
 
 // =======================================================
-// ROTAS DO TINY ERP (Webhook e Automação de Grupos)
+// ROTAS DO TINY ERP
 // =======================================================
 
 app.post('/api/webhook/tiny', async (req, res) => {
     try {
         const payload = req.body;
         
-        // Defesa contra o Ping do Tiny
         if (!payload || Object.keys(payload).length === 0) {
             return res.status(200).send('OK');
         }
@@ -129,7 +126,6 @@ app.post('/api/webhook/tiny', async (req, res) => {
 
             console.log(`\n📦 NOVO PEDIDO RECEBIDO! ID: ${idPedidoTiny} | CPF: ${cpfCliente}`);
             
-            // Chama a inteligência da automação
             await processarGrupoClienteTiny(idPedidoTiny, cpfCliente);
         }
 
@@ -141,9 +137,6 @@ app.post('/api/webhook/tiny', async (req, res) => {
     }
 });
 
-// =======================================================
-// INTELIGÊNCIA: Calcular Grupo e Atualizar Tiny
-// =======================================================
 async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const TOKEN = process.env.TINY_TOKEN;
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
@@ -167,11 +160,9 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
 
         console.log(`📢 Identificado: ${totalPedidos} compra(s). Classificado como: [${grupo}]`);
 
-        // PASSO 3: A ESTRUTURA BLINDADA
-        // Sem "\n" para não quebrar o JSON do Tiny, e com o ID interno e externo!
-        const dadosAlteracao = {
-            pedido: {
-                id: idPedido,
+        // AQUI ESTÁ A MÁGICA FINAL: O nome do objeto tem que ser 'dados_pedido'
+        const pacote = {
+            dados_pedido: {
                 obs: `[GRUPO DO CLIENTE: ${grupo}]`
             }
         };
@@ -180,12 +171,12 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         params.append('token', TOKEN);
         params.append('formato', 'JSON');
         params.append('id', idPedido); 
-        params.append('pedido', JSON.stringify(dadosAlteracao));
+        // AQUI TAMBÉM: O nome do parâmetro enviado para o Tiny tem que ser 'dados_pedido'
+        params.append('dados_pedido', JSON.stringify(pacote));
 
         console.log(`⏳ Escrevendo grupo nas observações do pedido ${idPedido}...`);
         const urlAlteracao = 'https://api.tiny.com.br/api2/pedido.alterar.php';
         
-        // Forçamos o cabeçalho e convertemos o body para string pura
         const respostaAlteracao = await fetch(urlAlteracao, {
             method: 'POST',
             headers: {
@@ -206,10 +197,6 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         console.error("❌ Falha na comunicação com a API do Tiny:", erro);
     }
 }
-
-// =======================================================
-// INICIALIZAÇÃO DO SERVIDOR
-// =======================================================
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
