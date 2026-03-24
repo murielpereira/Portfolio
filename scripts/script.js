@@ -13,8 +13,6 @@ fetch('snippets/first-section.html')
 })
 */
 
-import { SpeedInsights } from "@vercel/speed-insights/next"
-
 // 1. O JavaScript pergunta: "Estou no GitHub?"
 const estaNoGitHub = window.location.hostname.includes('github.io');
 
