@@ -1,0 +1,77 @@
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+
+body {
+    background-color: #f0f2f5;
+    display: flex; justify-content: center; align-items: center; height: 100vh;
+}
+
+.login-container {
+    background-color: white; padding: 40px; border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 400px;
+}
+
+.login-container h2 { text-align: center; margin-bottom: 20px; color: #333; }
+
+.input-group { margin-bottom: 15px; }
+.input-group label { display: block; margin-bottom: 5px; color: #666; }
+.input-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
+.input-group input:focus { border-color: #007bff; }
+
+/* Botão padrão (O azulzão) */
+button {
+    width: 100%; padding: 10px; background-color: #007bff;
+    color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer;
+}
+button:hover { background-color: #0056b3; }
+
+/* Estilos do Erro */
+.erro-msg {
+    background-color: #f8d7da; color: #721c24; padding: 10px;
+    margin-bottom: 15px; border: 1px solid #f5c6cb; border-radius: 4px;
+    text-align: center; font-size: 14px; display: none;
+}
+
+/* O Segredo do Olhinho Consertado */
+.senha-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.senha-container input { padding-right: 40px; }
+
+/* Sobrescrevemos o comportamento do botão global aqui */
+.btn-toggle {
+    position: absolute;
+    right: 10px;
+    background: transparent !important; /* Força tirar o azul */
+    width: auto !important; /* Força tirar o 100% de largura */
+    color: #666;
+    border: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-toggle:hover { background: transparent; color: #333; }
+.btn-entrar { margin-top: 10px; }
+
+/* Estilos do Painel */
+.painel-container { text-align: center; padding: 40px; }
+.painel-container h1 { color: #28a745; margin-bottom: 15px; }
+.btn-sair { background-color: #dc3545; width: auto; padding: 10px 20px; margin-top: 20px; }
+.btn-sair:hover { background-color: #c82333; }
+
+/* Botão primário do painel */
+.btn-primario {
+    width: auto;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+.btn-primario:hover {
+    opacity: 0.9;
+}

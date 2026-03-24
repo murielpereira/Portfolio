@@ -1,0 +1,26 @@
+<div class="login-container">
+    <h2>Acesso Restrito</h2>
+    
+    <div id="mensagem-erro" class="erro-msg">
+        Usuário ou senha incorretos. Tente novamente!
+    </div>
+
+    <form id="form-login">
+        <div class="input-group">
+            <label for="usuario">Usuário</label>
+            <input type="text" id="usuario" name="usuario" required>
+        </div>
+        
+        <div class="input-group">
+            <label for="senha">Senha</label>
+            <div class="senha-container">
+                <input type="password" id="senha" name="senha" required>
+                <button type="button" id="btn-mostrar-senha" class="btn-toggle" title="Mostrar/Ocultar senha">
+                    <span class="material-symbols-outlined" id="icone-senha">visibility</span>
+                </button>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-entrar">Entrar no Sistema</button>
+    </form>
+</div>
