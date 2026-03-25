@@ -3,17 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waltz</title>
+    <title>Waltz | Automação</title>
     
-    <!-- O "?v=2" engana o navegador, forçando ele a baixar a imagem nova! -->
     <link rel="icon" type="image/png" href="../images/favicon.png?v=2">
-    <link rel="apple-touch-icon" href="../images/favicon.png?v=2">
-    
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 </head>
 <body>
-    <div id="app"></div>
+
+    <!-- ========================================== -->
+    <!-- TELA 1: LOGIN                              -->
+    <!-- ========================================== -->
+    <div id="tela-login" class="login-wrapper" style="display: none;">
+        <div class="login-container">
+            <h2>Acesso Restrito</h2>
+            
+            <div id="mensagem-erro" class="erro-msg">
+                Usuário ou senha incorretos. Tente novamente!
+            </div>
+
+            <form id="form-login">
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label for="usuario" style="display: block; margin-bottom: 5px; font-weight: bold; color: #475569;">Usuário</label>
+                    <input type="text" id="usuario" name="usuario" class="input-padrao" required>
+                </div>
+                
+                <div class="input-group" style="margin-bottom: 25px;">
+                    <label for="senha" style="display: block; margin-bottom: 5px; font-weight: bold; color: #475569;">Senha</label>
+                    <div class="senha-container" style="position: relative; display: flex; align-items: center;">
+                        <input type="password" id="senha" name="senha" class="input-padrao" style="padding-right: 40px;" required>
+                        <button type="button" id="btn-mostrar-senha" title="Mostrar/Ocultar senha" style="position: absolute; right: 5px; background: transparent; border: none; color: #64748b; padding: 5px; display: flex; cursor: pointer; width: auto;">
+                            <span class="material-symbols-outlined" id="icone-senha">visibility</span>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-login" class="btn-azul" style="width: 100%; font-weight: bold; padding: 12px; font-size: 16px;">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TELA 2: PAINEL PRINCIPAL                   -->
+    <!-- ========================================== -->
+    <div id="tela-painel" class="dashboard-wrapper" style="display: none;">
+        
+        <!-- BARRA LATERAL (MENU) -->
+        <aside class="sidebar">
+            <div class="brand" style="margin-bottom: 40px; text-align: center;">
+                <img src="../images/logo.jpg" alt="Waltz" style="max-width: 150px; height: auto;">
+            </div>
+            
+            <ul class="nav-links">
+                <li>
+                    <div id="nav-tiny" class="nav-link active" onclick="mostrarSubPaginaDash('tiny')">
+                        <span class="material-symbols-outlined">analytics</span>
+                        Base de Clientes Tiny
+                    </div>
+                </li>
+                <li>
+                    <div id="nav-nuvem" class="nav-link" onclick="mostrarSubPaginaDash('nuvem')">
+                        <span class="material-symbols-outlined">shopping_cart</span>
+                        Pedidos Nuvemshop
+                    </div>
+                </li>
+            </ul>
+            
+            <div class="user-menu-area" style="margin-top: auto; border-top: 1px solid #2d3748; padding-top: 20px;">
+                <button id="btn-logout" class="btn-sair">
+                    <span class="material-symbols-outlined">logout</span>
+                    Sair do Sistema
+                </button>
+            </div>
+        </aside>
+
+        <!-- ÁREA PRINCIPAL DIREITA -->
+        <main class="main-content">
+            <header class="topbar">
+                <h1 id="dash-page-title">Painel de Automação</h1>
+                <div class="info-loja">Âme Acessórios Pet | Automação v1.005</div>
+            </header>
+
+            <div class="page-content-wrapper" id="dashboard-content-area">
+                
+                <!-- ABA: TINY ERP -->
+                <div id="sub-tiny" class="sub-pagina" style="display: none;">
+                    <section class="card">
+                        <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center;">
+                            <div class="filtros-area" style="display: flex; gap: 20px; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label for="filtro-texto" style="margin: 0; font-weight: bold; color: #475569;">Buscar:</label>
+                                    <input type="text" id="filtro-texto" class="input-padrao" placeholder="Nome ou CPF/CNPJ..." onkeyup="resetarEPaginacao()" style="width: 220px; padding: 8px;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label for="filtro-grupo" style="margin: 0; font-weight: bold; color: #475569;">Grupo:</label>
+                                    <select id="filtro-grupo" class="input-padrao" onchange="resetarEPaginacao()" style="width: 180px; padding: 8px; cursor: pointer;">
+                                        <option value="TODOS">Todos os Grupos</option>
+                                        <option value="SEM COMPRAS">Sem Compras</option>
+                                        <option value="PRIMEIRA COMPRA">1ª Compra</option>
+                                        <option value="BRONZE">Bronze</option>
+                                        <option value="PRATA">Prata</option>
+                                        <option value="OURO">Ouro</option>
+                                        <option value="DIAMANTE">Diamante</option>
+                                    </select>
+                                </div>
+                                <span id="contador-cadastros" style="background: #e2e8f0; color: #334155; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
+                                    0 cadastros
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="tabela-responsiva">
+                            <table class="tabela-dados" id="tabela-ltv">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>WhatsApp</th>
+                                        <th>CPF/CNPJ</th>
+                                        <th>Cidade</th>
+                                        <th>UF</th>
+                                        <th>Grupo</th> 
+                                        <th class="col-sort" onclick="ordenarTabela(6)" id="th-pedidos" title="Clique para ordenar">Pedidos <span id="sort-icon-6">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(7)" id="th-valor" title="Clique para ordenar">Valor Total <span id="sort-icon-7">↕️</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-clientes-body">
+                                    <tr><td colspan="8" style="text-align:center; padding: 30px;">Buscando banco de dados Waltz...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="paginacao-controles" id="paginacao-ltv"></div>
+                    </section>
+                </div>
+
+                <!-- ABA: NUVEMSHOP -->
+                <div id="sub-nuvem" class="sub-pagina" style="display: none;">
+                    <section class="card">
+                        <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center;">
+                            <div class="filtros-area" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label for="busca-nuvem" style="margin: 0; font-weight: bold; color: #475569;">Buscar:</label>
+                                    <input type="text" id="busca-nuvem" class="input-padrao" placeholder="Pedido, Cliente ou CPF..." onkeyup="resetarPaginacaoNuvem()" style="width: 200px; padding: 8px;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label for="filtro-status-nuvem" style="margin: 0; font-weight: bold; color: #475569;">Status:</label>
+                                    <select id="filtro-status-nuvem" class="input-padrao" onchange="resetarPaginacaoNuvem()" style="padding: 8px; cursor: pointer;">
+                                        <option value="TODOS">Todos</option>
+                                        <option value="Aberto">Aberto</option>
+                                        <option value="Arquivado">Arquivado</option>
+                                        <option value="Cancelado">Cancelado</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label for="filtro-feedback-nuvem" style="margin: 0; font-weight: bold; color: #475569;">Feedback:</label>
+                                    <select id="filtro-feedback-nuvem" class="input-padrao" onchange="resetarPaginacaoNuvem()" style="padding: 8px; cursor: pointer;">
+                                        <option value="TODOS">Todos</option>
+                                        <option value="Enviado">Enviado</option>
+                                        <option value="Não Enviado">Não Enviado</option>
+                                    </select>
+                                </div>
+                                <span id="contador-nuvem" style="background: #e2e8f0; color: #334155; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold;">
+                                    0 pedidos
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="tabela-responsiva">
+                            <table class="tabela-dados">
+                                <thead>
+                                    <tr>
+                                        <th>Data/Hora</th>
+                                        <th>Pedido</th>
+                                        <th>Cliente</th>
+                                        <th>CPF</th>
+                                        <th>Cidade</th>
+                                        <th>UF</th>
+                                        <th>Transportadora</th>
+                                        <th>Rastreio</th>
+                                        <th>Status</th>
+                                        <th style="text-align:center;">Feedback</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpo-tabela-nuvem">
+                                    <tr><td colspan="10" style="text-align: center; padding: 30px;">Carregando pedidos...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="paginacao-controles" id="paginacao-nuvem"></div>
+                    </section>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- O motor Javascript -->
     <script src="app.js"></script>
 </body>
 </html>
