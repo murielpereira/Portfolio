@@ -169,9 +169,10 @@ async function carregarRelatorioClientes() {
                     <td>${cliente.cpf}</td>
                     <td>${cliente.cidade}</td>
                     <td>${cliente.estado}</td>
-                    <td>${seloHtml}</td>
+                    <td>${cliente.telefone || '-'}</td>
                     <td>${cliente.total_pedidos}</td>
                     <td data-valor="${cliente.valor_total}">R$ ${valorFormatado}</td>
+                    <td>${seloHtml}</td>
                 `;
                 tbody.appendChild(linha);
             });

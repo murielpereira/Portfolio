@@ -98,12 +98,14 @@ app.get('/api/relatorios/clientes', async (req, res) => {
     }
 });
 
-// A SINCRONIZAÇÃO EM LOTES (Evita o Timeout de 5 minutos da Vercel)
+// A SINCRONIZAÇÃO EM LOTES (Reduzida para 3 páginas para evitar o Timeout da Vercel)
 app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     const TOKEN = process.env.TINY_TOKEN;
     const paginaAtual = req.body.pagina || 1; 
-    const paginasPorLote = 15; 
+    
+    // REDUZIMOS O LOTE PARA 3: Mais rápido, zero risco de dar Timeout na Vercel!
+    const paginasPorLote = 3; 
 
     try {
         let pagina = paginaAtual;
@@ -122,11 +124,18 @@ app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
                 for (const item of dados.retorno.contatos) {
                     const c = item.contato;
                     const cpfLimpo = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g, '') : null;
+                    
                     if (cpfLimpo) {
+                        // Prioriza o celular, se não tiver pega o fone fixo
+                        const telefone = c.celular || c.fone || '-';
+                        
+                        // Atualiza a tabela inserindo o telefone
                         await sql`
-                            INSERT INTO clientes (cpf, nome, cidade, estado)
-                            VALUES (${cpfLimpo}, ${c.nome}, ${c.cidade || '-'}, ${c.uf || '-'})
-                            ON CONFLICT (cpf) DO UPDATE SET nome = EXCLUDED.nome;
+                            INSERT INTO clientes (cpf, nome, cidade, estado, telefone)
+                            VALUES (${cpfLimpo}, ${c.nome}, ${c.cidade || '-'}, ${c.uf || '-'}, ${telefone})
+                            ON CONFLICT (cpf) DO UPDATE SET 
+                                nome = EXCLUDED.nome,
+                                telefone = EXCLUDED.telefone;
                         `;
                         salvosNesteLote++;
                     }
@@ -136,7 +145,10 @@ app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
             } else { terminou = true; break; }
         }
         res.json({ sucesso: true, proximaPagina: pagina, concluiu: terminou, salvosNesteLote });
-    } catch (erro) { res.status(500).json({ sucesso: false, erro: 'Falha no lote.' }); }
+    } catch (erro) { 
+        console.error("Erro no lote:", erro);
+        res.status(500).json({ sucesso: false, erro: 'Falha no lote.' }); 
+    }
 });
 
 const PORT = process.env.PORT || 3000;
