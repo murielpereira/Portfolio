@@ -35,20 +35,26 @@ app.get('/api/check-session', (req, res) => {
 });
 
 // ==========================================
-// ROTAS DE LOGIN E LOGOUT
+// ROTAS DE LOGIN E LOGOUT (Com Segurança Máxima)
 // ==========================================
 app.post('/api/login', (req, res) => {
-    if (req.body.usuario === 'ame' && req.body.senha === 'Ame@220520') {
+    // 1. Puxamos as credenciais seguras do arquivo .env ou da Vercel
+    const USUARIO_SECRETO = process.env.PAINEL_USUARIO;
+    const SENHA_SECRETA = process.env.PAINEL_SENHA;
+
+    // Trava de segurança: avisa no console se esquecermos de configurar as variáveis
+    if (!USUARIO_SECRETO || !SENHA_SECRETA) {
+        console.error("❌ Faltam as variáveis de ambiente PAINEL_USUARIO ou PAINEL_SENHA.");
+        return res.status(500).json({ sucesso: false, erro: 'Configuração de segurança ausente.' });
+    }
+
+    // 2. Comparamos o que o usuário digitou com as nossas variáveis secretas
+    if (req.body.usuario === USUARIO_SECRETO && req.body.senha === SENHA_SECRETA) {
         req.session.logado = true; 
         res.json({ sucesso: true });
     } else { 
         res.json({ sucesso: false }); 
     }
-});
-
-app.get('/api/logout', (req, res) => { 
-    req.session = null; 
-    res.json({ sucesso: true }); 
 });
 
 // ==========================================
@@ -57,23 +63,40 @@ app.get('/api/logout', (req, res) => {
 app.get('/api/pedidos', async (req, res) => {
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
 
-    const NUVEMSHOP_APP_ID = process.env.NUVEMSHOP_APP_ID;
+    const NUVEMSHOP_TOKEN = process.env.NUVEMSHOP_TOKEN;
+    const NUVEMSHOP_STORE_ID = process.env.NUVEMSHOP_STORE_ID; // Puxando o ID da loja
     const USER_AGENT = 'Waltz (murielpereirabr@gmail.com)';
 
+    // Trava de segurança: avisa se esquecermos de colocar a variável na Vercel
+    if (!NUVEMSHOP_STORE_ID || !NUVEMSHOP_TOKEN) {
+        console.error("❌ Faltam variáveis de ambiente da Nuvemshop (TOKEN ou STORE_ID).");
+        return res.status(500).json({ erro: 'Configuração da loja ausente no servidor.' });
+    }
+
     try {
-        const resposta = await fetch('https://api.nuvemshop.com.br/v1/orders', {
+        // A MÁGICA AQUI: A URL agora contém o ID da loja dinamicamente
+        const url = `https://api.nuvemshop.com.br/v1/${NUVEMSHOP_STORE_ID}/orders`;
+        
+        const resposta = await fetch(url, {
             headers: {
-                'Authentication': `bearer ${process.env.NUVEMSHOP_TOKEN}`,
+                // A Nuvemshop exige que a palavra 'bearer' seja minúscula na autenticação
+                'Authentication': `bearer ${NUVEMSHOP_TOKEN}`,
                 'User-Agent': USER_AGENT
             }
         });
         
-        if (!resposta.ok) throw new Error("Falha na Nuvemshop");
+        if (!resposta.ok) {
+            // Se der erro, lemos o texto do erro que a Nuvemshop mandou para saber o motivo
+            const erroTexto = await resposta.text();
+            console.error(`❌ Erro Nuvemshop (Status ${resposta.status}):`, erroTexto);
+            throw new Error(`Falha ao consultar Nuvemshop. Status: ${resposta.status}`);
+        }
         
         const pedidos = await resposta.json();
         res.json(pedidos);
     } catch (erro) {
-        res.status(500).json({ erro: 'Erro ao buscar pedidos na Nuvemshop' });
+        console.error("❌ Erro na rota /api/pedidos:", erro);
+        res.status(500).json({ erro: 'Erro interno ao buscar pedidos na Nuvemshop.' });
     }
 });
 
