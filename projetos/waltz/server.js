@@ -98,13 +98,14 @@ app.get('/api/relatorios/clientes', async (req, res) => {
     }
 });
 
-// A SINCRONIZAÇÃO EM LOTES (Reduzida para 3 páginas para evitar o Timeout da Vercel)
+// A SINCRONIZAÇÃO EM LOTES (Protegida contra erro de undefined)
 app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     const TOKEN = process.env.TINY_TOKEN;
-    const paginaAtual = req.body.pagina || 1; 
     
-    // REDUZIMOS O LOTE PARA 3: Mais rápido, zero risco de dar Timeout na Vercel!
+    // 🛡️ PROTEÇÃO BLINDADA: Se req.body estiver vazio ou der erro na leitura, assume página 1
+    const paginaAtual = (req.body && req.body.pagina) ? req.body.pagina : 1; 
+    
     const paginasPorLote = 3; 
 
     try {
@@ -126,10 +127,8 @@ app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
                     const cpfLimpo = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g, '') : null;
                     
                     if (cpfLimpo) {
-                        // Prioriza o celular, se não tiver pega o fone fixo
                         const telefone = c.celular || c.fone || '-';
                         
-                        // Atualiza a tabela inserindo o telefone
                         await sql`
                             INSERT INTO clientes (cpf, nome, cidade, estado, telefone)
                             VALUES (${cpfLimpo}, ${c.nome}, ${c.cidade || '-'}, ${c.uf || '-'}, ${telefone})
@@ -150,7 +149,6 @@ app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
         res.status(500).json({ sucesso: false, erro: 'Falha no lote.' }); 
     }
 });
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor rodando na porta: ${PORT}`));
 module.exports = app;
