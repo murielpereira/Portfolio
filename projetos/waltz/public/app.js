@@ -2,7 +2,6 @@
 // MÓDULO 1: UTILITÁRIOS E FORMATAÇÕES GERAIS
 // ============================================================================
 
-// Formata CPF/CNPJ adicionando pontos e traços
 function formatarDocumento(doc) {
     if (!doc) return '-';
     const num = doc.replace(/\D/g, '');
@@ -11,7 +10,6 @@ function formatarDocumento(doc) {
     return doc;
 }
 
-// Cria um link clicável para números de WhatsApp
 function formatarWhatsAppClicavel(telefone) {
     if (!telefone) return '-';
     const num = telefone.replace(/\D/g, '');
@@ -23,63 +21,298 @@ function formatarWhatsAppClicavel(telefone) {
     return `<a href="${link}" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 500;">${texto}</a>`;
 }
 
-// Alterna a visibilidade da senha na tela de login
 function toggleSenha() {
     const input = document.getElementById('senha');
     const icone = document.getElementById('icone-senha');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icone.innerText = 'visibility_off';
-    } else {
-        input.type = 'password';
-        icone.innerText = 'visibility';
+    if (input && icone) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            icone.innerText = 'visibility_off';
+        } else {
+            input.type = 'password';
+            icone.innerText = 'visibility';
+        }
     }
 }
 
 // ============================================================================
-// MÓDULO 2: INICIALIZAÇÃO E NAVEGAÇÃO DE ABAS
+// MÓDULO 2: TEMPLATES HTML (Arquitetura SPA)
 // ============================================================================
 
-function loadApp(view) {
-    if (view === 'login') {
-        document.getElementById('btn-mostrar-senha')?.addEventListener('click', toggleSenha);
-    } else if (view === 'painel') {
-        mostrarSubPaginaDash('tiny'); // Abre a aba do Tiny por padrão ao fazer login
-        document.getElementById('btn-logout')?.addEventListener('click', realizarLogout);
+function getTemplateLogin() {
+    return `
+    <div class="login-wrapper">
+        <div class="login-container">
+            <h2>Acesso Restrito</h2>
+            <form id="form-login">
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label for="usuario" style="display: block; margin-bottom: 5px; font-weight: bold; color: #475569;">Usuário</label>
+                    <input type="text" id="usuario" name="usuario" class="input-padrao" required>
+                </div>
+                <div class="input-group" style="margin-bottom: 25px;">
+                    <label for="senha" style="display: block; margin-bottom: 5px; font-weight: bold; color: #475569;">Senha</label>
+                    <div class="senha-container" style="position: relative; display: flex; align-items: center;">
+                        <input type="password" id="senha" name="senha" class="input-padrao" style="padding-right: 40px;" required>
+                        <button type="button" id="btn-mostrar-senha" title="Mostrar/Ocultar senha" style="position: absolute; right: 5px; background: transparent; border: none; color: #64748b; padding: 5px; display: flex; cursor: pointer;">
+                            <span class="material-symbols-outlined" id="icone-senha">visibility</span>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" id="btn-login-submit" class="btn-azul" style="width: 100%; font-weight: bold; padding: 12px; font-size: 16px;">Entrar</button>
+            </form>
+        </div>
+    </div>`;
+}
+
+function getTemplatePainel() {
+    return `
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="brand" style="margin-bottom: 40px; text-align: center;">
+                <img src="../images/logo.jpg" alt="Waltz" style="max-width: 150px; height: auto; border-radius: 8px;">
+            </div>
+            <ul class="nav-links">
+                <li>
+                    <div id="nav-tiny" class="nav-link" onclick="mostrarSubPaginaDash('tiny')">
+                        <span class="material-symbols-outlined">analytics</span>
+                        Base de Clientes Tiny
+                    </div>
+                </li>
+                <li>
+                    <div id="nav-nuvem" class="nav-link" onclick="mostrarSubPaginaDash('nuvem')">
+                        <span class="material-symbols-outlined">shopping_cart</span>
+                        Pedidos Nuvemshop
+                    </div>
+                </li>
+            </ul>
+            <div class="user-menu-area" style="margin-top: auto; border-top: 1px solid #2d3748; padding-top: 20px;">
+                <button id="btn-logout" class="btn-sair">
+                    <span class="material-symbols-outlined">logout</span>
+                    Sair do Sistema
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <h1 id="dash-page-title">Painel de Automação</h1>
+                <div class="info-loja">Âme Acessórios Pet | Automação v1.005</div>
+            </header>
+
+            <div class="page-content-wrapper" id="dashboard-content-area">
+                
+                <!-- ABA TINY -->
+                <div id="sub-tiny" class="sub-pagina" style="display: none;">
+                    <section class="card">
+                        <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div class="filtros-area" style="display: flex; gap: 20px; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: bold; color: #475569;">Buscar:</label>
+                                    <input type="text" id="filtro-texto" class="input-padrao" placeholder="Nome ou CPF/CNPJ..." onkeyup="resetarEPaginacao()" style="width: 220px; padding: 8px;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: bold; color: #475569;">Grupo:</label>
+                                    <select id="filtro-grupo" class="input-padrao" onchange="resetarEPaginacao()" style="width: 180px; padding: 8px; cursor: pointer;">
+                                        <option value="TODOS">Todos os Grupos</option>
+                                        <option value="SEM COMPRAS">Sem Compras</option>
+                                        <option value="PRIMEIRA COMPRA">1ª Compra</option>
+                                        <option value="BRONZE">Bronze</option>
+                                        <option value="PRATA">Prata</option>
+                                        <option value="OURO">Ouro</option>
+                                        <option value="DIAMANTE">Diamante</option>
+                                    </select>
+                                </div>
+                                <span id="contador-cadastros" style="background: #e2e8f0; color: #334155; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold;">
+                                    0 cadastros
+                                </span>
+                            </div>
+                        </div>
+                        <div class="tabela-responsiva">
+                            <table class="tabela-dados">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>WhatsApp</th>
+                                        <th>CPF/CNPJ</th>
+                                        <th>Cidade</th>
+                                        <th>UF</th>
+                                        <th>Grupo</th> 
+                                        <th class="col-sort" onclick="ordenarTabela(6)">Pedidos <span id="sort-icon-6">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(7)">Valor Total <span id="sort-icon-7">↕️</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-clientes-body">
+                                    <tr><td colspan="8" style="text-align:center; padding: 30px;">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="paginacao-controles" id="paginacao-ltv"></div>
+                    </section>
+                </div>
+
+                <!-- ABA NUVEMSHOP -->
+                <div id="sub-nuvem" class="sub-pagina" style="display: none;">
+                    <section class="card">
+                        <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div class="filtros-area" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: bold; color: #475569;">Buscar:</label>
+                                    <input type="text" id="busca-nuvem" class="input-padrao" placeholder="Pedido, Cliente..." onkeyup="resetarPaginacaoNuvem()" style="width: 200px; padding: 8px;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: bold; color: #475569;">Status:</label>
+                                    <select id="filtro-status-nuvem" class="input-padrao" onchange="resetarPaginacaoNuvem()" style="padding: 8px; cursor: pointer;">
+                                        <option value="TODOS">Todos</option>
+                                        <option value="Aberto">Aberto</option>
+                                        <option value="Arquivado">Arquivado</option>
+                                        <option value="Cancelado">Cancelado</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: bold; color: #475569;">Feedback:</label>
+                                    <select id="filtro-feedback-nuvem" class="input-padrao" onchange="resetarPaginacaoNuvem()" style="padding: 8px; cursor: pointer;">
+                                        <option value="TODOS">Todos</option>
+                                        <option value="Enviado">Enviado</option>
+                                        <option value="Não Enviado">Não Enviado</option>
+                                    </select>
+                                </div>
+                                <span id="contador-nuvem" style="background: #e2e8f0; color: #334155; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold;">
+                                    0 pedidos
+                                </span>
+                            </div>
+                        </div>
+                        <div class="tabela-responsiva">
+                            <table class="tabela-dados">
+                                <thead>
+                                    <tr>
+                                        <th>Data/Hora</th>
+                                        <th>Pedido</th>
+                                        <th>Cliente</th>
+                                        <th>CPF</th>
+                                        <th>Cidade</th>
+                                        <th>UF</th>
+                                        <th>Transportadora</th>
+                                        <th>Rastreio</th>
+                                        <th>Status</th>
+                                        <th style="text-align:center;">Feedback</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpo-tabela-nuvem">
+                                    <tr><td colspan="10" style="text-align: center; padding: 30px;">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="paginacao-controles" id="paginacao-nuvem"></div>
+                    </section>
+                </div>
+
+            </div>
+        </main>
+    </div>`;
+}
+
+// ============================================================================
+// MÓDULO 3: AUTENTICAÇÃO E INICIALIZAÇÃO SPA
+// ============================================================================
+
+// O Gatilho Inicial: Executado assim que a página carrega
+document.addEventListener('DOMContentLoaded', async () => {
+    await inicializarApp();
+});
+
+async function inicializarApp() {
+    const appDiv = document.getElementById('app');
+    if (!appDiv) return;
+
+    try {
+        const resposta = await fetch('/api/check-session');
+        const dados = await resposta.json();
+
+        if (dados.logado) {
+            // Injeta o HTML do Painel
+            appDiv.innerHTML = getTemplatePainel();
+            document.getElementById('btn-logout')?.addEventListener('click', realizarLogout);
+            mostrarSubPaginaDash('tiny'); // Aciona a primeira aba
+        } else {
+            // Injeta o HTML do Login
+            appDiv.innerHTML = getTemplateLogin();
+            document.getElementById('form-login')?.addEventListener('submit', realizarLogin);
+            document.getElementById('btn-mostrar-senha')?.addEventListener('click', toggleSenha);
+        }
+    } catch (erro) {
+        appDiv.innerHTML = '<p style="text-align:center; padding:50px; font-family:sans-serif;">Erro de conexão. Atualize a página.</p>';
     }
 }
 
-// Controla a exibição das abas e dispara o carregamento de dados
-async function mostrarSubPaginaDash(idAlvo) {
-    // Esconde todas
-    document.querySelectorAll('.sub-pagina').forEach(el => el.style.display = 'none');
+async function realizarLogin(event) {
+    event.preventDefault();
+    const usuario = document.getElementById('usuario')?.value;
+    const senha = document.getElementById('senha')?.value;
+    const btn = document.getElementById('btn-login-submit');
     
-    // Mostra a selecionada
-    const painelAlvo = document.getElementById(`sub-${idAlvo}`);
-    if (painelAlvo) painelAlvo.style.display = 'block';
+    if (btn) { btn.innerText = 'Acessando...'; btn.disabled = true; }
 
-    // Carrega os dados do banco de acordo com a aba escolhida
+    try {
+        const resposta = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuario, senha })
+        });
+        const dados = await resposta.json();
+        
+        if (dados.sucesso) {
+            window.location.reload(); 
+        } else {
+            alert('Usuário ou senha incorretos!');
+        }
+    } catch (erro) {
+        alert('Erro ao conectar com o servidor.');
+    } finally {
+        if (btn) { btn.innerText = 'Entrar'; btn.disabled = false; }
+    }
+}
+
+async function realizarLogout() {
+    try {
+        await fetch('/api/logout');
+        window.location.reload();
+    } catch (erro) {
+        console.error("Erro ao sair:", erro);
+    }
+}
+
+async function mostrarSubPaginaDash(idAlvo) {
+    document.querySelectorAll('.sub-pagina').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+    
+    const painelAlvo = document.getElementById(`sub-${idAlvo}`);
+    const menuAlvo = document.getElementById(`nav-${idAlvo}`);
+    
+    if (painelAlvo) painelAlvo.style.display = 'block';
+    if (menuAlvo) menuAlvo.classList.add('active');
+
     if (idAlvo === 'tiny') {
+        document.getElementById('dash-page-title').innerText = "Base de Clientes Tiny";
         await carregarClientesTinyDB();
     } else if (idAlvo === 'nuvem') {
+        document.getElementById('dash-page-title').innerText = "Pedidos Nuvemshop";
         await carregarPedidosNuvemDB();
     }
 }
 
 // ============================================================================
-// MÓDULO 3: NUVEMSHOP E AUTOMAÇÃO DE WHATSAPP
+// MÓDULO 4: NUVEMSHOP E AUTOMAÇÃO DE WHATSAPP
 // ============================================================================
+
 let todosOsPedidosNuvem = [];
 let paginaAtualNuvem = 1;
 const itensPorPaginaNuvem = 50;
 
-// Busca os pedidos no nosso Banco de Dados
 async function carregarPedidosNuvemDB() {
     const tbody = document.getElementById('corpo-tabela-nuvem');
     if(!tbody) return;
     
     tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 30px;">Carregando pedidos do Banco de Dados...</td></tr>';
-
     try {
         const resposta = await fetch('/api/pedidos');
         if (!resposta.ok) throw new Error("Falha ao carregar banco de dados.");
@@ -90,7 +323,6 @@ async function carregarPedidosNuvemDB() {
     }
 }
 
-// Dispara o feedback pelo WhatsApp
 async function enviarFeedbackWpp(idPedido, telefone, nome, numPedido, produtosCodificados) {
     if (!telefone || telefone === 'undefined' || telefone.trim() === '') {
         alert("⚠️ Este pedido não possui telefone cadastrado no banco de dados.");
@@ -99,22 +331,19 @@ async function enviarFeedbackWpp(idPedido, telefone, nome, numPedido, produtosCo
 
     const numeroApenasDigitos = telefone.replace(/\D/g, '');
     const primeiroNome = nome.split(' ')[0]; 
-    const produtos = decodeURIComponent(produtosCodificados); // Decodifica a string segura
+    const produtos = decodeURIComponent(produtosCodificados); 
     
-    // Monta o trecho dos produtos, se eles existirem no banco
     let trechoProdutos = '';
     if (produtos && produtos.trim() !== '' && produtos !== 'undefined') {
         trechoProdutos = `\n\n📦 *Itens do pedido:* ${produtos}`;
     }
 
-    // A sua mensagem personalizada da Bia
+    // A MENSAGEM ATUALIZADA DA BIA
     const mensagem = `Oii ${primeiroNome}, tudo bem? Aqui é a Bia, da Âme Acessórios Pet.\n\nEstou entrando em contato pra saber se deu tudo certo com o seu pedido #${numPedido}.${trechoProdutos}\n\nVocê gostou do produto? Serviu direitinho? Teve algum problema ou dificuldade desde o momento da compra até a entrega?😀\n\nEsperamos sempre esse prazo para saber seu feedback, pois é o tempo que seu pet já usou e se adaptou com as nossas peças, e queremos sua opinião sincera, para que possamos sempre melhorar 🥰\n\nFico no aguardo da sua resposta.\n☺️☺️`;
     
-    // Abre o WhatsApp
     const linkZap = `https://wa.me/55${numeroApenasDigitos}?text=${encodeURIComponent(mensagem)}`;
     window.open(linkZap, '_blank');
 
-    // Avisa o servidor para marcar como enviado
     try {
         await fetch('/api/pedidos/marcar-feedback', {
             method: 'POST',
@@ -127,7 +356,6 @@ async function enviarFeedbackWpp(idPedido, telefone, nome, numPedido, produtosCo
     }
 }
 
-// Renderiza a tabela da Nuvemshop e aplica os filtros
 function renderizarPaginaNuvem() {
     const tbody = document.getElementById('corpo-tabela-nuvem');
     if(!tbody) return;
@@ -167,18 +395,12 @@ function renderizarPaginaNuvem() {
             const dataF = dataO.toLocaleDateString('pt-BR') + ' ' + dataO.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
             const cpfFormatado = formatarDocumento(p.cpf_cliente || '-');
             
-            // Lógica do botão de WhatsApp
             let acaoFeedback = `<span class="selo status-wpp-pendente">Aguardando</span>`;
             if (p.status_feedback === 'Enviado') {
                 acaoFeedback = `<span class="selo status-wpp-enviado" style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe;">Enviado</span>`;
             } else if (p.status_nuvemshop === 'Entregue') {
-                // Codificamos os produtos para evitar que aspas quebrem o HTML do botão
                 const produtosSeguros = encodeURIComponent(p.produtos || ''); 
-                
-                acaoFeedback = `<button onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '${produtosSeguros}')" 
-                                style="background: #25d366; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 5px; margin: 0 auto;">
-                                Enviar WPP
-                                </button>`;
+                acaoFeedback = `<button onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '${produtosSeguros}')" style="background: #25d366; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 5px; margin: 0 auto;">Enviar WPP</button>`;
             }
             
             const linha = document.createElement('tr');
@@ -200,7 +422,6 @@ function renderizarPaginaNuvem() {
     renderizarControlesPaginacaoNuvem(totalPaginas);
 }
 
-// Controles de páginação Nuvemshop
 function renderizarControlesPaginacaoNuvem(totalPaginas) {
     const container = document.getElementById('paginacao-nuvem');
     if (!container) return;
@@ -210,7 +431,6 @@ function renderizarControlesPaginacaoNuvem(totalPaginas) {
         <button class="btn-pag-nav" onclick="irParaPaginaNuvem(1)" ${paginaAtualNuvem === 1 ? 'disabled' : ''}>«</button>
         <button class="btn-pag-nav" onclick="mudarPaginaNuvem(-1)" ${paginaAtualNuvem === 1 ? 'disabled' : ''}>‹</button>
     `;
-    
     let startPage = Math.max(1, paginaAtualNuvem - 2);
     let endPage = Math.min(totalPaginas, startPage + 4);
     if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4); 
@@ -218,7 +438,6 @@ function renderizarControlesPaginacaoNuvem(totalPaginas) {
     for (let i = startPage; i <= endPage; i++) {
         html += `<button class="${i === paginaAtualNuvem ? 'btn-pag-num active' : 'btn-pag-num'}" onclick="irParaPaginaNuvem(${i})">${i}</button>`;
     }
-    
     html += `
         <button class="btn-pag-nav" onclick="mudarPaginaNuvem(1)" ${paginaAtualNuvem === totalPaginas ? 'disabled' : ''}>›</button>
         <button class="btn-pag-nav" onclick="irParaPaginaNuvem(${totalPaginas})" ${paginaAtualNuvem === totalPaginas ? 'disabled' : ''}>»</button>
@@ -231,8 +450,9 @@ function irParaPaginaNuvem(pagina) { paginaAtualNuvem = pagina; renderizarPagina
 function resetarPaginacaoNuvem() { paginaAtualNuvem = 1; renderizarPaginaNuvem(); }
 
 // ============================================================================
-// MÓDULO 4: TINY ERP E RELATÓRIOS
+// MÓDULO 5: TINY ERP E RELATÓRIOS
 // ============================================================================
+
 let todaABaseDeClientes = [];
 let paginaAtualRelatorio = 1;
 const itensPorPaginaRelatorio = 50;
@@ -244,7 +464,6 @@ async function carregarClientesTinyDB() {
     if(!tbody) return;
     
     tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px;">Carregando clientes do Banco de Dados...</td></tr>';
-
     try {
         const resposta = await fetch('/api/relatorios/clientes');
         const data = await resposta.json();
@@ -275,18 +494,14 @@ function ordenarTabela(colIndex) {
         colunaOrdenacao = colIndex;
         ordemCrescente = true;
     }
-
     todaABaseDeClientes.sort((a, b) => {
         let valA, valB;
         if (colIndex === 6) { valA = a.total_pedidos || 0; valB = b.total_pedidos || 0; }
         else if (colIndex === 7) { valA = parseFloat(a.valor_total || 0); valB = parseFloat(b.valor_total || 0); }
-        
         return ordemCrescente ? valA - valB : valB - valA;
     });
-
     document.getElementById('sort-icon-6').innerText = colIndex === 6 ? (ordemCrescente ? '▲' : '▼') : '↕️';
     document.getElementById('sort-icon-7').innerText = colIndex === 7 ? (ordemCrescente ? '▲' : '▼') : '↕️';
-
     resetarEPaginacao();
 }
 
@@ -364,7 +579,6 @@ function renderizarControlesPaginacao(totalPaginas) {
         <button class="btn-pag-nav" onclick="irParaPagina(1)" ${paginaAtualRelatorio === 1 ? 'disabled' : ''}>«</button>
         <button class="btn-pag-nav" onclick="mudarPagina(-1)" ${paginaAtualRelatorio === 1 ? 'disabled' : ''}>‹</button>
     `;
-    
     let startPage = Math.max(1, paginaAtualRelatorio - 2);
     let endPage = Math.min(totalPaginas, startPage + 4);
     if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4); 
@@ -372,7 +586,6 @@ function renderizarControlesPaginacao(totalPaginas) {
     for (let i = startPage; i <= endPage; i++) {
         html += `<button class="${i === paginaAtualRelatorio ? 'btn-pag-num active' : 'btn-pag-num'}" onclick="irParaPagina(${i})">${i}</button>`;
     }
-    
     html += `
         <button class="btn-pag-nav" onclick="mudarPagina(1)" ${paginaAtualRelatorio === totalPaginas ? 'disabled' : ''}>›</button>
         <button class="btn-pag-nav" onclick="irParaPagina(${totalPaginas})" ${paginaAtualRelatorio === totalPaginas ? 'disabled' : ''}>»</button>
@@ -383,80 +596,3 @@ function renderizarControlesPaginacao(totalPaginas) {
 function mudarPagina(delta) { paginaAtualRelatorio += delta; renderizarPaginaRelatorio(); }
 function irParaPagina(pagina) { paginaAtualRelatorio = pagina; renderizarPaginaRelatorio(); }
 function resetarEPaginacao() { paginaAtualRelatorio = 1; renderizarPaginaRelatorio(); }
-
-// ============================================================================
-// MÓDULO 5: AUTENTICAÇÃO E INICIALIZAÇÃO (O Motor de Partida)
-// ============================================================================
-
-// 1. Função que envia os dados de Login para o servidor
-async function realizarLogin(event) {
-    event.preventDefault(); // Impede a página de piscar/recarregar
-    
-    const usuario = document.getElementById('usuario')?.value;
-    const senha = document.getElementById('senha')?.value;
-    const btn = document.getElementById('btn-login');
-    
-    if (btn) { btn.innerText = 'Acessando...'; btn.disabled = true; }
-
-    try {
-        const resposta = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuario, senha })
-        });
-        const dados = await resposta.json();
-        
-        if (dados.sucesso) {
-            window.location.reload(); // Atualiza a página para carregar o painel
-        } else {
-            alert('Usuário ou senha incorretos!');
-        }
-    } catch (erro) {
-        alert('Erro ao conectar com o servidor.');
-    } finally {
-        if (btn) { btn.innerText = 'Entrar'; btn.disabled = false; }
-    }
-}
-
-// 2. Função para sair do sistema
-async function realizarLogout() {
-    try {
-        await fetch('/api/logout');
-        window.location.reload();
-    } catch (erro) {
-        console.error("Erro ao sair:", erro);
-    }
-}
-
-// 3. A IGNição: O que o navegador faz assim que a tela abre
-document.addEventListener('DOMContentLoaded', async () => {
-    
-    // Conecta o botão de login à nossa função
-    const formLogin = document.getElementById('form-login');
-    if (formLogin) formLogin.addEventListener('submit', realizarLogin);
-
-    try {
-        // Pergunta ao servidor se existe alguém logado
-        const resposta = await fetch('/api/check-session');
-        const dados = await resposta.json();
-        
-        // Mapeia as "caixas" principais do seu HTML
-        // Nota: Se os IDs no seu HTML forem diferentes, basta ajustar aqui!
-        const telaLogin = document.getElementById('tela-login') || document.querySelector('.login-container'); 
-        const telaPainel = document.getElementById('tela-painel') || document.querySelector('.painel-container');
-        
-        if (dados.logado) {
-            // Se tem acesso: Esconde o login e mostra o painel
-            if (telaLogin) telaLogin.style.display = 'none';
-            if (telaPainel) telaPainel.style.display = 'block';
-            loadApp('painel'); // Aciona as abas (Tiny e Nuvemshop)
-        } else {
-            // Se não tem acesso: Esconde o painel e mostra o login
-            if (telaLogin) telaLogin.style.display = 'flex'; // ou 'block'
-            if (telaPainel) telaPainel.style.display = 'none';
-            loadApp('login'); // Prepara o olho de mostrar senha
-        }
-    } catch (erro) {
-        console.error("Erro fatal na inicialização:", erro);
-    }
-});
