@@ -2,44 +2,94 @@
 // CONFIGURAÇÃO GERAL E ROTEAMENTO SPA
 // ==========================================
 
-// Variáveis globais para a Paginação do Relatório
-let todaABaseDeClientes = []; // Guarda todos os dados vindos do servidor
+let todaABaseDeClientes = []; 
 let paginaAtualRelatorio = 1;
 let itensPorPaginaRelatorio = 50;
 let ordemAtualRelatorio = { coluna: -1, crescente: true };
 
+// Injeta as telas no index.html dinamicamente
 function renderView(view, targetId = 'app') {
     fetch(`/components/${view}.html`)
         .then(response => response.text())
         .then(html => {
-            const target = document.getElementById(targetId);
-            target.innerHTML = html;
-            // Após injetar o HTML, carrega os eventos e dados específicos da tela
-            loadApp(view);
+            document.getElementById(targetId).innerHTML = html;
+            loadApp(view); // Ativa os botões da tela que acabou de carregar
         })
         .catch(err => console.error('Erro ao carregar view:', err));
 }
 
-// O NOVO LOADAPP: Gerencia o autoload e eventos de cada tela
+// Liga os eventos dependendo da tela aberta
 function loadApp(view) {
     if (view === 'login') {
         const form = document.getElementById('form-login');
         if (form) form.addEventListener('submit', realizarLogin);
-        // O evento do botão de mostrar senha precisa ser reinicializado
-        document.getElementById('btn-mostrar-senha')?.addEventListener('click', toggleSenha);
-    } else if (view === 'painel') {
-        // AUTOLOAD: Abriu o painel, carrega a tabela automaticamente do banco
-        carregarRelatorioClientes(); 
         
-        // Evento do botão sair
-        document.getElementById('btn-logout')?.addEventListener('click', realizarLogout);
+        const btnMostrar = document.getElementById('btn-mostrar-senha');
+        if (btnMostrar) btnMostrar.addEventListener('click', toggleSenha);
+        
+    } else if (view === 'painel') {
+        carregarRelatorioClientes(); // Autoload da tabela LTV
+        
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) btnLogout.addEventListener('click', realizarLogout);
     }
 }
 
-// ... FUNÇÕES DE LOGIN MANTIDAS ...
-async function realizarLogin(event) { /* ... mantido ... */ }
-function toggleSenha() { /* ... mantido ... */ }
-async function realizarLogout() { /* ... mantido ... */ }
+// ==========================================
+// FUNÇÕES DE LOGIN E AUTENTICAÇÃO
+// ==========================================
+
+async function realizarLogin(evento) {
+    evento.preventDefault(); // Impede a página de recarregar "piscando" a tela
+
+    const usuario = document.getElementById('usuario').value;
+    const senha = document.getElementById('senha').value;
+    const msgErro = document.getElementById('mensagem-erro');
+    const btnSubmit = document.querySelector('#form-login button');
+
+    btnSubmit.innerText = "Acessando...";
+    btnSubmit.disabled = true;
+
+    try {
+        const resposta = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuario, senha })
+        });
+
+        const resultado = await resposta.json();
+
+        if (resultado.sucesso) {
+            renderView('painel'); // Se a senha estiver certa, abre o painel!
+        } else {
+            msgErro.style.display = 'block';
+            btnSubmit.innerText = "Entrar no Sistema";
+            btnSubmit.disabled = false;
+        }
+    } catch (erro) {
+        msgErro.innerText = "Erro ao conectar com o servidor.";
+        msgErro.style.display = 'block';
+        btnSubmit.innerText = "Entrar no Sistema";
+        btnSubmit.disabled = false;
+    }
+}
+
+function toggleSenha() {
+    const inputSenha = document.getElementById('senha');
+    const iconeSenha = document.getElementById('icone-senha');
+    if (inputSenha.type === 'password') {
+        inputSenha.type = 'text';
+        iconeSenha.textContent = 'visibility_off';
+    } else {
+        inputSenha.type = 'password';
+        iconeSenha.textContent = 'visibility';
+    }
+}
+
+async function realizarLogout() {
+    await fetch('/api/logout');
+    renderView('login');
+}
 
 // ==========================================
 // FUNÇÕES DE RELATÓRIO LTV (Autoload + Paginação + Filtro)
@@ -53,10 +103,9 @@ function classificarClienteVisual(totalPedidos, valorTotal) {
     return '<span class="selo diamante">DIAMANTE</span>';
 }
 
-// 1. CARGA INICIAL: Puxa tudo do servidor e guarda na memória
 async function carregarRelatorioClientes() {
     const tbody = document.getElementById('tabela-clientes-body');
-    if (!tbody) return; // Segurança
+    if (!tbody) return;
 
     tbody.innerHTML = '<tr><td colspan="8">Buscando banco de dados Waltz...</td></tr>';
 
@@ -65,28 +114,25 @@ async function carregarRelatorioClientes() {
         const dados = await resposta.json();
 
         if (dados.sucesso && dados.clientes.length > 0) {
-            todaABaseDeClientes = dados.clientes; // Guarda na variável global
-            paginaAtualRelatorio = 1; // Reseta para a primeira página
-            renderizarPaginaRelatorio(); // Desenha a tabela com os primeiros 50
+            todaABaseDeClientes = dados.clientes;
+            paginaAtualRelatorio = 1; 
+            renderizarPaginaRelatorio(); 
         } else {
-            tbody.innerHTML = '<tr><td colspan="8">Nenhum cliente no banco de dados. Sincronize com o Tiny.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8">Nenhum cliente no banco de dados. Clique em Atualizar Dados.</td></tr>';
         }
     } catch (erro) {
         tbody.innerHTML = '<tr><td colspan="8">Erro ao conectar com o servidor.</td></tr>';
     }
 }
 
-// 2. RENDERIZAÇÃO: Desenha apenas os 50 itens da página atual (Considerando os filtros)
 function renderizarPaginaRelatorio() {
     const tbody = document.getElementById('tabela-clientes-body');
-    
-    // Primeiro: Aplica o filtro nos dados que estão na memória
     const filtro = document.getElementById("filtro-grupo").value;
+    
     let dadosFiltrados = todaABaseDeClientes;
     
     if (filtro !== "TODOS") {
         dadosFiltrados = todaABaseDeClientes.filter(c => {
-            // Recalcula o grupo para o filtro bater
             let totalPedidos = c.total_pedidos || 0;
             let valorTotal = parseFloat(c.valor_total || 0);
             let grupoReal = "PRIMEIRA COMPRA";
@@ -96,25 +142,22 @@ function renderizarPaginaRelatorio() {
                 else if (valorTotal <= 6000) grupoReal = "OURO";
                 else grupoReal = "DIAMANTE";
             }
-            return grupoReal === filtro; // Comparação exata
+            return grupoReal === filtro; 
         });
     }
 
-    // Calcula os índices para o corte de 50 itens (Pagination slice)
     const totalItens = dadosFiltrados.length;
     const totalPaginas = Math.ceil(totalItens / itensPorPaginaRelatorio);
     
-    // Segurança: se o filtro deixar a página atual sem dados, reseta para 1
     if (paginaAtualRelatorio > totalPaginas && totalPaginas > 0) paginaAtualRelatorio = totalPaginas;
 
     const inicio = (paginaAtualRelatorio - 1) * itensPorPaginaRelatorio;
     const fim = inicio + itensPorPaginaRelatorio;
     const itensDaPagina = dadosFiltrados.slice(inicio, fim);
 
-    // Desenha as linhas da tabela
     tbody.innerHTML = ''; 
     if (itensDaPagina.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8">Nenhum cliente encontrado neste grupo.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhum cliente encontrado neste grupo.</td></tr>';
     } else {
         itensDaPagina.forEach(cliente => {
             const valTotalNum = parseFloat(cliente.valor_total || 0);
@@ -136,41 +179,37 @@ function renderizarPaginaRelatorio() {
         });
     }
 
-    // Atualiza os controles de paginação (Botões e Texto)
     document.getElementById('info-paginacao-ltv').innerText = `Página ${paginaAtualRelatorio} de ${totalPaginas || 1} (${totalItens} total)`;
     document.getElementById('btn-prev-ltv').disabled = (paginaAtualRelatorio === 1);
     document.getElementById('btn-next-ltv').disabled = (paginaAtualRelatorio === totalPaginas || totalPaginas === 0);
 }
 
-// 3. CONTROLES: Funções que mudam a página ou o filtro
 function mudarPaginaRelatorio(delta) {
     paginaAtualRelatorio += delta;
     renderizarPaginaRelatorio();
 }
 
 function resetarEPaginacao() {
-    paginaAtualRelatorio = 1; // Reseta para a 1 quando muda o filtro
+    paginaAtualRelatorio = 1; 
     renderizarPaginaRelatorio();
 }
 
-// O MOTOR DE ORDENAÇÃO (Atualizado para funcionar com paginação)
 function ordenarTabela(colunaIndex) {
     if (todaABaseDeClientes.length === 0) return;
 
-    // Inverte a ordem se clicar na mesma coluna
     if (ordemAtualRelatorio.coluna === colunaIndex) {
         ordemAtualRelatorio.crescente = !ordemAtualRelatorio.crescente;
     } else {
         ordemAtualRelatorio.coluna = colunaIndex;
-        ordemAtualRelatorio.crescente = false; // Começa sempre do maior para o menor
+        ordemAtualRelatorio.crescente = false; 
     }
 
     todaABaseDeClientes.sort((a, b) => {
         let valA, valB;
-        if (colunaIndex === 6) { // Pedidos
+        if (colunaIndex === 6) { 
             valA = a.total_pedidos || 0;
             valB = b.total_pedidos || 0;
-        } else if (colunaIndex === 7) { // Valor
+        } else if (colunaIndex === 7) { 
             valA = parseFloat(a.valor_total || 0);
             valB = parseFloat(b.valor_total || 0);
         }
@@ -180,11 +219,45 @@ function ordenarTabela(colunaIndex) {
         return 0;
     });
 
-    renderizarPaginaRelatorio(); // Re-desenha a página 1 com a nova ordem
+    renderizarPaginaRelatorio(); 
 }
 
-// SINCRONIZAÇÃO EM LOTES (Mantida)
-async function sincronizarTiny() { /* ... mantido ... */ }
+async function sincronizarTiny() {
+    const btn = event.target;
+    btn.disabled = true;
+    let paginaAtual = 1;
+    let terminou = false;
+    let totalSalvos = 0;
 
-// Inicialização da SPA
+    while (!terminou) {
+        btn.innerText = `🔄 Sincronizando... Lendo página ${paginaAtual} do Tiny`;
+        try {
+            const resposta = await fetch('/api/relatorios/sincronizar-contatos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pagina: paginaAtual })
+            });
+            const dados = await resposta.json();
+            
+            if (dados.sucesso) {
+                totalSalvos += dados.salvosNesteLote;
+                paginaAtual = dados.proximaPagina;
+                terminou = dados.concluiu;
+            } else {
+                alert("Erro ao sincronizar na página " + paginaAtual);
+                terminou = true;
+            }
+        } catch (erro) {
+            alert("Erro de conexão na página " + paginaAtual);
+            terminou = true;
+        }
+    }
+
+    btn.innerText = '🔄 Atualizar Dados com Tiny';
+    btn.disabled = false;
+    alert(`Sincronização concluída!`);
+    carregarRelatorioClientes();
+}
+
+// INICIALIZAÇÃO DA APLICAÇÃO
 renderView('login');
