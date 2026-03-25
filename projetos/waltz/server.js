@@ -58,45 +58,24 @@ app.post('/api/login', (req, res) => {
 });
 
 // ==========================================
-// ROTA: PEDIDOS NUVEMSHOP
+// ROTA: PEDIDOS NUVEMSHOP (Lendo do Banco de Dados Interno)
 // ==========================================
 app.get('/api/pedidos', async (req, res) => {
+    // 1. Verifica se o usuário está logado por segurança
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
 
-    const NUVEMSHOP_TOKEN = process.env.NUVEMSHOP_TOKEN;
-    const NUVEMSHOP_STORE_ID = process.env.NUVEMSHOP_STORE_ID; // Puxando o ID da loja
-    const USER_AGENT = 'Waltz (murielpereirabr@gmail.com)';
-
-    // Trava de segurança: avisa se esquecermos de colocar a variável na Vercel
-    if (!NUVEMSHOP_STORE_ID || !NUVEMSHOP_TOKEN) {
-        console.error("❌ Faltam variáveis de ambiente da Nuvemshop (TOKEN ou STORE_ID).");
-        return res.status(500).json({ erro: 'Configuração da loja ausente no servidor.' });
-    }
-
     try {
-        // A MÁGICA AQUI: A URL agora contém o ID da loja dinamicamente
-        const url = `https://api.nuvemshop.com.br/v1/${NUVEMSHOP_STORE_ID}/orders`;
+        // 2. Busca todos os pedidos no nosso banco de dados, ordenando dos mais novos para os mais antigos
+        const { rows: pedidos } = await sql`
+            SELECT * FROM pedidos_nuvemshop 
+            ORDER BY data_criacao DESC;
+        `;
         
-        const resposta = await fetch(url, {
-            headers: {
-                // A Nuvemshop exige que a palavra 'bearer' seja minúscula na autenticação
-                'Authentication': `bearer ${NUVEMSHOP_TOKEN}`,
-                'User-Agent': USER_AGENT
-            }
-        });
-        
-        if (!resposta.ok) {
-            // Se der erro, lemos o texto do erro que a Nuvemshop mandou para saber o motivo
-            const erroTexto = await resposta.text();
-            console.error(`❌ Erro Nuvemshop (Status ${resposta.status}):`, erroTexto);
-            throw new Error(`Falha ao consultar Nuvemshop. Status: ${resposta.status}`);
-        }
-        
-        const pedidos = await resposta.json();
+        // 3. Devolve os pedidos prontos para o Front-end
         res.json(pedidos);
     } catch (erro) {
-        console.error("❌ Erro na rota /api/pedidos:", erro);
-        res.status(500).json({ erro: 'Erro interno ao buscar pedidos na Nuvemshop.' });
+        console.error("❌ Erro ao buscar pedidos no banco de dados:", erro);
+        res.status(500).json({ erro: 'Erro interno ao carregar pedidos salvos.' });
     }
 });
 
@@ -318,6 +297,139 @@ app.post('/api/relatorios/calcular-lote-financeiro', async (req, res) => {
     } catch (erro) {
         console.error("Erro interno no servidor durante o cálculo:", erro);
         res.status(500).json({ sucesso: false, erro: 'Falha no servidor.' });
+    }
+});
+
+// ==========================================
+// WEBHOOK: NUVEMSHOP (Criação e Atualização de Pedidos Automática)
+// ==========================================
+app.post('/api/webhook/nuvemshop', async (req, res) => {
+    // A Nuvemshop exige que retornemos 200 OK rapidamente
+    res.status(200).send('Recebido');
+
+    const evento = req.headers['x-linked-store-event']; // Ex: order/created ou order/updated
+    const dadosPedido = req.body;
+
+    if (!dadosPedido || !dadosPedido.id) return;
+
+    console.log(`\n📦 NUVEMSHOP WEBHOOK: Evento ${evento} para o pedido #${dadosPedido.number}`);
+
+    try {
+        const id_pedido = dadosPedido.id.toString();
+        const numero_pedido = dadosPedido.number.toString();
+        const data_criacao = new Date(dadosPedido.created_at);
+        const data_envio = dadosPedido.shipped_at ? new Date(dadosPedido.shipped_at) : null;
+        
+        const cliente = dadosPedido.customer ? dadosPedido.customer.name : 'Desconhecido';
+        const cpf = dadosPedido.customer ? dadosPedido.customer.identification.replace(/\D/g, '') : '';
+        const cidade = dadosPedido.shipping_address ? dadosPedido.shipping_address.city : '';
+        const estado = dadosPedido.shipping_address ? dadosPedido.shipping_address.province : '';
+        
+        // Limpa o nome da transportadora removendo "via SmartEnvios"
+        let transportadora = dadosPedido.shipping_option || '';
+        transportadora = transportadora.replace(/via SmartEnvios/gi, '').trim();
+        
+        const rastreio = dadosPedido.shipping_tracking_number || '';
+        
+        // Status simplificado da Nuvemshop
+        let status = 'Aberto';
+        if (dadosPedido.status === 'closed') status = 'Arquivado';
+        if (dadosPedido.status === 'canceled') status = 'Cancelado';
+
+        // UPSERT: Salva ou atualiza o pedido no nosso banco
+        await sql`
+            INSERT INTO pedidos_nuvemshop (
+                id_pedido, numero_pedido, data_criacao, nome_cliente, cpf_cliente, 
+                cidade, estado, transportadora, rastreio, status_nuvemshop, data_envio
+            )
+            VALUES (
+                ${id_pedido}, ${numero_pedido}, ${data_criacao}, ${cliente}, ${cpf}, 
+                ${cidade}, ${estado}, ${transportadora}, ${rastreio}, ${status}, ${data_envio}
+            )
+            ON CONFLICT (id_pedido) DO UPDATE SET 
+                transportadora = EXCLUDED.transportadora,
+                rastreio = EXCLUDED.rastreio,
+                status_nuvemshop = EXCLUDED.status_nuvemshop,
+                data_envio = EXCLUDED.data_envio;
+        `;
+        console.log(`✅ Pedido #${numero_pedido} salvo/atualizado com sucesso!`);
+    } catch (erro) {
+        console.error(`❌ Erro ao processar webhook da Nuvemshop:`, erro);
+    }
+});
+
+// ==========================================
+// ROBÔ DE RASTREAMENTO: SMARTENVIOS (Agendado via Vercel Cron)
+// ==========================================
+app.get('/api/cron/verificar-entregas', async (req, res) => {
+    console.log("🤖 Iniciando verificação automática de rastreios...");
+    
+    try {
+        // 1. Busca no banco de dados pedidos criados há mais de 15 dias 
+        // que têm código de rastreio e ainda não constam como "Entregue"
+        const { rows: pedidosPendentes } = await sql`
+            SELECT id_pedido, numero_pedido, rastreio 
+            FROM pedidos_nuvemshop
+            WHERE rastreio IS NOT NULL 
+              AND rastreio != '' 
+              AND status_nuvemshop != 'Entregue'
+              AND data_criacao <= NOW() - INTERVAL '15 days';
+        `;
+
+        console.log(`🔎 Encontrados ${pedidosPendentes.length} pedidos antigos para verificar.`);
+
+        let atualizados = 0;
+        const TOKEN_SMART = process.env.SMARTENVIOS_TOKEN;
+        const URL_API = "https://api.smartenvios.com/v1/freight-order/tracking";
+
+        // 2. Loop de verificação: Bate na API da SmartEnvios para cada pedido
+        for (const pedido of pedidosPendentes) {
+            try {
+                const resposta = await fetch(URL_API, {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json", 
+                        "Accept": "application/json", 
+                        "token": TOKEN_SMART 
+                    },
+                    body: JSON.stringify({ "tracking_code": pedido.rastreio })
+                });
+
+                if (resposta.ok) {
+                    const json = await resposta.json();
+                    const r = json.result;
+
+                    // Verifica se existe histórico e se o evento mais recente é 'DELIVERED'
+                    if (r && r.trackings && r.trackings.length > 0) {
+                        // Ordena para garantir que o índice [0] é o mais atual
+                        const eventos = r.trackings.sort((a, b) => new Date(b.date) - new Date(a.date));
+                        const statusAtual = eventos[0].code.tracking_type;
+
+                        if (statusAtual === 'DELIVERED') {
+                            // Se foi entregue, atualiza o nosso Banco de Dados
+                            await sql`
+                                UPDATE pedidos_nuvemshop 
+                                SET status_nuvemshop = 'Entregue'
+                                WHERE id_pedido = ${pedido.id_pedido};
+                            `;
+                            console.log(`✅ Pedido #${pedido.numero_pedido} marcado como ENTREGUE!`);
+                            atualizados++;
+                        }
+                    }
+                }
+            } catch (erroLoop) {
+                console.error(`⚠️ Falha ao verificar rastreio do pedido #${pedido.numero_pedido}:`, erroLoop.message);
+            }
+            
+            // Pausa de 500ms para não bombardear o servidor da SmartEnvios (Rate Limit)
+            await new Promise(res => setTimeout(res, 500));
+        }
+
+        res.json({ sucesso: true, mensagem: `Verificação concluída. ${atualizados} pedidos atualizados para Entregue.` });
+
+    } catch (erro) {
+        console.error("❌ Erro fatal no Robô de Rastreamento:", erro);
+        res.status(500).json({ sucesso: false, erro: "Falha na verificação." });
     }
 });
 
