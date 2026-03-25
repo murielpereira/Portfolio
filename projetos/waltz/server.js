@@ -98,10 +98,10 @@ app.post('/api/pedidos/marcar-feedback', async (req, res) => {
 });
 
 // ==========================================
-// WEBHOOK: NUVEMSHOP (Criação e Atualização de Pedidos Automática)
+// WEBHOOK: NUVEMSHOP (Com Captura de Produtos)
 // ==========================================
 app.post('/api/webhook/nuvemshop', async (req, res) => {
-    res.status(200).send('Recebido'); // Retorno rápido exigido pela Nuvemshop
+    res.status(200).send('Recebido');
 
     const evento = req.headers['x-linked-store-event'];
     const dadosPedido = req.body;
@@ -122,7 +122,6 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
         const cidade = dadosPedido.shipping_address ? dadosPedido.shipping_address.city : '';
         const estado = dadosPedido.shipping_address ? dadosPedido.shipping_address.province : '';
         
-        // Limpa o nome da transportadora removendo "via SmartEnvios"
         let transportadora = dadosPedido.shipping_option || '';
         transportadora = transportadora.replace(/via SmartEnvios/gi, '').trim();
         
@@ -132,24 +131,32 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
         if (dadosPedido.status === 'closed') status = 'Arquivado';
         if (dadosPedido.status === 'canceled') status = 'Cancelado';
 
-        // O COMANDO UPSERT com a coluna telefone
+        // EXTRAÇÃO DOS PRODUTOS
+        let listaProdutos = '';
+        if (dadosPedido.products && Array.isArray(dadosPedido.products)) {
+            // Pega a quantidade e o nome de cada item e junta tudo com vírgulas
+            listaProdutos = dadosPedido.products.map(item => `${item.quantity}x ${item.name}`).join(', ');
+        }
+
+        // UPSERT ATUALIZADO (Agora com a coluna 'produtos')
         await sql`
             INSERT INTO pedidos_nuvemshop (
                 id_pedido, numero_pedido, data_criacao, nome_cliente, cpf_cliente, telefone,
-                cidade, estado, transportadora, rastreio, status_nuvemshop, data_envio
+                cidade, estado, transportadora, rastreio, status_nuvemshop, data_envio, produtos
             )
             VALUES (
                 ${id_pedido}, ${numero_pedido}, ${data_criacao}, ${cliente}, ${cpf}, ${telefone},
-                ${cidade}, ${estado}, ${transportadora}, ${rastreio}, ${status}, ${data_envio}
+                ${cidade}, ${estado}, ${transportadora}, ${rastreio}, ${status}, ${data_envio}, ${listaProdutos}
             )
             ON CONFLICT (id_pedido) DO UPDATE SET 
                 transportadora = EXCLUDED.transportadora,
                 rastreio = EXCLUDED.rastreio,
                 telefone = EXCLUDED.telefone,
                 status_nuvemshop = EXCLUDED.status_nuvemshop,
-                data_envio = EXCLUDED.data_envio;
+                data_envio = EXCLUDED.data_envio,
+                produtos = EXCLUDED.produtos;
         `;
-        console.log(`✅ Pedido #${numero_pedido} salvo/atualizado com sucesso via Webhook!`);
+        console.log(`✅ Pedido #${numero_pedido} atualizado! Produtos: ${listaProdutos.substring(0, 30)}...`);
     } catch (erro) {
         console.error(`❌ Erro ao processar webhook da Nuvemshop:`, erro);
     }
