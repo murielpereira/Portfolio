@@ -1,6 +1,8 @@
-// ==========================================
-// FUNÇÕES DE UTILIDADE E FORMATAÇÃO
-// ==========================================
+// ============================================================================
+// MÓDULO 1: UTILITÁRIOS E FORMATAÇÕES GERAIS
+// ============================================================================
+
+// Formata CPF/CNPJ adicionando pontos e traços
 function formatarDocumento(doc) {
     if (!doc) return '-';
     const num = doc.replace(/\D/g, '');
@@ -9,6 +11,7 @@ function formatarDocumento(doc) {
     return doc;
 }
 
+// Cria um link clicável para números de WhatsApp
 function formatarWhatsAppClicavel(telefone) {
     if (!telefone) return '-';
     const num = telefone.replace(/\D/g, '');
@@ -20,6 +23,7 @@ function formatarWhatsAppClicavel(telefone) {
     return `<a href="${link}" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 500;">${texto}</a>`;
 }
 
+// Alterna a visibilidade da senha na tela de login
 function toggleSenha() {
     const input = document.getElementById('senha');
     const icone = document.getElementById('icone-senha');
@@ -32,25 +36,29 @@ function toggleSenha() {
     }
 }
 
-// ==========================================
-// INICIALIZAÇÃO E NAVEGAÇÃO
-// ==========================================
+// ============================================================================
+// MÓDULO 2: INICIALIZAÇÃO E NAVEGAÇÃO DE ABAS
+// ============================================================================
+
 function loadApp(view) {
     if (view === 'login') {
         document.getElementById('btn-mostrar-senha')?.addEventListener('click', toggleSenha);
     } else if (view === 'painel') {
-        mostrarSubPaginaDash('tiny'); // Abre a aba do Tiny por padrão
+        mostrarSubPaginaDash('tiny'); // Abre a aba do Tiny por padrão ao fazer login
         document.getElementById('btn-logout')?.addEventListener('click', realizarLogout);
     }
 }
 
+// Controla a exibição das abas e dispara o carregamento de dados
 async function mostrarSubPaginaDash(idAlvo) {
-    // Esconde todas as abas e mostra apenas a selecionada
+    // Esconde todas
     document.querySelectorAll('.sub-pagina').forEach(el => el.style.display = 'none');
+    
+    // Mostra a selecionada
     const painelAlvo = document.getElementById(`sub-${idAlvo}`);
     if (painelAlvo) painelAlvo.style.display = 'block';
 
-    // Inteligência de carregamento automático ao trocar de aba
+    // Carrega os dados do banco de acordo com a aba escolhida
     if (idAlvo === 'tiny') {
         await carregarClientesTinyDB();
     } else if (idAlvo === 'nuvem') {
@@ -58,13 +66,14 @@ async function mostrarSubPaginaDash(idAlvo) {
     }
 }
 
-// ==========================================
-// MÓDULO: NUVEMSHOP (Pedidos Automáticos via Banco)
-// ==========================================
+// ============================================================================
+// MÓDULO 3: NUVEMSHOP E AUTOMAÇÃO DE WHATSAPP
+// ============================================================================
 let todosOsPedidosNuvem = [];
 let paginaAtualNuvem = 1;
 const itensPorPaginaNuvem = 50;
 
+// Busca os pedidos no nosso Banco de Dados
 async function carregarPedidosNuvemDB() {
     const tbody = document.getElementById('corpo-tabela-nuvem');
     if(!tbody) return;
@@ -81,6 +90,44 @@ async function carregarPedidosNuvemDB() {
     }
 }
 
+// Dispara o feedback pelo WhatsApp
+async function enviarFeedbackWpp(idPedido, telefone, nome, numPedido, produtosCodificados) {
+    if (!telefone || telefone === 'undefined' || telefone.trim() === '') {
+        alert("⚠️ Este pedido não possui telefone cadastrado no banco de dados.");
+        return;
+    }
+
+    const numeroApenasDigitos = telefone.replace(/\D/g, '');
+    const primeiroNome = nome.split(' ')[0]; 
+    const produtos = decodeURIComponent(produtosCodificados); // Decodifica a string segura
+    
+    // Monta o trecho dos produtos, se eles existirem no banco
+    let trechoProdutos = '';
+    if (produtos && produtos.trim() !== '' && produtos !== 'undefined') {
+        trechoProdutos = `\n\n📦 *Itens do pedido:* ${produtos}`;
+    }
+
+    // A sua mensagem personalizada da Bia
+    const mensagem = `Oii ${primeiroNome}, tudo bem? Aqui é a Bia, da Âme Acessórios Pet.\n\nEstou entrando em contato pra saber se deu tudo certo com o seu pedido #${numPedido}.${trechoProdutos}\n\nVocê gostou do produto? Serviu direitinho? Teve algum problema ou dificuldade desde o momento da compra até a entrega?😀\n\nEsperamos sempre esse prazo para saber seu feedback, pois é o tempo que seu pet já usou e se adaptou com as nossas peças, e queremos sua opinião sincera, para que possamos sempre melhorar 🥰\n\nFico no aguardo da sua resposta.\n☺️☺️`;
+    
+    // Abre o WhatsApp
+    const linkZap = `https://wa.me/55${numeroApenasDigitos}?text=${encodeURIComponent(mensagem)}`;
+    window.open(linkZap, '_blank');
+
+    // Avisa o servidor para marcar como enviado
+    try {
+        await fetch('/api/pedidos/marcar-feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_pedido: idPedido })
+        });
+        await carregarPedidosNuvemDB(); 
+    } catch (erro) {
+        console.error("Falha ao marcar como enviado", erro);
+    }
+}
+
+// Renderiza a tabela da Nuvemshop e aplica os filtros
 function renderizarPaginaNuvem() {
     const tbody = document.getElementById('corpo-tabela-nuvem');
     if(!tbody) return;
@@ -120,7 +167,19 @@ function renderizarPaginaNuvem() {
             const dataF = dataO.toLocaleDateString('pt-BR') + ' ' + dataO.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
             const cpfFormatado = formatarDocumento(p.cpf_cliente || '-');
             
-            let classeSelo = p.status_feedback === 'Enviado' ? 'status-wpp-enviado' : 'status-wpp-pendente';
+            // Lógica do botão de WhatsApp
+            let acaoFeedback = `<span class="selo status-wpp-pendente">Aguardando</span>`;
+            if (p.status_feedback === 'Enviado') {
+                acaoFeedback = `<span class="selo status-wpp-enviado" style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe;">Enviado</span>`;
+            } else if (p.status_nuvemshop === 'Entregue') {
+                // Codificamos os produtos para evitar que aspas quebrem o HTML do botão
+                const produtosSeguros = encodeURIComponent(p.produtos || ''); 
+                
+                acaoFeedback = `<button onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '${produtosSeguros}')" 
+                                style="background: #25d366; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 5px; margin: 0 auto;">
+                                Enviar WPP
+                                </button>`;
+            }
             
             const linha = document.createElement('tr');
             linha.innerHTML = `
@@ -133,7 +192,7 @@ function renderizarPaginaNuvem() {
                 <td>${p.transportadora || '-'}</td>
                 <td>${p.rastreio || '-'}</td>
                 <td>${p.status_nuvemshop || '-'}</td>
-                <td style="text-align:center;"><span class="selo ${classeSelo}">${p.status_feedback || 'Não Enviado'}</span></td>
+                <td style="text-align:center;">${acaoFeedback}</td>
             `;
             tbody.appendChild(linha);
         });
@@ -141,6 +200,7 @@ function renderizarPaginaNuvem() {
     renderizarControlesPaginacaoNuvem(totalPaginas);
 }
 
+// Controles de páginação Nuvemshop
 function renderizarControlesPaginacaoNuvem(totalPaginas) {
     const container = document.getElementById('paginacao-nuvem');
     if (!container) return;
@@ -170,9 +230,9 @@ function mudarPaginaNuvem(delta) { paginaAtualNuvem += delta; renderizarPaginaNu
 function irParaPaginaNuvem(pagina) { paginaAtualNuvem = pagina; renderizarPaginaNuvem(); }
 function resetarPaginacaoNuvem() { paginaAtualNuvem = 1; renderizarPaginaNuvem(); }
 
-// ==========================================
-// MÓDULO: TINY ERP (Clientes Automáticos via Banco)
-// ==========================================
+// ============================================================================
+// MÓDULO 4: TINY ERP E RELATÓRIOS
+// ============================================================================
 let todaABaseDeClientes = [];
 let paginaAtualRelatorio = 1;
 const itensPorPaginaRelatorio = 50;
@@ -241,10 +301,8 @@ function renderizarPaginaRelatorio() {
         const nomeStr = (c.nome || "").toLowerCase();
         const cpfStr = (c.cpf || "").toLowerCase();
         
-        // Filtro de Texto
         if (termoBusca !== "" && !nomeStr.includes(termoBusca) && !cpfStr.includes(termoBusca)) return false;
         
-        // Filtro de Grupo
         if (filtroGrupo !== "TODOS") {
             let totalPedidos = c.total_pedidos || 0;
             let valorTotal = parseFloat(c.valor_total || 0);
