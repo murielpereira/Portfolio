@@ -17,26 +17,58 @@ app.use(cookieSession({
     sameSite: 'lax' 
 }));
 
+// Serve a pasta 'public' onde estão seus arquivos HTML, CSS, JS e a pasta 'images'
 app.use(express.static(path.join(__dirname, 'public')));
 
-const NUVEMSHOP_APP_ID = process.env.NUVEMSHOP_APP_ID;
-const NUVEMSHOP_CLIENT_SECRET = process.env.NUVEMSHOP_CLIENT_SECRET;
-const USER_AGENT = 'Waltz (murielpereirabr@gmail.com)';
+// Função auxiliar: Faz o servidor "dormir" por alguns milissegundos para não ser bloqueado
+const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-// --- ROTAS NUVEMSHOP ---
-app.get('/api/auth/nuvemshop', async (req, res) => { /* Mantido */ });
-
-// 🔐 NOVO LOGIN
+// ==========================================
+// ROTAS DE LOGIN E LOGOUT
+// ==========================================
 app.post('/api/login', (req, res) => {
     if (req.body.usuario === 'ame' && req.body.senha === 'Ame@220520') {
-        req.session.logado = true; res.json({ sucesso: true });
-    } else { res.json({ sucesso: false }); }
+        req.session.logado = true; 
+        res.json({ sucesso: true });
+    } else { 
+        res.json({ sucesso: false }); 
+    }
 });
 
-app.get('/api/logout', (req, res) => { req.session = null; res.json({ sucesso: true }); });
-app.get('/api/pedidos', async (req, res) => { /* Mantido */ });
+app.get('/api/logout', (req, res) => { 
+    req.session = null; 
+    res.json({ sucesso: true }); 
+});
 
-// --- ROTA DE WEBHOOK TINY (Com lógica dos Selos) ---
+// ==========================================
+// ROTA: PEDIDOS NUVEMSHOP
+// ==========================================
+app.get('/api/pedidos', async (req, res) => {
+    if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+
+    const NUVEMSHOP_APP_ID = process.env.NUVEMSHOP_APP_ID;
+    const USER_AGENT = 'Waltz (murielpereirabr@gmail.com)';
+
+    try {
+        const resposta = await fetch('https://api.nuvemshop.com.br/v1/orders', {
+            headers: {
+                'Authentication': `bearer ${process.env.NUVEMSHOP_TOKEN}`,
+                'User-Agent': USER_AGENT
+            }
+        });
+        
+        if (!resposta.ok) throw new Error("Falha na Nuvemshop");
+        
+        const pedidos = await resposta.json();
+        res.json(pedidos);
+    } catch (erro) {
+        res.status(500).json({ erro: 'Erro ao buscar pedidos na Nuvemshop' });
+    }
+});
+
+// ==========================================
+// ROTA: WEBHOOK TINY (Entrada de Novos Pedidos)
+// ==========================================
 app.post('/api/webhook/tiny', async (req, res) => {
     try {
         const payload = req.body;
@@ -54,7 +86,6 @@ app.post('/api/webhook/tiny', async (req, res) => {
     }
 });
 
-// A INTELIGÊNCIA DOS SELOS COM SALVAMENTO NO BANCO DE DADOS
 async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const TOKEN = process.env.TINY_TOKEN;
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
@@ -62,12 +93,14 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     try {
         const urlBusca = `https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`;
         const respostaBusca = await fetch(urlBusca);
-        const dadosBusca = await respostaBusca.json();
+        const textoResposta = await respostaBusca.text();
+        
+        const dadosBusca = JSON.parse(textoResposta);
 
         let totalPedidos = 0;
         let valorTotalGasto = 0;
 
-        if (dadosBusca.retorno.status === 'OK' && dadosBusca.retorno.pedidos) {
+        if (dadosBusca.retorno && dadosBusca.retorno.status === 'OK' && dadosBusca.retorno.pedidos) {
             totalPedidos = dadosBusca.retorno.pedidos.length;
             valorTotalGasto = dadosBusca.retorno.pedidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
         }
@@ -88,14 +121,15 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
             else grupo = "DIAMANTE";
         }
 
-        console.log(`📢 Cliente CPF ${cpfLimpo} salvo no banco: [${grupo}] (R$ ${valorTotalGasto.toFixed(2)})`);
-        
+        console.log(`📢 Cliente CPF ${cpfLimpo} atualizado via Webhook: [${grupo}] (R$ ${valorTotalGasto.toFixed(2)})`);
     } catch (erro) {
-        console.error("❌ Falha na API do Tiny ou Banco:", erro);
+        console.error("❌ Falha na API do Tiny ou Banco durante Webhook:", erro);
     }
 }
 
-// --- ROTAS DO BANCO DE DADOS (RELATÓRIOS) ---
+// ==========================================
+// ROTAS DE RELATÓRIOS E BANCO DE DADOS
+// ==========================================
 app.get('/api/relatorios/clientes', async (req, res) => {
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
@@ -106,101 +140,122 @@ app.get('/api/relatorios/clientes', async (req, res) => {
     }
 });
 
-// A SINCRONIZAÇÃO EM LOTES (Protegida contra erro de undefined)
+// ==========================================
+// ROTA: SINCRONIZAÇÃO EM LOTES (Com filtro de "Apenas Clientes")
+// ==========================================
 app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     const TOKEN = process.env.TINY_TOKEN;
-    
-    // 🛡️ PROTEÇÃO BLINDADA: Se req.body estiver vazio ou der erro na leitura, assume página 1
     const paginaAtual = (req.body && req.body.pagina) ? req.body.pagina : 1; 
-    
     const paginasPorLote = 3; 
 
     try {
         let pagina = paginaAtual;
         let salvosNesteLote = 0;
+        let ignoradosNesteLote = 0;
         let totalPaginasTiny = 1;
         let terminou = false;
 
         while (pagina < paginaAtual + paginasPorLote) {
             const urlBusca = `https://api.tiny.com.br/api2/contatos.pesquisa.php?token=${TOKEN}&formato=JSON&pagina=${pagina}`;
             const resposta = await fetch(urlBusca);
-            const dados = await resposta.json();
+            const textoResposta = await resposta.text();
+            
+            try {
+                const dados = JSON.parse(textoResposta);
 
-            if (dados.retorno.status === 'OK' && dados.retorno.contatos) {
-                totalPaginasTiny = dados.retorno.numero_paginas;
-                
-                for (const item of dados.retorno.contatos) {
-                    const c = item.contato;
-                    const cpfLimpo = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g, '') : null;
+                if (dados.retorno && dados.retorno.status === 'OK' && dados.retorno.contatos) {
+                    totalPaginasTiny = dados.retorno.numero_paginas;
                     
-                    if (cpfLimpo) {
-                        const telefone = c.celular || c.fone || '-';
+                    for (const item of dados.retorno.contatos) {
+                        const c = item.contato;
                         
-                        await sql`
-                            INSERT INTO clientes (cpf, nome, cidade, estado, telefone)
-                            VALUES (${cpfLimpo}, ${c.nome}, ${c.cidade || '-'}, ${c.uf || '-'}, ${telefone})
-                            ON CONFLICT (cpf) DO UPDATE SET 
-                                nome = EXCLUDED.nome,
-                                telefone = EXCLUDED.telefone;
-                        `;
-                        salvosNesteLote++;
+                        // FILTRO INTELIGENTE: Verifica se é cliente
+                        // Pega os tipos de contato e transforma em texto para facilitar a busca
+                        const tiposDeContato = JSON.stringify(c.tipos_contato || '').toLowerCase();
+                        
+                        // Se houver a informação de tipo e NÃO for cliente, nós pulamos!
+                        if (tiposDeContato !== '""' && !tiposDeContato.includes('cliente')) {
+                            ignoradosNesteLote++;
+                            continue; // Pula o salvamento deste e vai para o próximo
+                        }
+
+                        const cpfLimpo = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g, '') : null;
+                        
+                        if (cpfLimpo) {
+                            const telefone = c.celular || c.fone || '-';
+                            await sql`
+                                INSERT INTO clientes (cpf, nome, cidade, estado, telefone)
+                                VALUES (${cpfLimpo}, ${c.nome}, ${c.cidade || '-'}, ${c.uf || '-'}, ${telefone})
+                                ON CONFLICT (cpf) DO UPDATE SET 
+                                    nome = EXCLUDED.nome,
+                                    telefone = EXCLUDED.telefone;
+                            `;
+                            salvosNesteLote++;
+                        }
                     }
+                    if (pagina >= totalPaginasTiny) { terminou = true; break; }
+                    pagina++;
+                } else { 
+                    terminou = true; break; 
                 }
-                if (pagina >= totalPaginasTiny) { terminou = true; break; }
-                pagina++;
-            } else { terminou = true; break; }
+            } catch (parseErro) {
+                console.error(`⚠️ Tiny bloqueou a leitura da página ${pagina}.`);
+                terminou = true; break;
+            }
+            
+            await delay(500); // Pausa leve para não sobrecarregar o Tiny na paginação
         }
+        
+        console.log(`Lote finalizado. Salvos: ${salvosNesteLote} | Ignorados (Fornecedores/Outros): ${ignoradosNesteLote}`);
         res.json({ sucesso: true, proximaPagina: pagina, concluiu: terminou, salvosNesteLote });
+        
     } catch (erro) { 
-        console.error("Erro no lote:", erro);
+        console.error("Erro no lote de sincronização:", erro);
         res.status(500).json({ sucesso: false, erro: 'Falha no lote.' }); 
     }
 });
+
 // ==========================================
-// ROTA: CÁLCULO DE HISTÓRICO FINANCEIRO EM LOTE
+// ROTA: CÁLCULO DE HISTÓRICO FINANCEIRO EM LOTE (Com Delay Anti-Bloqueio)
 // ==========================================
-// Objetivo: Recebe até 5 CPFs por vez, busca os pedidos no Tiny, soma os valores e salva no banco.
 app.post('/api/relatorios/calcular-lote-financeiro', async (req, res) => {
-    // Proteção de segurança
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
-    
     const TOKEN = process.env.TINY_TOKEN;
-    const cpfs = req.body.cpfs; // Recebe o array de CPFs do Front-end
+    const cpfs = req.body.cpfs; 
     let atualizados = 0;
 
     try {
-        // Para cada CPF do pequeno lote, fazemos a pesquisa
         for (const cpf of cpfs) {
             const urlBusca = `https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpf}&formato=JSON`;
             const resposta = await fetch(urlBusca);
-            const dados = await resposta.json();
+            const textoResposta = await resposta.text();
+            
+            try {
+                const dados = JSON.parse(textoResposta);
 
-            let totalPedidos = 0;
-            let valorTotalGasto = 0;
+                if (dados.retorno && dados.retorno.status === 'OK' && dados.retorno.pedidos) {
+                    const totalPedidos = dados.retorno.pedidos.length;
+                    const valorTotalGasto = dados.retorno.pedidos.reduce((acumulador, p) => acumulador + parseFloat(p.pedido.valor || 0), 0);
 
-            // Se o Tiny encontrar pedidos para este CPF, fazemos a matemática
-            if (dados.retorno.status === 'OK' && dados.retorno.pedidos) {
-                totalPedidos = dados.retorno.pedidos.length;
-                // A função reduce soma o valor de todos os pedidos encontrados
-                valorTotalGasto = dados.retorno.pedidos.reduce((acumulador, p) => {
-                    return acumulador + parseFloat(p.pedido.valor || 0);
-                }, 0);
+                    await sql`
+                        UPDATE clientes
+                        SET total_pedidos = ${totalPedidos}, valor_total = ${valorTotalGasto}
+                        WHERE cpf = ${cpf};
+                    `;
+                    atualizados++;
+                }
+            } catch (e) {
+                console.error(`⚠️ Tiny retornou erro de leitura para o CPF ${cpf}. Pulando para o próximo.`);
             }
 
-            // Atualizamos a "gaveta" deste cliente no Banco de Dados
-            await sql`
-                UPDATE clientes
-                SET total_pedidos = ${totalPedidos}, valor_total = ${valorTotalGasto}
-                WHERE cpf = ${cpf};
-            `;
-            atualizados++;
+            // O FREIO DE MÃO (Anti-Bloqueio): 1 segundo entre cada pedido de CPF
+            await delay(1000); 
         }
         
-        // Devolve o sucesso para o navegador pedir o próximo lote
         res.json({ sucesso: true, atualizados });
     } catch (erro) {
-        console.error("Erro no cálculo do lote financeiro:", erro);
+        console.error("Erro interno no servidor durante o cálculo:", erro);
         res.status(500).json({ sucesso: false, erro: 'Falha no servidor.' });
     }
 });
