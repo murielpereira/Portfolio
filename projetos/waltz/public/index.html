@@ -13,5 +13,27 @@
         </div>
 
     <script src="app.js"></script>
+
+    <div class="relatorio-container">
+    <h2>Relatório LTV de Clientes</h2>
+    <button onclick="sincronizarTiny()" style="background: #2563eb; color: white; padding: 10px; cursor: pointer;">🔄 Sincronizar com Tiny</button>
+    <button onclick="carregarRelatorioClientes()" style="padding: 10px; cursor: pointer;">Tabela Atual</button>
+    
+    <table border="1" style="width: 100%; margin-top: 15px; text-align: left; border-collapse: collapse;">
+        <thead style="background: #f1f5f9;">
+            <tr>
+                <th style="padding: 8px;">Nome</th>
+                <th style="padding: 8px;">CPF/CNPJ</th>
+                <th style="padding: 8px;">Cidade</th>
+                <th style="padding: 8px;">UF</th>
+                <th style="padding: 8px;">Pedidos</th>
+                <th style="padding: 8px;">Valor Total (R$)</th>
+            </tr>
+        </thead>
+        <tbody id="tabela-clientes-body">
+            <tr><td colspan="6" style="padding: 10px;">Clique em "Tabela Atual" ou Sincronize para ver os dados.</td></tr>
+        </tbody>
+    </table>
+</div>
 </body>
 </html>

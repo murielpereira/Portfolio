@@ -135,3 +135,58 @@ function iniciarEventosDoPainel() {
 
 // Quando o arquivo js carregar, carrega a tela de login por padrão
 carregarModulo('login');
+
+// Lê o banco da Vercel (Rápido)
+async function carregarRelatorioClientes() {
+    const tbody = document.getElementById('tabela-clientes-body');
+    tbody.innerHTML = '<tr><td colspan="6" style="padding: 10px;">Carregando banco de dados...</td></tr>';
+
+    try {
+        const resposta = await fetch('/api/relatorios/clientes');
+        const dados = await resposta.json();
+
+        if (dados.sucesso && dados.clientes.length > 0) {
+            tbody.innerHTML = ''; 
+            dados.clientes.forEach(cliente => {
+                const linha = document.createElement('tr');
+                linha.innerHTML = `
+                    <td style="padding: 8px;">${cliente.nome}</td>
+                    <td style="padding: 8px;">${cliente.cpf}</td>
+                    <td style="padding: 8px;">${cliente.cidade}</td>
+                    <td style="padding: 8px;">${cliente.estado}</td>
+                    <td style="padding: 8px;">${cliente.total_pedidos}</td>
+                    <td style="padding: 8px;">R$ ${cliente.valor_total}</td>
+                `;
+                tbody.appendChild(linha);
+            });
+        } else {
+            tbody.innerHTML = `<tr><td colspan="6" style="padding: 10px;">Nenhum cliente no banco. Faça a sincronização inicial.</td></tr>`;
+        }
+    } catch (erro) {
+        tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar relatório.</td></tr>';
+    }
+}
+
+// Puxa do Tiny e salva no Banco Vercel
+async function sincronizarTiny() {
+    const btn = event.target;
+    btn.innerText = '🔄 Sincronizando... Aguarde';
+    btn.disabled = true;
+
+    try {
+        const resposta = await fetch('/api/relatorios/sincronizar-contatos', { method: 'POST' });
+        const dados = await resposta.json();
+        
+        if (dados.sucesso) {
+            alert(dados.mensagem);
+            carregarRelatorioClientes(); // Atualiza a tabela na tela
+        } else {
+            alert("Erro: " + dados.erro);
+        }
+    } catch (erro) {
+        alert("Erro de conexão ao sincronizar.");
+    } finally {
+        btn.innerText = '🔄 Sincronizar com Tiny';
+        btn.disabled = false;
+    }
+}

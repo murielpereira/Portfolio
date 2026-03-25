@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cookieSession = require('cookie-session');
 const path = require('path');
+const { sql } = require('@vercel/postgres');
 
 const app = express();
 
@@ -178,6 +179,70 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         console.error("❌ Falha na comunicação com a API do Tiny:", erro);
     }
 }
+
+// =======================================================
+// ROTAS DE RELATÓRIOS (Painel Interno e Banco de Dados)
+// =======================================================
+
+// 1. Ler os dados do nosso próprio Banco Vercel Postgres (Ultra rápido)
+app.get('/api/relatorios/clientes', async (req, res) => {
+    if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+
+    try {
+        // Busca todos os clientes ordenados pelo valor gasto
+        const { rows } = await sql`SELECT * FROM clientes ORDER BY valor_total DESC, total_pedidos DESC`;
+        res.json({ sucesso: true, clientes: rows });
+    } catch (erro) {
+        console.error("❌ Erro ao ler o banco de dados:", erro);
+        res.status(500).json({ sucesso: false, erro: 'Falha ao ler o banco de dados.' });
+    }
+});
+
+// 2. Botão de Sincronização Manual: Puxa do Tiny e salva no nosso Banco
+app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
+    if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    const TOKEN = process.env.TINY_TOKEN;
+
+    try {
+        console.log("⏳ Buscando contatos no Tiny para sincronizar com o banco...");
+        // Buscando a primeira página de contatos (pode ser expandido depois)
+        const urlBusca = `https://api.tiny.com.br/api2/contatos.pesquisa.php?token=${TOKEN}&formato=JSON`;
+        const resposta = await fetch(urlBusca);
+        const dados = await resposta.json();
+
+        if (dados.retorno.status === 'OK' && dados.retorno.contatos) {
+            let salvos = 0;
+
+            for (const item of dados.retorno.contatos) {
+                const c = item.contato;
+                const cpfLimpo = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g, '') : null;
+                
+                // Só salvamos se o cliente tiver um CPF/CNPJ válido
+                if (cpfLimpo) {
+                    const cidade = c.cidade || '-';
+                    const uf = c.uf || '-';
+                    
+                    // UPSERT: Se o CPF não existir, insere. Se já existir, apenas atualiza o nome e cidade.
+                    await sql`
+                        INSERT INTO clientes (cpf, nome, cidade, estado)
+                        VALUES (${cpfLimpo}, ${c.nome}, ${cidade}, ${uf})
+                        ON CONFLICT (cpf) DO UPDATE SET
+                            nome = EXCLUDED.nome,
+                            cidade = EXCLUDED.cidade,
+                            estado = EXCLUDED.estado;
+                    `;
+                    salvos++;
+                }
+            }
+            res.json({ sucesso: true, mensagem: `${salvos} contatos sincronizados no banco de dados!` });
+        } else {
+            res.json({ sucesso: false, erro: 'Nenhum contato retornado do Tiny.' });
+        }
+    } catch (erro) {
+        console.error("❌ Erro na sincronização:", erro);
+        res.status(500).json({ sucesso: false, erro: 'Falha interna na sincronização.' });
+    }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor rodando na porta: ${PORT}`));
