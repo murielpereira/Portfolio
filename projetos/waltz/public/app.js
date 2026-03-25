@@ -2,11 +2,10 @@
 // CONFIGURAÇÃO GERAL E ROTEAMENTO SPA
 // ==========================================
 
-// Variáveis Globais (Dados, Paginação e Ordenação)
 let todaABaseDeClientes = []; 
 let paginaAtualRelatorio = 1;
 let itensPorPaginaRelatorio = 50;
-let ordemAtualRelatorio = { coluna: -1, crescente: true }; // -1 = nenhuma, true = cre, false = dec
+let ordemAtualRelatorio = { coluna: -1, crescente: true };
 
 function renderView(view, targetId = 'app') {
     fetch(`/components/${view}.html`)
@@ -18,56 +17,48 @@ function renderView(view, targetId = 'app') {
         .catch(err => console.error('Erro ao carregar view:', err));
 }
 
-// O MÓDULO DE NAVEGAÇÃO INTERNA DO PAINEL (NOVO)
 function mostrarSubPaginaDash(subPagina) {
     const contentAreaId = 'dashboard-content-area';
     const titleId = 'dash-page-title';
 
-    // 1. Limpa os estados de "ativo" do menu lateral
     document.querySelectorAll('.sidebar .nav-link').forEach(link => link.classList.remove('active'));
 
-    // 2. Carrega a subpágina correta e atualiza o menu/título
     if (subPagina === 'tiny') {
         document.getElementById('nav-tiny').classList.add('active');
         document.getElementById(titleId).innerText = "Base de Clientes (Tiny LTV)";
         
-        // Injeta a tabela do Tiny e dispara o autoload dos dados
         fetch('/components/relatorio_tiny.html')
             .then(response => response.text())
             .then(html => {
                 document.getElementById(contentAreaId).innerHTML = html;
-                carregarRelatorioClientes(); // Autoload dos dados
+                carregarRelatorioClientes(); 
             });
 
     } else if (subPagina === 'nuvem') {
         document.getElementById('nav-nuvem').classList.add('active');
         document.getElementById(titleId).innerText = "Monitor de Pedidos Nuvemshop";
         
-        // Injeta a tabela da Nuvem
         fetch('/components/pedidos_nuvem.html')
             .then(response => response.text())
             .then(html => {
                 document.getElementById(contentAreaId).innerHTML = html;
-                // Não faz autoload, usuário clica em buscar
             });
     }
 }
 
-// Liga os eventos dependendo da tela principal aberta
 function loadApp(view) {
     if (view === 'login') {
         const form = document.getElementById('form-login');
         if (form) form.addEventListener('submit', realizarLogin);
         document.getElementById('btn-mostrar-senha')?.addEventListener('click', toggleSenha);
     } else if (view === 'painel') {
-        // Carrega a subpágina padrão ao abrir o painel
         mostrarSubPaginaDash('tiny'); 
         document.getElementById('btn-logout')?.addEventListener('click', realizarLogout);
     }
 }
 
 // ==========================================
-// FUNÇÕES DE LOGIN (Mantidas)
+// FUNÇÕES DE LOGIN 
 // ==========================================
 async function realizarLogin(evento) {
     evento.preventDefault();
@@ -75,6 +66,7 @@ async function realizarLogin(evento) {
     const senha = document.getElementById('senha').value;
     const msgErro = document.getElementById('mensagem-erro');
     const btnSubmit = document.querySelector('#form-login button');
+    
     btnSubmit.innerText = "Acessando..."; btnSubmit.disabled = true;
     try {
         const resposta = await fetch('/api/login', {
@@ -89,6 +81,7 @@ async function realizarLogin(evento) {
         btnSubmit.innerText = "Entrar"; btnSubmit.disabled = false;
     }
 }
+
 function toggleSenha() {
     const inputSenha = document.getElementById('senha');
     const iconeSenha = document.getElementById('icone-senha');
@@ -111,8 +104,8 @@ function classificarClienteVisual(totalPedidos, valorTotal) {
 
 async function carregarRelatorioClientes() {
     const tbody = document.getElementById('tabela-clientes-body');
-    if (!tbody) return; // Segurança se a tabela não estiver na tela
-    tbody.innerHTML = '<tr><td colspan="8">Carregando banco de dados...</td></tr>';
+    if (!tbody) return; 
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Carregando banco de dados...</td></tr>';
     try {
         const resposta = await fetch('/api/relatorios/clientes');
         const dados = await resposta.json();
@@ -121,9 +114,9 @@ async function carregarRelatorioClientes() {
             paginaAtualRelatorio = 1; 
             renderizarPaginaRelatorio(); 
         } else {
-            tbody.innerHTML = '<tr><td colspan="8">Nenhum cliente no banco.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhum cliente no banco.</td></tr>';
         }
-    } catch (erro) { tbody.innerHTML = '<tr><td colspan="8">Erro de conexão.</td></tr>'; }
+    } catch (erro) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: red;">Erro de conexão.</td></tr>'; }
 }
 
 function renderizarPaginaRelatorio() {
@@ -132,7 +125,6 @@ function renderizarPaginaRelatorio() {
     const filtro = document.getElementById("filtro-grupo").value;
     let dadosFiltrados = todaABaseDeClientes;
     
-    // Aplica o filtro nos dados em memória
     if (filtro !== "TODOS") {
         dadosFiltrados = todaABaseDeClientes.filter(c => {
             let totalPedidos = c.total_pedidos || 0;
@@ -149,7 +141,6 @@ function renderizarPaginaRelatorio() {
         });
     }
 
-    // Paginação do front-end (slice 50 itens)
     const totalItens = dadosFiltrados.length;
     const totalPaginas = Math.ceil(totalItens / itensPorPaginaRelatorio);
     if (paginaAtualRelatorio > totalPaginas && totalPaginas > 0) paginaAtualRelatorio = totalPaginas;
@@ -183,7 +174,6 @@ function renderizarPaginaRelatorio() {
     renderizarControlesPaginacao(totalPaginas);
 }
 
-// Paginação Clássica Numerada
 function renderizarControlesPaginacao(totalPaginas) {
     const container = document.getElementById('paginacao-ltv');
     if (!container) return;
@@ -202,98 +192,123 @@ function mudarPaginaRelatorio(delta) { paginaAtualRelatorio += delta; renderizar
 function irParaPaginaRelatorio(pagina) { paginaAtualRelatorio = pagina; renderizarPaginaRelatorio(); }
 function resetarEPaginacao() { paginaAtualRelatorio = 1; renderizarPaginaRelatorio(); }
 
-// ==========================================
-// MOTOR DE ORDENAÇÃO CORRIGIDO E ROBUSTO
-// ==========================================
 function ordenarTabela(colunaIndex) {
     if (todaABaseDeClientes.length === 0) return;
     
-    console.log(`⏳ Ordenando pela coluna ${colunaIndex}...`);
-
-    // 1. Define a nova ordem
     if (ordemAtualRelatorio.coluna === colunaIndex) {
         ordemAtualRelatorio.crescente = !ordemAtualRelatorio.crescente;
     } else {
         ordemAtualRelatorio.coluna = colunaIndex;
-        ordemAtualRelatorio.crescente = false; // Começa sempre do Maior p/ Menor (Desc)
+        ordemAtualRelatorio.crescente = false; 
     }
 
-    // 2. Executa a ordenação nos DADOS BRUTOS em memória
     todaABaseDeClientes.sort((a, b) => {
         let valA, valB;
-        
-        // Coluna Pedidos
         if (colunaIndex === 6) { 
-            // Garante que é número inteiro e trata nulos como 0
             valA = parseInt(a.total_pedidos) || 0;
             valB = parseInt(b.total_pedidos) || 0;
-        } 
-        // Coluna Valor Total
-        else if (colunaIndex === 7) { 
-            // Garante que é número decimal e trata nulos como 0
+        } else if (colunaIndex === 7) { 
             valA = parseFloat(a.valor_total) || 0;
             valB = parseFloat(b.valor_total) || 0;
-        } else {
-            return 0; // Coluna não ordenável
-        }
+        } else { return 0; }
 
-        // Faz a comparação lógica
         if (valA < valB) return ordemAtualRelatorio.crescente ? -1 : 1;
         if (valA > valB) return ordemAtualRelatorio.crescente ? 1 : -1;
         return 0;
     });
 
-    // 3. Atualiza os ícones visualmente nos cabeçalhos
-    atualizarIconesOrdenacao(colunaIndex);
-
-    // 4. Re-desenha a tabela (reseta para pág 1 para ver o resultado)
-    resetarEPaginacao(); 
-}
-
-// Auxiliar para mudar os ícones ↕️ p/ ↑ ou ↓
-function atualizarIconesOrdenacao(colunaAtiva) {
-    // Reseta todos para o padrão ↕️
     const iconPedidos = document.getElementById('sort-icon-6');
     const iconValor = document.getElementById('sort-icon-7');
     if(iconPedidos) iconPedidos.innerText = '↕️';
     if(iconValor) iconValor.innerText = '↕️';
 
-    // Aplica o ícone correto na coluna ativa
-    const iconeAtivo = document.getElementById(`sort-icon-${colunaAtiva}`);
-    if (iconeAtivo) {
-        iconeAtivo.innerText = ordemAtualRelatorio.crescente ? '↑' : '↓';
-    }
+    const iconeAtivo = document.getElementById(`sort-icon-${colunaIndex}`);
+    if (iconeAtivo) iconeAtivo.innerText = ordemAtualRelatorio.crescente ? '↑' : '↓';
+
+    resetarEPaginacao(); 
 }
 
-async function sincronizarTiny() { /* Mantido */ }
+// SINCRONIZAR TINY (Corrigido o bug do clique no ícone)
+async function sincronizarTiny() {
+    // Agora ele busca o botão pelo seletor CSS, não importa onde você clicou
+    const btn = document.querySelector('.card-header-actions .btn-azul');
+    if (!btn) return;
+    
+    btn.disabled = true;
+    const textoOriginal = btn.innerHTML;
+    let paginaAtual = 1; 
+    let terminou = false;
+
+    while (!terminou) {
+        btn.innerHTML = `<span class="material-symbols-outlined">sync</span> Sincronizando (Pág ${paginaAtual})...`;
+        try {
+            const resposta = await fetch('/api/relatorios/sincronizar-contatos', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pagina: paginaAtual })
+            });
+            const dados = await resposta.json();
+            if (dados.sucesso) { 
+                paginaAtual = dados.proximaPagina; 
+                terminou = dados.concluiu; 
+            } else { 
+                alert("Erro ao sincronizar na página " + paginaAtual); 
+                terminou = true; 
+            }
+        } catch (erro) { 
+            alert("Erro de conexão na página " + paginaAtual); 
+            terminou = true; 
+        }
+    }
+    btn.innerHTML = textoOriginal; 
+    btn.disabled = false;
+    carregarRelatorioClientes();
+}
 
 // ==========================================
-// FUNÇÕES NUVEMSHOP (Feedback Renomeado)
+// FUNÇÕES NUVEMSHOP (Com sistema Anti-Travamento)
 // ==========================================
 async function buscarPedidosNuvemshop() {
     const btn = document.getElementById('btn-buscar-pedidos');
     const tbody = document.getElementById('corpo-tabela-nuvem');
     if(!btn || !tbody) return;
+    
+    const textoOriginal = btn.innerHTML;
     btn.innerHTML = '<span class="material-symbols-outlined">downloading</span> Buscando...';
     btn.disabled = true;
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">Conectando com Nuvemshop...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">Conectando com Nuvemshop... Aguarde.</td></tr>';
+
+    // Cria um sistema de abortar a chamada se demorar mais que 15 segundos
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
-        const resposta = await fetch('/api/pedidos');
+        const resposta = await fetch('/api/pedidos', { signal: controller.signal });
+        clearTimeout(timeoutId); // Limpa o timer se a resposta chegar a tempo
+        
         const pedidos = await resposta.json();
+        
+        // Verifica se a resposta não é um Array (ex: Sessão Expirada)
+        if (!resposta.ok || !Array.isArray(pedidos)) {
+            throw new Error(pedidos.erro || "Falha de autenticação com a Nuvemshop");
+        }
+
         tbody.innerHTML = '';
         if(pedidos.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">Nenhum pedido recente.</td></tr>';
             return;
         }
+        
         pedidos.forEach(p => {
             const dataO = new Date(p.created_at);
             const dataF = dataO.toLocaleDateString('pt-BR') + ' ' + dataO.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
             const cidade = p.shipping_address ? p.shipping_address.city : '-';
             const uf = p.shipping_address ? p.shipping_address.province : '-';
+            
             let statusPt = p.status;
             if (p.status === 'open') statusPt = 'Aberto';
             if (p.status === 'closed') statusPt = 'Arquivado';
             if (p.status === 'canceled') statusPt = 'Cancelado';
+            
             const linha = document.createElement('tr');
             linha.innerHTML = `
                 <td style="white-space:nowrap">${dataF}</td>
@@ -308,8 +323,17 @@ async function buscarPedidosNuvemshop() {
             `;
             tbody.appendChild(linha);
         });
-    } catch (e) { tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: red;">Erro na API Nuvemshop.</td></tr>';
-    } finally { btn.innerHTML = '<span class="material-symbols-outlined">download</span> Buscar Pedidos Nuvem'; btn.disabled = false; }
+    } catch (e) { 
+        console.error("Erro na busca da Nuvemshop:", e);
+        if (e.name === 'AbortError') {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: red;">A conexão demorou muito (Timeout). Tente novamente.</td></tr>';
+        } else {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: red;"><b>Erro:</b> ${e.message}<br>Você pode precisar reinstalar o aplicativo ou fazer login novamente.</td></tr>`;
+        }
+    } finally { 
+        btn.innerHTML = textoOriginal; 
+        btn.disabled = false; 
+    }
 }
 
 // INICIALIZAÇÃO
