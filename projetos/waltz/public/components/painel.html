@@ -6,25 +6,35 @@
 
     <section class="card">
         <h2>📊 Base de Clientes (LTV)</h2>
-        <div class="card-actions">
+        <div class="card-actions" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <button onclick="sincronizarTiny()" class="btn-azul">🔄 Sincronizar Tudo (Tiny)</button>
             <button onclick="carregarRelatorioClientes()" class="btn-secundario">Recarregar Tabela</button>
+            
+            <select id="filtro-grupo" onchange="filtrarTabela()" style="padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; color: #333;">
+                <option value="TODOS">Todos os Grupos</option>
+                <option value="1ª COMPRA">1ª Compra</option>
+                <option value="BRONZE">Bronze</option>
+                <option value="PRATA">Prata</option>
+                <option value="OURO">Ouro</option>
+                <option value="DIAMANTE">Diamante</option>
+            </select>
         </div>
         
         <div class="tabela-responsiva">
-            <table class="tabela-dados">
+            <table class="tabela-dados" id="tabela-ltv">
                 <thead>
                     <tr>
                         <th>Nome</th>
                         <th>CPF/CNPJ</th>
                         <th>Cidade</th>
                         <th>UF</th>
-                        <th>Pedidos</th>
-                        <th>Valor Total</th>
+                        <th>Grupo / Selo</th>
+                        <th style="cursor: pointer; color: #2563eb;" onclick="ordenarTabela(5)" title="Clique para ordenar">Pedidos ↕️</th>
+                        <th style="cursor: pointer; color: #2563eb;" onclick="ordenarTabela(6)" title="Clique para ordenar">Valor Total ↕️</th>
                     </tr>
                 </thead>
                 <tbody id="tabela-clientes-body">
-                    <tr><td colspan="6">Carregando dados do banco...</td></tr>
+                    <tr><td colspan="7">Carregando dados do banco...</td></tr>
                 </tbody>
             </table>
         </div>

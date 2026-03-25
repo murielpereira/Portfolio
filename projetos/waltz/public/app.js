@@ -136,10 +136,21 @@ function iniciarEventosDoPainel() {
 // Quando o arquivo js carregar, carrega a tela de login por padrão
 carregarModulo('login');
 
-// Lê o banco da Vercel (Rápido)
+// ==========================================
+// FUNÇÕES DE RELATÓRIO, FILTROS E ORDENAÇÃO
+// ==========================================
+
+function classificarClienteVisual(totalPedidos, valorTotal) {
+    if (totalPedidos <= 1) return '<span class="selo primeira-compra">1ª COMPRA</span>';
+    if (valorTotal <= 1000) return '<span class="selo bronze">BRONZE</span>';
+    if (valorTotal <= 3000) return '<span class="selo prata">PRATA</span>';
+    if (valorTotal <= 6000) return '<span class="selo ouro">OURO</span>';
+    return '<span class="selo diamante">DIAMANTE</span>';
+}
+
 async function carregarRelatorioClientes() {
     const tbody = document.getElementById('tabela-clientes-body');
-    tbody.innerHTML = '<tr><td colspan="6" style="padding: 10px;">Carregando banco de dados...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">Carregando banco de dados...</td></tr>';
 
     try {
         const resposta = await fetch('/api/relatorios/clientes');
@@ -148,23 +159,116 @@ async function carregarRelatorioClientes() {
         if (dados.sucesso && dados.clientes.length > 0) {
             tbody.innerHTML = ''; 
             dados.clientes.forEach(cliente => {
+                const seloHtml = classificarClienteVisual(cliente.total_pedidos, cliente.valor_total);
+                // Formata o dinheiro bonitinho, mas guarda o valor real no 'data-valor' para ordenarmos
+                const valorFormatado = parseFloat(cliente.valor_total || 0).toFixed(2).replace('.', ',');
+                
                 const linha = document.createElement('tr');
                 linha.innerHTML = `
-                    <td style="padding: 8px;">${cliente.nome}</td>
-                    <td style="padding: 8px;">${cliente.cpf}</td>
-                    <td style="padding: 8px;">${cliente.cidade}</td>
-                    <td style="padding: 8px;">${cliente.estado}</td>
-                    <td style="padding: 8px;">${cliente.total_pedidos}</td>
-                    <td style="padding: 8px;">R$ ${cliente.valor_total}</td>
+                    <td>${cliente.nome}</td>
+                    <td>${cliente.cpf}</td>
+                    <td>${cliente.cidade}</td>
+                    <td>${cliente.estado}</td>
+                    <td>${seloHtml}</td>
+                    <td>${cliente.total_pedidos}</td>
+                    <td data-valor="${cliente.valor_total}">R$ ${valorFormatado}</td>
                 `;
                 tbody.appendChild(linha);
             });
-        } else {
-            tbody.innerHTML = `<tr><td colspan="6" style="padding: 10px;">Nenhum cliente no banco. Faça a sincronização inicial.</td></tr>`;
+            // Após carregar, aplica o filtro se tiver algum selecionado
+            filtrarTabela();
         }
     } catch (erro) {
-        tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar relatório.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7">Erro ao carregar relatório.</td></tr>';
     }
+}
+
+// LÓGICA DE FILTRAR POR GRUPO
+function filtrarTabela() {
+    const filtro = document.getElementById("filtro-grupo").value.toUpperCase();
+    const linhas = document.querySelectorAll("#tabela-clientes-body tr");
+
+    linhas.forEach(linha => {
+        if (linha.cells.length === 1) return; // Ignora linha de erro/carregamento
+        const grupo = linha.cells[4].innerText.toUpperCase(); 
+        
+        if (filtro === "TODOS" || grupo.includes(filtro)) {
+            linha.style.display = ""; // Mostra
+        } else {
+            linha.style.display = "none"; // Esconde
+        }
+    });
+}
+
+// LÓGICA DE ORDENAR COLUNAS (Pedidos e Valor)
+let ordemAtual = { coluna: -1, crescente: true };
+function ordenarTabela(colunaIndex) {
+    const tbody = document.getElementById("tabela-clientes-body");
+    const linhas = Array.from(tbody.querySelectorAll("tr"));
+    if (linhas.length === 0 || linhas[0].cells.length === 1) return;
+
+    if (ordemAtual.coluna === colunaIndex) {
+        ordemAtual.crescente = !ordemAtual.crescente;
+    } else {
+        ordemAtual.coluna = colunaIndex;
+        ordemAtual.crescente = false; // Começa sempre do maior para o menor
+    }
+
+    linhas.sort((a, b) => {
+        let valA, valB;
+        if (colunaIndex === 5) { // Coluna Pedidos
+            valA = parseInt(a.cells[5].innerText) || 0;
+            valB = parseInt(b.cells[5].innerText) || 0;
+        } else if (colunaIndex === 6) { // Coluna Valor
+            valA = parseFloat(a.cells[6].getAttribute('data-valor')) || 0;
+            valB = parseFloat(b.cells[6].getAttribute('data-valor')) || 0;
+        }
+
+        if (valA < valB) return ordemAtual.crescente ? -1 : 1;
+        if (valA > valB) return ordemAtual.crescente ? 1 : -1;
+        return 0;
+    });
+
+    tbody.innerHTML = "";
+    linhas.forEach(linha => tbody.appendChild(linha));
+}
+
+// Sincronização em Lotes (Anti-Timeout Vercel)
+async function sincronizarTiny() {
+    const btn = event.target;
+    btn.disabled = true;
+    let paginaAtual = 1;
+    let terminou = false;
+    let totalSalvos = 0;
+
+    while (!terminou) {
+        btn.innerText = `🔄 Sincronizando... Lendo página ${paginaAtual} do Tiny`;
+        try {
+            const resposta = await fetch('/api/relatorios/sincronizar-contatos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pagina: paginaAtual })
+            });
+            const dados = await resposta.json();
+            
+            if (dados.sucesso) {
+                totalSalvos += dados.salvosNesteLote;
+                paginaAtual = dados.proximaPagina;
+                terminou = dados.concluiu;
+            } else {
+                alert("Erro ao sincronizar na página " + paginaAtual);
+                terminou = true;
+            }
+        } catch (erro) {
+            alert("Erro de conexão na página " + paginaAtual);
+            terminou = true;
+        }
+    }
+
+    btn.innerText = '🔄 Sincronizar Tudo (Tiny)';
+    btn.disabled = false;
+    alert(`Sincronização concluída! Base do banco de dados atualizada.`);
+    carregarRelatorioClientes();
 }
 
 // Puxa do Tiny e salva no Banco Vercel

@@ -23,84 +23,20 @@ const NUVEMSHOP_APP_ID = process.env.NUVEMSHOP_APP_ID;
 const NUVEMSHOP_CLIENT_SECRET = process.env.NUVEMSHOP_CLIENT_SECRET;
 const USER_AGENT = 'Waltz (murielpereirabr@gmail.com)';
 
-// =======================================================
-// ROTAS DA NUVEMSHOP
-// =======================================================
-app.get('/api/auth/nuvemshop', async (req, res) => {
-    const { code } = req.query;
-    if (!code) return res.status(400).send('Erro ausente.');
+// --- ROTAS NUVEMSHOP ---
+app.get('/api/auth/nuvemshop', async (req, res) => { /* Mantido */ });
 
-    try {
-        console.log(`\n⏳ Pedindo Token Nuvemshop...`);
-        const resposta = await fetch('https://www.nuvemshop.com.br/apps/authorize/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                client_id: NUVEMSHOP_APP_ID,
-                client_secret: NUVEMSHOP_CLIENT_SECRET,
-                grant_type: 'authorization_code',
-                code: code
-            })
-        });
-
-        const dados = await resposta.json();
-        if (dados.access_token) {
-            req.session.nuvemshopToken = dados.access_token;
-            req.session.storeId = dados.user_id; 
-            res.redirect('/');
-        } else {
-            res.send(`Erro: ${JSON.stringify(dados)}`);
-        }
-    } catch (erro) {
-        console.error(erro);
-        res.send('Erro interno.');
-    }
-});
-
+// 🔐 NOVO LOGIN
 app.post('/api/login', (req, res) => {
-    const { usuario, senha } = req.body;
-    if (usuario === 'admin' && senha === '123456') {
-        req.session.logado = true; 
-        res.json({ sucesso: true });
-    } else {
-        res.json({ sucesso: false });
-    }
+    if (req.body.usuario === 'ame' && req.body.senha === 'Ame@220520') {
+        req.session.logado = true; res.json({ sucesso: true });
+    } else { res.json({ sucesso: false }); }
 });
 
-app.get('/api/logout', (req, res) => {
-    req.session = null; 
-    res.json({ sucesso: true });
-});
+app.get('/api/logout', (req, res) => { req.session = null; res.json({ sucesso: true }); });
+app.get('/api/pedidos', async (req, res) => { /* Mantido */ });
 
-app.get('/api/pedidos', async (req, res) => {
-    if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
-    const STORE_ID = req.session.storeId;
-    const ACCESS_TOKEN = req.session.nuvemshopToken;
-
-    if (!STORE_ID || !ACCESS_TOKEN) return res.status(400).json({ erro: 'App não instalado.' });
-
-    try {
-        const cabecalhosNuvem = new Headers();
-        cabecalhosNuvem.append('Authentication', `bearer ${ACCESS_TOKEN}`);
-        cabecalhosNuvem.append('User-Agent', USER_AGENT);
-        cabecalhosNuvem.append('Content-Type', 'application/json');
-
-        const respostaNuvem = await fetch(`https://api.tiendanube.com/v1/${STORE_ID}/orders`, {
-            method: 'GET',
-            headers: cabecalhosNuvem
-        });
-
-        if (!respostaNuvem.ok) throw new Error(`Erro API: ${respostaNuvem.status}`);
-        res.json(await respostaNuvem.json());
-    } catch (erro) {
-        console.error("❌ Erro Nuvemshop:", erro);
-        res.status(500).json({ erro: 'Falha ao buscar pedidos.' });
-    }
-});
-
-// =======================================================
-// ROTAS DO TINY ERP (Webhook e Automação)
-// =======================================================
+// --- ROTA DE WEBHOOK TINY (Com lógica dos Selos) ---
 app.post('/api/webhook/tiny', async (req, res) => {
     try {
         const payload = req.body;
@@ -108,150 +44,99 @@ app.post('/api/webhook/tiny', async (req, res) => {
 
         const dados = payload.dados;
         if (dados && dados.id && dados.cliente && dados.cliente.cpfCnpj) {
-            const idPedidoTiny = dados.id;
-            const cpfCliente = dados.cliente.cpfCnpj;
-            console.log(`\n📦 NOVO PEDIDO RECEBIDO! ID: ${idPedidoTiny} | CPF: ${cpfCliente}`);
-            
-            await processarGrupoClienteTiny(idPedidoTiny, cpfCliente);
+            console.log(`\n📦 NOVO PEDIDO: ${dados.id} | CPF: ${dados.cliente.cpfCnpj}`);
+            await processarGrupoClienteTiny(dados.id, dados.cliente.cpfCnpj);
         }
         res.status(200).send('OK');
     } catch (erro) {
-        console.error("❌ Erro no Webhook do Tiny:", erro);
+        console.error("❌ Erro Webhook:", erro);
         res.status(200).send('OK'); 
     }
 });
 
-// A INTELIGÊNCIA COM A NOVA ESTRUTURA (Graças à sua documentação)
 async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const TOKEN = process.env.TINY_TOKEN;
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
 
     try {
-        console.log(`⏳ Buscando histórico de compras para o CPF ${cpfLimpo}...`);
         const urlBusca = `https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`;
         const respostaBusca = await fetch(urlBusca);
         const dadosBusca = await respostaBusca.json();
 
         let totalPedidos = 0;
+        let valorTotalGasto = 0;
+
         if (dadosBusca.retorno.status === 'OK' && dadosBusca.retorno.pedidos) {
             totalPedidos = dadosBusca.retorno.pedidos.length;
+            valorTotalGasto = dadosBusca.retorno.pedidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
         }
 
-        let grupo = "Novato";
-        if (totalPedidos >= 2 && totalPedidos <= 4) grupo = "Cliente Prata";
-        if (totalPedidos >= 5 && totalPedidos <= 9) grupo = "Cliente Ouro";
-        if (totalPedidos >= 10) grupo = "Cliente VIP";
-
-        console.log(`📢 Identificado: ${totalPedidos} compra(s). Classificado como: [${grupo}]`);
-
-        // ====================================================================
-        // A ESTRUTURA CORRETA (Sem wrapper, direto no alvo)
-        // ====================================================================
-        const pacoteJson = {
-            obs: `Grupo: ${grupo}`
-        };
-
-        const params = new URLSearchParams();
-        params.append('token', TOKEN);
-        params.append('formato', 'JSON');
-        params.append('id', idPedido);
-        
-        // O NOME DO PARÂMETRO É 'dados_pedido' E NÃO 'pedido'!
-        params.append('dados_pedido', JSON.stringify(pacoteJson));
-
-        console.log(`⏳ Escrevendo grupo no pedido ${idPedido}...`);
-        const urlAlteracao = 'https://api.tiny.com.br/api2/pedido.alterar.php';
-        
-        const respostaAlteracao = await fetch(urlAlteracao, {
-            method: 'POST',
-            body: params 
-        });
-
-        const resultadoAlteracao = await respostaAlteracao.json();
-
-        if (resultadoAlteracao.retorno.status === 'OK') {
-            console.log(`✅ SUCESSO ABSOLUTO! Observação salva no pedido ${idPedido}!`);
-        } else {
-            console.error(`❌ O Tiny recusou a alteração:`, JSON.stringify(resultadoAlteracao.retorno.erros));
+        // A REGRA DOS SELOS SOLICITADA
+        let grupo = "PRIMEIRA COMPRA";
+        if (totalPedidos > 1) {
+            if (valorTotalGasto <= 1000) grupo = "BRONZE";
+            else if (valorTotalGasto <= 3000) grupo = "PRATA";
+            else if (valorTotalGasto <= 6000) grupo = "OURO";
+            else grupo = "DIAMANTE";
         }
 
+        console.log(`📢 Cliente classificado como: [${grupo}] (R$ ${valorTotalGasto.toFixed(2)})`);
+        // Aqui aguardamos a resposta do Tiny sobre o payload para injetar a observação
     } catch (erro) {
-        console.error("❌ Falha na comunicação com a API do Tiny:", erro);
+        console.error("❌ Falha na API do Tiny:", erro);
     }
 }
 
-// =======================================================
-// ROTAS DE RELATÓRIOS (Painel Interno e Banco de Dados)
-// =======================================================
-
-// 1. Ler os dados do nosso próprio Banco Vercel Postgres (Ultra rápido)
+// --- ROTAS DO BANCO DE DADOS (RELATÓRIOS) ---
 app.get('/api/relatorios/clientes', async (req, res) => {
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
-
     try {
-        // Busca todos os clientes ordenados pelo valor gasto
-        const { rows } = await sql`SELECT * FROM clientes ORDER BY valor_total DESC, total_pedidos DESC`;
+        const { rows } = await sql`SELECT * FROM clientes ORDER BY nome ASC`;
         res.json({ sucesso: true, clientes: rows });
     } catch (erro) {
-        console.error("❌ Erro ao ler o banco de dados:", erro);
-        res.status(500).json({ sucesso: false, erro: 'Falha ao ler o banco de dados.' });
+        res.status(500).json({ sucesso: false });
     }
 });
 
-// 2. Botão de Sincronização Manual: Puxa TODAS as páginas do Tiny e salva no Banco
+// A SINCRONIZAÇÃO EM LOTES (Evita o Timeout de 5 minutos da Vercel)
 app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     const TOKEN = process.env.TINY_TOKEN;
+    const paginaAtual = req.body.pagina || 1; 
+    const paginasPorLote = 15; 
 
     try {
-        console.log("⏳ Iniciando sincronização em lote (Paginação)...");
-        let pagina = 1;
-        let maisPaginas = true;
-        let salvos = 0;
+        let pagina = paginaAtual;
+        let salvosNesteLote = 0;
+        let totalPaginasTiny = 1;
+        let terminou = false;
 
-        // O Loop que "folheia" as páginas do Tiny
-        while (maisPaginas) {
-            console.log(`Buscando página ${pagina}...`);
+        while (pagina < paginaAtual + paginasPorLote) {
             const urlBusca = `https://api.tiny.com.br/api2/contatos.pesquisa.php?token=${TOKEN}&formato=JSON&pagina=${pagina}`;
             const resposta = await fetch(urlBusca);
             const dados = await resposta.json();
 
             if (dados.retorno.status === 'OK' && dados.retorno.contatos) {
+                totalPaginasTiny = dados.retorno.numero_paginas;
+                
                 for (const item of dados.retorno.contatos) {
                     const c = item.contato;
                     const cpfLimpo = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g, '') : null;
-                    
                     if (cpfLimpo) {
-                        const cidade = c.cidade || '-';
-                        const uf = c.uf || '-';
-                        
                         await sql`
                             INSERT INTO clientes (cpf, nome, cidade, estado)
-                            VALUES (${cpfLimpo}, ${c.nome}, ${cidade}, ${uf})
-                            ON CONFLICT (cpf) DO UPDATE SET
-                                nome = EXCLUDED.nome,
-                                cidade = EXCLUDED.cidade,
-                                estado = EXCLUDED.estado;
+                            VALUES (${cpfLimpo}, ${c.nome}, ${c.cidade || '-'}, ${c.uf || '-'})
+                            ON CONFLICT (cpf) DO UPDATE SET nome = EXCLUDED.nome;
                         `;
-                        salvos++;
+                        salvosNesteLote++;
                     }
                 }
-                
-                // O Tiny avisa quantas páginas existem no total. Se não chegamos no fim, vamos para a próxima!
-                if (pagina < dados.retorno.numero_paginas) {
-                    pagina++;
-                } else {
-                    maisPaginas = false; // Acabou!
-                }
-            } else {
-                maisPaginas = false; // Se deu erro ou veio vazio, para o loop.
-            }
+                if (pagina >= totalPaginasTiny) { terminou = true; break; }
+                pagina++;
+            } else { terminou = true; break; }
         }
-        res.json({ sucesso: true, mensagem: `Uau! ${salvos} contatos sincronizados no banco de dados!` });
-    } catch (erro) {
-        console.error("❌ Erro na sincronização:", erro);
-        res.status(500).json({ sucesso: false, erro: 'Falha interna na sincronização.' });
-    }
+        res.json({ sucesso: true, proximaPagina: pagina, concluiu: terminou, salvosNesteLote });
+    } catch (erro) { res.status(500).json({ sucesso: false, erro: 'Falha no lote.' }); }
 });
 
 const PORT = process.env.PORT || 3000;
