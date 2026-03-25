@@ -47,10 +47,10 @@ function mostrarSubPaginaDash(subPagina) {
 
 function loadApp(view) {
     if (view === 'login') {
-        const form = document.getElementById('form-login');
-        if (form) form.addEventListener('submit', realizarLogin);
+        // Removemos as linhas do "form", mas MANTEMOS o botão do olhinho da senha!
         document.getElementById('btn-mostrar-senha')?.addEventListener('click', toggleSenha);
     } else if (view === 'painel') {
+        // MANTEMOS o carregamento da tabela inicial e o botão de logout!
         mostrarSubPaginaDash('tiny'); 
         document.getElementById('btn-logout')?.addEventListener('click', realizarLogout);
     }
@@ -427,5 +427,32 @@ async function buscarPedidosNuvemshop() {
     }
 }
 
-// INICIALIZAÇÃO
-renderView('login');
+// ==========================================
+// INICIALIZAÇÃO INTELIGENTE DA APLICAÇÃO
+// ==========================================
+async function inicializarApp() {
+    // 1. BLINDAGEM DE URL: Se a URL estiver suja (com ?usuario=...), nós limpamos ela da barra de endereços
+    if (window.location.search) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // 2. VERIFICAÇÃO DE SESSÃO: Pergunta ao servidor se o usuário já fez login antes
+    try {
+        const resposta = await fetch('/api/check-session');
+        const dados = await resposta.json();
+        
+        if (dados.logado) {
+            // Se o servidor disser que sim, pula direto para o painel!
+            renderView('painel');
+        } else {
+            // Se não, mostra a tela de login
+            renderView('login');
+        }
+    } catch (erro) {
+        // Em caso de erro na internet, mostra o login por segurança
+        renderView('login');
+    }
+}
+
+// Dispara a função assim que o script carrega
+inicializarApp();

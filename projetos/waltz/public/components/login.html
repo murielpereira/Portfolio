@@ -6,7 +6,8 @@
             Usuário ou senha incorretos. Tente novamente!
         </div>
 
-        <form id="form-login">
+        <!-- Adicionamos o onsubmit para garantir que o Javascript intercepte o envio -->
+        <form id="form-login" onsubmit="realizarLogin(event)">
             <div class="input-group" style="margin-bottom: 15px;">
                 <label for="usuario" style="display: block; margin-bottom: 5px; font-weight: bold; color: #475569;">Usuário</label>
                 <input type="text" id="usuario" name="usuario" class="input-padrao" required>

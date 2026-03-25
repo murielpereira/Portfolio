@@ -41,6 +41,18 @@ app.get('/api/logout', (req, res) => {
 });
 
 // ==========================================
+// ROTA: VERIFICADOR DE SESSÃO
+// ==========================================
+// O Front-end chama esta rota ao abrir a página para saber se deve mostrar o painel ou o login
+app.get('/api/check-session', (req, res) => {
+    if (req.session && req.session.logado) {
+        res.json({ logado: true });
+    } else {
+        res.json({ logado: false });
+    }
+});
+
+// ==========================================
 // ROTA: PEDIDOS NUVEMSHOP
 // ==========================================
 app.get('/api/pedidos', async (req, res) => {
