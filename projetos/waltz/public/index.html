@@ -3,37 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Automação E-commerce</title>
+    <title>Painel Waltz Automação</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 </head>
 <body>
-
-    <div id="app">
-        </div>
+    <div id="app"></div>
 
     <script src="app.js"></script>
-
-    <div class="relatorio-container">
-    <h2>Relatório LTV de Clientes</h2>
-    <button onclick="sincronizarTiny()" style="background: #2563eb; color: white; padding: 10px; cursor: pointer;">🔄 Sincronizar com Tiny</button>
-    <button onclick="carregarRelatorioClientes()" style="padding: 10px; cursor: pointer;">Tabela Atual</button>
-    
-    <table border="1" style="width: 100%; margin-top: 15px; text-align: left; border-collapse: collapse;">
-        <thead style="background: #f1f5f9;">
-            <tr>
-                <th style="padding: 8px;">Nome</th>
-                <th style="padding: 8px;">CPF/CNPJ</th>
-                <th style="padding: 8px;">Cidade</th>
-                <th style="padding: 8px;">UF</th>
-                <th style="padding: 8px;">Pedidos</th>
-                <th style="padding: 8px;">Valor Total (R$)</th>
-            </tr>
-        </thead>
-        <tbody id="tabela-clientes-body">
-            <tr><td colspan="6" style="padding: 10px;">Clique em "Tabela Atual" ou Sincronize para ver os dados.</td></tr>
-        </tbody>
-    </table>
-</div>
 </body>
 </html>

@@ -198,46 +198,56 @@ app.get('/api/relatorios/clientes', async (req, res) => {
     }
 });
 
-// 2. Botão de Sincronização Manual: Puxa do Tiny e salva no nosso Banco
+// 2. Botão de Sincronização Manual: Puxa TODAS as páginas do Tiny e salva no Banco
 app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     const TOKEN = process.env.TINY_TOKEN;
 
     try {
-        console.log("⏳ Buscando contatos no Tiny para sincronizar com o banco...");
-        // Buscando a primeira página de contatos (pode ser expandido depois)
-        const urlBusca = `https://api.tiny.com.br/api2/contatos.pesquisa.php?token=${TOKEN}&formato=JSON`;
-        const resposta = await fetch(urlBusca);
-        const dados = await resposta.json();
+        console.log("⏳ Iniciando sincronização em lote (Paginação)...");
+        let pagina = 1;
+        let maisPaginas = true;
+        let salvos = 0;
 
-        if (dados.retorno.status === 'OK' && dados.retorno.contatos) {
-            let salvos = 0;
+        // O Loop que "folheia" as páginas do Tiny
+        while (maisPaginas) {
+            console.log(`Buscando página ${pagina}...`);
+            const urlBusca = `https://api.tiny.com.br/api2/contatos.pesquisa.php?token=${TOKEN}&formato=JSON&pagina=${pagina}`;
+            const resposta = await fetch(urlBusca);
+            const dados = await resposta.json();
 
-            for (const item of dados.retorno.contatos) {
-                const c = item.contato;
-                const cpfLimpo = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g, '') : null;
-                
-                // Só salvamos se o cliente tiver um CPF/CNPJ válido
-                if (cpfLimpo) {
-                    const cidade = c.cidade || '-';
-                    const uf = c.uf || '-';
+            if (dados.retorno.status === 'OK' && dados.retorno.contatos) {
+                for (const item of dados.retorno.contatos) {
+                    const c = item.contato;
+                    const cpfLimpo = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g, '') : null;
                     
-                    // UPSERT: Se o CPF não existir, insere. Se já existir, apenas atualiza o nome e cidade.
-                    await sql`
-                        INSERT INTO clientes (cpf, nome, cidade, estado)
-                        VALUES (${cpfLimpo}, ${c.nome}, ${cidade}, ${uf})
-                        ON CONFLICT (cpf) DO UPDATE SET
-                            nome = EXCLUDED.nome,
-                            cidade = EXCLUDED.cidade,
-                            estado = EXCLUDED.estado;
-                    `;
-                    salvos++;
+                    if (cpfLimpo) {
+                        const cidade = c.cidade || '-';
+                        const uf = c.uf || '-';
+                        
+                        await sql`
+                            INSERT INTO clientes (cpf, nome, cidade, estado)
+                            VALUES (${cpfLimpo}, ${c.nome}, ${cidade}, ${uf})
+                            ON CONFLICT (cpf) DO UPDATE SET
+                                nome = EXCLUDED.nome,
+                                cidade = EXCLUDED.cidade,
+                                estado = EXCLUDED.estado;
+                        `;
+                        salvos++;
+                    }
                 }
+                
+                // O Tiny avisa quantas páginas existem no total. Se não chegamos no fim, vamos para a próxima!
+                if (pagina < dados.retorno.numero_paginas) {
+                    pagina++;
+                } else {
+                    maisPaginas = false; // Acabou!
+                }
+            } else {
+                maisPaginas = false; // Se deu erro ou veio vazio, para o loop.
             }
-            res.json({ sucesso: true, mensagem: `${salvos} contatos sincronizados no banco de dados!` });
-        } else {
-            res.json({ sucesso: false, erro: 'Nenhum contato retornado do Tiny.' });
         }
+        res.json({ sucesso: true, mensagem: `Uau! ${salvos} contatos sincronizados no banco de dados!` });
     } catch (erro) {
         console.error("❌ Erro na sincronização:", erro);
         res.status(500).json({ sucesso: false, erro: 'Falha interna na sincronização.' });

@@ -1,77 +1,44 @@
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
 
-body {
-    background-color: #f0f2f5;
-    display: flex; justify-content: center; align-items: center; height: 100vh;
-}
+body { background-color: #f0f2f5; }
+
+/* Wrapper exclusivo para centralizar o Login */
+.login-wrapper { display: flex; justify-content: center; align-items: center; height: 100vh; }
 
 .login-container {
     background-color: white; padding: 40px; border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 400px;
 }
-
 .login-container h2 { text-align: center; margin-bottom: 20px; color: #333; }
-
 .input-group { margin-bottom: 15px; }
 .input-group label { display: block; margin-bottom: 5px; color: #666; }
 .input-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
 .input-group input:focus { border-color: #007bff; }
 
-/* Botão padrão (O azulzão) */
-button {
-    width: 100%; padding: 10px; background-color: #007bff;
-    color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer;
-}
-button:hover { background-color: #0056b3; }
+button { width: 100%; padding: 10px; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; transition: 0.3s;}
+.btn-entrar { background-color: #007bff; margin-top: 10px; }
+.btn-entrar:hover { background-color: #0056b3; }
 
-/* Estilos do Erro */
-.erro-msg {
-    background-color: #f8d7da; color: #721c24; padding: 10px;
-    margin-bottom: 15px; border: 1px solid #f5c6cb; border-radius: 4px;
-    text-align: center; font-size: 14px; display: none;
-}
-
-/* O Segredo do Olhinho Consertado */
-.senha-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
+.erro-msg { background-color: #f8d7da; color: #721c24; padding: 10px; margin-bottom: 15px; border-radius: 4px; text-align: center; display: none; }
+.senha-container { position: relative; display: flex; align-items: center; }
 .senha-container input { padding-right: 40px; }
+.btn-toggle { position: absolute; right: 10px; background: transparent !important; width: auto !important; color: #666; padding: 0;}
 
-/* Sobrescrevemos o comportamento do botão global aqui */
-.btn-toggle {
-    position: absolute;
-    right: 10px;
-    background: transparent !important; /* Força tirar o azul */
-    width: auto !important; /* Força tirar o 100% de largura */
-    color: #666;
-    border: none;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.btn-toggle:hover { background: transparent; color: #333; }
-.btn-entrar { margin-top: 10px; }
-
-/* Estilos do Painel */
-.painel-container { text-align: center; padding: 40px; }
-.painel-container h1 { color: #28a745; margin-bottom: 15px; }
-.btn-sair { background-color: #dc3545; width: auto; padding: 10px 20px; margin-top: 20px; }
+/* --- ESTILOS DO PAINEL (DASHBOARD) --- */
+.dashboard-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);}
+.btn-sair { background-color: #dc3545; width: auto; padding: 8px 16px; font-weight: bold; }
 .btn-sair:hover { background-color: #c82333; }
 
-/* Botão primário do painel */
-.btn-primario {
-    width: auto;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 4px;
-    font-size: 16px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.3s;
-}
-.btn-primario:hover {
-    opacity: 0.9;
-}
+.card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 25px; }
+.card h2 { color: #333; margin-bottom: 15px; border-bottom: 2px solid #f0f2f5; padding-bottom: 10px;}
+.card-actions { display: flex; gap: 10px; margin-bottom: 15px; }
+
+.btn-primario { background-color: #4b2c71; width: auto; padding: 10px 20px; }
+.btn-azul { background-color: #2563eb; width: auto; padding: 10px 20px;}
+.btn-secundario { background-color: #6c757d; width: auto; padding: 10px 20px;}
+
+.tabela-responsiva { overflow-x: auto; }
+.tabela-dados { width: 100%; border-collapse: collapse; text-align: left; }
+.tabela-dados th, .tabela-dados td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+.tabela-dados th { background-color: #f8fafc; font-weight: bold; color: #475569;}

@@ -1,25 +1,52 @@
-<div class="painel-container" style="max-width: 800px; margin: auto;">
-    <h1>Painel de Automações</h1>
-    <p>Conectado ao sistema central.</p>
+<div class="dashboard-container">
+    <header class="topbar">
+        <h1>Painel de Automações Waltz</h1>
+        <button id="btn-logout" class="btn-sair">Sair (Logout)</button>
+    </header>
 
-    <div style="margin: 20px 0;">
-        <button id="btn-buscar-pedidos" class="btn-primario" style="background-color: #4b2c71; color: white;">
-            Buscar Pedidos Nuvemshop
-        </button>
-    </div>
-
-    <div class="tabela-container">
-        <table id="tabela-pedidos" style="display: none; width: 100%; border-collapse: collapse; margin-top: 20px;">
-            <thead>
-                <tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                    <th style="padding: 12px; text-align: left;">Nº do Pedido</th>
-                    <th style="padding: 12px; text-align: left;">Cliente</th>
-                </tr>
-            </thead>
-            <tbody id="corpo-tabela">
+    <section class="card">
+        <h2>📊 Base de Clientes (LTV)</h2>
+        <div class="card-actions">
+            <button onclick="sincronizarTiny()" class="btn-azul">🔄 Sincronizar Tudo (Tiny)</button>
+            <button onclick="carregarRelatorioClientes()" class="btn-secundario">Recarregar Tabela</button>
+        </div>
+        
+        <div class="tabela-responsiva">
+            <table class="tabela-dados">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>CPF/CNPJ</th>
+                        <th>Cidade</th>
+                        <th>UF</th>
+                        <th>Pedidos</th>
+                        <th>Valor Total</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-clientes-body">
+                    <tr><td colspan="6">Carregando dados do banco...</td></tr>
                 </tbody>
-        </table>
-    </div>
+            </table>
+        </div>
+    </section>
 
-    <button id="btn-logout" class="btn-sair">Sair (Logout)</button>
+    <section class="card">
+        <h2>🛒 Teste de Conexão: Nuvemshop</h2>
+        <div class="card-actions">
+            <button id="btn-buscar-pedidos" class="btn-primario">Buscar Pedidos Nuvemshop</button>
+        </div>
+        
+        <div class="tabela-responsiva">
+            <table id="tabela-pedidos-nuvem" class="tabela-dados" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Nº do Pedido</th>
+                        <th>Cliente</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-tabela-nuvem">
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
