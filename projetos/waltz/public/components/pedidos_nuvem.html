@@ -1,0 +1,29 @@
+<section class="card">
+    <div class="card-header-actions">
+        <h2>Últimos Pedidos Sincronizados</h2>
+        <button onclick="buscarPedidosNuvemshop()" id="btn-buscar-pedidos" class="btn-primario">
+            <span class="material-symbols-outlined">download</span>
+            📥 Buscar Pedidos Nuvem
+        </button>
+    </div>
+    
+    <div class="tabela-responsiva">
+        <table class="tabela-dados" id="tabela-pedidos-nuvem">
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th>CPF</th>
+                    <th>Cidade/UF</th>
+                    <th>Transportadora</th>
+                    <th>Código Rastreio</th>
+                    <th>Status Entrega</th>
+                    <th>Feedback WPP</th> </tr>
+            </thead>
+            <tbody id="corpo-tabela-nuvem">
+                <tr><td colspan="9" style="text-align: center; color: #64748b; padding: 30px;">Clique em "Buscar Pedidos Nuvem" para carregar.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>

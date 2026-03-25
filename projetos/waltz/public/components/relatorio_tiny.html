@@ -1,0 +1,43 @@
+<section class="card">
+    <div class="card-header-actions">
+        <div class="filtros-area">
+            <label for="filtro-grupo">Grupo:</label>
+            <select id="filtro-grupo" onchange="resetarEPaginacao()">
+                <option value="TODOS">Todos os Grupos</option>
+                <option value="SEM COMPRAS">Sem Compras</option>
+                <option value="PRIMEIRA COMPRA">1ª Compra</option>
+                <option value="BRONZE">Bronze</option>
+                <option value="PRATA">Prata</option>
+                <option value="OURO">Ouro</option>
+                <option value="DIAMANTE">Diamante</option>
+            </select>
+        </div>
+        <button onclick="sincronizarTiny()" class="btn-azul">
+            <span class="material-symbols-outlined">sync</span>
+            Atualizar com Tiny
+        </button>
+    </div>
+    
+    <div class="tabela-responsiva">
+        <table class="tabela-dados" id="tabela-ltv">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>WhatsApp</th>
+                    <th>CPF/CNPJ</th>
+                    <th>Cidade</th>
+                    <th>UF</th>
+                    <th>Grupo / Selo</th>
+                    <th class="col-sort" onclick="ordenarTabela(6)" id="th-pedidos">Pedidos <span id="sort-icon-6">↕️</span></th>
+                    <th class="col-sort" onclick="ordenarTabela(7)" id="th-valor">Valor Total <span id="sort-icon-7">↕️</span></th>
+                </tr>
+            </thead>
+            <tbody id="tabela-clientes-body">
+                <tr><td colspan="8">Buscando banco de dados Waltz...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="paginacao-controles" id="paginacao-ltv">
+        </div>
+</section>

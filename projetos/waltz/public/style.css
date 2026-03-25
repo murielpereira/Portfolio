@@ -1,75 +1,91 @@
-/* --- RESET E BÁSICO --- */
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-body { background-color: #f0f2f5; color: #333; overflow-x: hidden; }
+/* --- RESET E BÁSICO (Profissional) --- */
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+body { background-color: #f0f2f5; color: #1a1e2b; overflow-x: hidden; }
 
 /* --- UTILITÁRIOS --- */
-button { padding: 10px 16px; color: white; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; transition: 0.3s;}
-button:disabled { background-color: #cbd5e1 !important; cursor: not-allowed; }
+button { padding: 10px 16px; color: white; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 5px; }
+button:disabled { background-color: #cbd5e1 !important; cursor: not-allowed; opacity: 0.7; }
 .input-padrao { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
 .input-padrao:focus { border-color: #2563eb; }
 
 /* --- BOTÕES --- */
 .btn-azul { background-color: #2563eb; }
 .btn-azul:hover { background-color: #1d4ed8; }
+.btn-primario { background-color: #4b2c71; }
+.btn-primario:hover { background-color: #3b2259; }
 .btn-secundario { background-color: #64748b; }
 .btn-secundario:hover { background-color: #475569; }
-.btn-sair { background-color: #dc3545; }
+.btn-sair { background-color: #dc3545; width: 100%; justify-content: center; }
 
 /* --- ESTRUTURA DO LOGIN (TELA CHEIA) --- */
 .login-wrapper { display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #1a1e2b; }
-.login-container { background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); width: 100%; max-width: 400px;}
-.login-container h2 { text-align: center; margin-bottom: 20px; color: #1a1e2b; }
-.erro-msg { background-color: #f8d7da; color: #721c24; padding: 10px; margin-bottom: 15px; border-radius: 4px; text-align: center; display: none; }
+.login-container { background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); width: 100%; max-width: 420px; }
+.login-container h2 { text-align: center; margin-bottom: 25px; color: #1a1e2b; font-size: 24px; }
+.erro-msg { background-color: #f8d7da; color: #721c24; padding: 12px; margin-bottom: 20px; border-radius: 4px; text-align: center; font-size: 14px; display: none; }
 
 /* --- ESTRUTURA DO DASHBOARD (SIDEBAR + CONTEÚDO) --- */
-.dashboard-wrapper { display: flex; height: 100vh; width: 100vw; }
+.dashboard-wrapper { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
 
-/* Menu Lateral (Sidebar) */
-.sidebar { width: 260px; background-color: #1a1e2b; color: #ecf0f1; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0;}
-.brand { font-size: 20px; font-weight: bold; margin-bottom: 40px; color: #a855f7; text-align: center; }
+/* Menu Lateral (Sidebar) fixo */
+.sidebar { width: 260px; background-color: #11141d; color: #ecf0f1; display: flex; flex-direction: column; padding: 25px; flex-shrink: 0; border-right: 1px solid #2d3748; }
+.brand { font-size: 22px; font-weight: bold; margin-bottom: 50px; color: white; text-align: center; letter-spacing: 1px; }
 .nav-links { list-style: none; flex-grow: 1; }
-.nav-links li { margin-bottom: 10px; }
-.nav-link { display: flex; align-items: center; gap: 10px; padding: 12px; color: #a0aec0; text-decoration: none; border-radius: 6px; cursor: pointer;}
-.nav-link:hover, .nav-link.active { background-color: #2d3748; color: white; }
+.nav-links li { margin-bottom: 8px; }
 
-/* Área de Conteúdo Principal */
-.main-content { flex-grow: 1; background-color: #f4f7fc; overflow-y: auto;}
-.topbar { background-color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05);}
-.topbar h1 { font-size: 18px; color: #1a1e2b; }
-.user-menu { display: flex; gap: 15px; align-items: center;}
+/* Visual profissional dos links */
+.nav-link { 
+    display: flex; align-items: center; gap: 12px; padding: 12px 15px; 
+    color: #a0aec0; text-decoration: none; border-radius: 8px; 
+    cursor: pointer; transition: 0.2s; border: 1px solid transparent; 
+}
+.nav-link:hover { color: white; background-color: rgba(255,255,255,0.05); }
+.nav-link.active { 
+    background-color: #2563eb; color: white; font-weight: bold; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2); 
+}
+.nav-link span.material-symbols-outlined { font-size: 22px; }
 
-.page-content { padding: 30px; }
-.card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+/* Área de Conteúdo Principal scrolável */
+.main-content { flex-grow: 1; background-color: #f4f7fc; display: flex; flex-direction: column; overflow: hidden; }
+.topbar { background-color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 5px rgba(0,0,0,0.05); flex-shrink: 0;}
+.topbar h1 { font-size: 18px; color: #1a1e2b; font-weight: 600; }
+.topbar .info-loja { font-size: 14px; color: #64748b; }
+
+.page-content-wrapper { flex-grow: 1; padding: 30px; overflow-y: auto; }
+.card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 25px;}
 
 /* Área de Filtros e Ações */
 .card-header-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; }
-.filtros-ltv { display: flex; gap: 10px; align-items: center; }
-.filtros-ltv label { font-weight: bold; font-size: 14px; }
-.filtros-ltv select { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;}
+.filtros-area { display: flex; gap: 10px; align-items: center; }
+.filtros-area label { font-weight: bold; font-size: 14px; color: #475569; }
+.filtros-area select { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; color: #333; cursor: pointer;}
 
-/* Tabela e Paginação */
-.tabela-responsiva { overflow-x: auto; margin-top: 15px; }
-.tabela-dados { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
-.tabela-dados th, .tabela-dados td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
-.tabela-dados th { background-color: #f8fafc; color: #475569; font-weight: bold;}
-.col-sort { cursor: pointer; color: #2563eb; }
+/* Tabela Profissional */
+.tabela-responsiva { overflow-x: auto; }
+.tabela-dados { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; min-width: 800px; }
+.tabela-dados th, .tabela-dados td { padding: 14px 12px; border-bottom: 1px solid #e2e8f0; }
+.tabela-dados th { background-color: #f8fafc; color: #475569; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;}
 
-/* --- SELOS (GRUPOS) --- */
-.selo { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; display: inline-block; white-space: nowrap;}
-.sem-compra { background-color: #94a3b8; } /* Cinza neutro */
+/* Estilo para colunas clicáveis de ordenação */
+.col-sort { cursor: pointer; color: #2563eb; transition: 0.2s; white-space: nowrap; }
+.col-sort:hover { color: #1d4ed8; text-decoration: underline; }
+
+/* Selos de Categoria/Status */
+.selo { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; display: inline-block; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.5px;}
+.sem-compra { background-color: #94a3b8; }
 .primeira-compra { background-color: #17a2b8; }
 .bronze { background-color: #cd7f32; }
 .prata { background-color: #9ca3af; }
 .ouro { background-color: #fbbf24; color: #78350f; }
 .diamante { background-color: #a855f7; }
-.pendente { background-color: #f59e0b; } /* Laranja para status pendentes */
+.status-wpp-pendente { background-color: #f59e0b; } /* Amarelo para feedback pendente */
 
-/* --- NOVA PAGINAÇÃO (ESTILO CLÁSSICO NUMERADO) --- */
-.paginacao-controles { display: flex; justify-content: center; gap: 5px; margin-top: 20px; align-items: center; }
+/* Paginação Clássica Numerada */
+.paginacao-controles { display: flex; justify-content: center; gap: 5px; margin-top: 25px; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 20px;}
 .btn-pag-nav, .btn-pag-num { 
     background-color: white; border: 1px solid #cbd5e1; color: #334155; 
-    padding: 6px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 14px;
+    padding: 8px 14px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px; font-weight: 500;
 }
-.btn-pag-nav:hover:not(:disabled), .btn-pag-num:hover:not(.active) { background-color: #f1f5f9; }
+.btn-pag-nav:hover:not(:disabled), .btn-pag-num:hover:not(.active) { background-color: #f1f5f9; border-color: #94a3b8; }
 .btn-pag-num.active { background-color: #2563eb; color: white; border-color: #2563eb; font-weight: bold; cursor: default; }
 .btn-pag-nav:disabled { opacity: 0.5; cursor: not-allowed; }

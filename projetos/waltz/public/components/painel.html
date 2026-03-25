@@ -1,98 +1,37 @@
 <div class="dashboard-wrapper">
     <aside class="sidebar">
-        <div class="brand">Waltz Âme</div>
+        <div class="brand">Âme Waltz</div>
+        
         <ul class="nav-links">
             <li>
-                <div class="nav-link active">
+                <div id="nav-tiny" class="nav-link active" onclick="mostrarSubPaginaDash('tiny')">
                     <span class="material-symbols-outlined">analytics</span>
                     Base de Clientes Tiny
                 </div>
             </li>
-        </ul>
-        <div class="user-menu" style="margin-top: 20px; border-top: 1px solid #2d3748; padding-top: 20px;">
-            <button id="btn-logout" class="btn-sair" style="width: 100%;">Sair</button>
+            <li>
+                <div id="nav-nuvem" class="nav-link" onclick="mostrarSubPaginaDash('nuvem')">
+                    <span class="material-symbols-outlined">shopping_cart</span>
+                    Pedidos Nuvemshop
+                </div>
+            </li>
+            </ul>
+        
+        <div class="user-menu-area" style="margin-top: auto; border-top: 1px solid #2d3748; padding-top: 20px;">
+            <button id="btn-logout" class="btn-sair">
+                <span class="material-symbols-outlined">logout</span>
+                Sair do Sistema
+            </button>
         </div>
     </aside>
 
     <main class="main-content">
         <header class="topbar">
-            <h1>Gestão de E-commerce</h1>
+            <h1 id="dash-page-title">Relatório de Clientes (Tiny)</h1>
+            <div class="info-loja">Âme Shop | Automação v1.0</div>
         </header>
 
-        <div class="page-content">
-            <section class="card">
-                <div class="card-header-actions">
-                    <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                        📊 Base de Clientes Tiny
-                    </h2>
-                    <div class="filtros-ltv">
-                        <label for="filtro-grupo">Filtrar por Grupo:</label>
-                        <select id="filtro-grupo" onchange="resetarEPaginacao()">
-                            <option value="TODOS">Todos os Grupos</option>
-                            <option value="SEM COMPRAS">Sem Compras</option>
-                            <option value="PRIMEIRA COMPRA">1ª Compra</option>
-                            <option value="BRONZE">Bronze</option>
-                            <option value="PRATA">Prata</option>
-                            <option value="OURO">Ouro</option>
-                            <option value="DIAMANTE">Diamante</option>
-                        </select>
-                        <button onclick="sincronizarTiny()" class="btn-azul" style="margin-left: 10px;">🔄 Atualizar Dados</button>
-                    </div>
-                </div>
-                
-                <div class="tabela-responsiva">
-                    <table class="tabela-dados" id="tabela-ltv">
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>WhatsApp</th>
-                                <th>CPF/CNPJ</th>
-                                <th>Cidade</th>
-                                <th>UF</th>
-                                <th>Selo</th>
-                                <th class="col-sort" onclick="ordenarTabela(6)">Pedidos ↕️</th>
-                                <th class="col-sort" onclick="ordenarTabela(7)">Valor Total ↕️</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabela-clientes-body">
-                            <tr><td colspan="8">Buscando banco de dados... Aguarde.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="paginacao-controles" id="paginacao-ltv">
-                    </div>
-            </section>
-
-            <section class="card" style="margin-top: 30px;">
-                <div class="card-header-actions">
-                    <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                        🛒 Pedidos Nuvemshop
-                    </h2>
-                    <button id="btn-buscar-pedidos" class="btn-primario">📥 Buscar Últimos Pedidos</button>
-                </div>
-                
-                <div class="tabela-responsiva">
-                    <table class="tabela-dados" id="tabela-pedidos-nuvem">
-                        <thead>
-                            <tr>
-                                <th>Data / Hora</th>
-                                <th>Pedido</th>
-                                <th>Cliente</th>
-                                <th>CPF</th>
-                                <th>Cidade/UF</th>
-                                <th>Transportadora</th>
-                                <th>Rastreio</th>
-                                <th>Status Entrega</th>
-                                <th>Automação WPP</th>
-                            </tr>
-                        </thead>
-                        <tbody id="corpo-tabela-nuvem">
-                            <tr><td colspan="9" style="text-align: center; color: #64748b;">Clique em "Buscar Últimos Pedidos" para carregar.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
+        <div class="page-content-wrapper" id="dashboard-content-area">
+            </div>
     </main>
 </div>
