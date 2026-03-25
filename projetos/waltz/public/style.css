@@ -54,15 +54,22 @@ button:disabled { background-color: #cbd5e1 !important; cursor: not-allowed; }
 .tabela-dados th { background-color: #f8fafc; color: #475569; font-weight: bold;}
 .col-sort { cursor: pointer; color: #2563eb; }
 
-/* Selos (Grupos) */
+/* --- SELOS (GRUPOS) --- */
 .selo { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; display: inline-block; white-space: nowrap;}
+.sem-compra { background-color: #94a3b8; } /* Cinza neutro */
 .primeira-compra { background-color: #17a2b8; }
 .bronze { background-color: #cd7f32; }
 .prata { background-color: #9ca3af; }
 .ouro { background-color: #fbbf24; color: #78350f; }
 .diamante { background-color: #a855f7; }
+.pendente { background-color: #f59e0b; } /* Laranja para status pendentes */
 
-/* Controles de Paginação */
-.paginacao-controles { display: flex; justify-content: center; gap: 10px; margin-top: 20px; align-items: center; }
-.btn-paginacao { padding: 6px 12px; background-color: #f1f5f9; color: #333; }
-.btn-paginacao:hover { background-color: #e2e8f0; }
+/* --- NOVA PAGINAÇÃO (ESTILO CLÁSSICO NUMERADO) --- */
+.paginacao-controles { display: flex; justify-content: center; gap: 5px; margin-top: 20px; align-items: center; }
+.btn-pag-nav, .btn-pag-num { 
+    background-color: white; border: 1px solid #cbd5e1; color: #334155; 
+    padding: 6px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 14px;
+}
+.btn-pag-nav:hover:not(:disabled), .btn-pag-num:hover:not(.active) { background-color: #f1f5f9; }
+.btn-pag-num.active { background-color: #2563eb; color: white; border-color: #2563eb; font-weight: bold; cursor: default; }
+.btn-pag-nav:disabled { opacity: 0.5; cursor: not-allowed; }

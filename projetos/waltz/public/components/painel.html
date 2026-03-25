@@ -5,10 +5,10 @@
             <li>
                 <div class="nav-link active">
                     <span class="material-symbols-outlined">analytics</span>
-                    Base de Clientes (LTV)
+                    Base de Clientes Tiny
                 </div>
             </li>
-            </ul>
+        </ul>
         <div class="user-menu" style="margin-top: 20px; border-top: 1px solid #2d3748; padding-top: 20px;">
             <button id="btn-logout" class="btn-sair" style="width: 100%;">Sair</button>
         </div>
@@ -16,24 +16,28 @@
 
     <main class="main-content">
         <header class="topbar">
-            <h1>Relatório de Lifetime Value (LTV)</h1>
+            <h1>Gestão de E-commerce</h1>
         </header>
 
         <div class="page-content">
             <section class="card">
                 <div class="card-header-actions">
+                    <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                        📊 Base de Clientes Tiny
+                    </h2>
                     <div class="filtros-ltv">
                         <label for="filtro-grupo">Filtrar por Grupo:</label>
                         <select id="filtro-grupo" onchange="resetarEPaginacao()">
                             <option value="TODOS">Todos os Grupos</option>
+                            <option value="SEM COMPRAS">Sem Compras</option>
                             <option value="PRIMEIRA COMPRA">1ª Compra</option>
                             <option value="BRONZE">Bronze</option>
                             <option value="PRATA">Prata</option>
                             <option value="OURO">Ouro</option>
                             <option value="DIAMANTE">Diamante</option>
                         </select>
+                        <button onclick="sincronizarTiny()" class="btn-azul" style="margin-left: 10px;">🔄 Atualizar Dados</button>
                     </div>
-                    <button onclick="sincronizarTiny()" class="btn-azul">🔄 Atualizar Dados com Tiny</button>
                 </div>
                 
                 <div class="tabela-responsiva">
@@ -56,10 +60,37 @@
                     </table>
                 </div>
 
-                <div class="paginacao-controles">
-                    <button id="btn-prev-ltv" onclick="mudarPaginaRelatorio(-1)" class="btn-paginacao">Anterior</button>
-                    <span id="info-paginacao-ltv">Página 1</span>
-                    <button id="btn-next-ltv" onclick="mudarPaginaRelatorio(1)" class="btn-paginacao">Próximo</button>
+                <div class="paginacao-controles" id="paginacao-ltv">
+                    </div>
+            </section>
+
+            <section class="card" style="margin-top: 30px;">
+                <div class="card-header-actions">
+                    <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                        🛒 Pedidos Nuvemshop
+                    </h2>
+                    <button id="btn-buscar-pedidos" class="btn-primario">📥 Buscar Últimos Pedidos</button>
+                </div>
+                
+                <div class="tabela-responsiva">
+                    <table class="tabela-dados" id="tabela-pedidos-nuvem">
+                        <thead>
+                            <tr>
+                                <th>Data / Hora</th>
+                                <th>Pedido</th>
+                                <th>Cliente</th>
+                                <th>CPF</th>
+                                <th>Cidade/UF</th>
+                                <th>Transportadora</th>
+                                <th>Rastreio</th>
+                                <th>Status Entrega</th>
+                                <th>Automação WPP</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo-tabela-nuvem">
+                            <tr><td colspan="9" style="text-align: center; color: #64748b;">Clique em "Buscar Últimos Pedidos" para carregar.</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
         </div>
