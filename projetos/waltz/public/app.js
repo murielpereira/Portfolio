@@ -478,13 +478,15 @@ async function carregarClientesTinyDB() {
     }
 }
 
+// Função responsável por gerar o HTML do selo de classificação do cliente
 function classificarClienteVisual(totalPedidos, valorTotal) {
-    if (totalPedidos === 0) return '<span class="selo selo-sem-compras">Sem Compras</span>';
-    if (totalPedidos === 1) return '<span class="selo selo-primeira">1ª Compra</span>';
-    if (valorTotal <= 1000) return '<span class="selo selo-bronze">Bronze</span>';
-    if (valorTotal <= 3000) return '<span class="selo selo-prata">Prata</span>';
-    if (valorTotal <= 6000) return '<span class="selo selo-ouro">Ouro</span>';
-    return '<span class="selo selo-diamante">Diamante</span>';
+    // Retorna o selo usando as classes exatas do seu style.css (sem o prefixo 'selo-')
+    if (totalPedidos === 0) return '<span class="selo sem-compra">Sem Compras</span>';
+    if (totalPedidos === 1) return '<span class="selo primeira-compra">1ª Compra</span>';
+    if (valorTotal <= 1000) return '<span class="selo bronze">Bronze</span>';
+    if (valorTotal <= 3000) return '<span class="selo prata">Prata</span>';
+    if (valorTotal <= 6000) return '<span class="selo ouro">Ouro</span>';
+    return '<span class="selo diamante">Diamante</span>';
 }
 
 function ordenarTabela(colIndex) {
