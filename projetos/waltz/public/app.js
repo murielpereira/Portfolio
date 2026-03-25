@@ -90,11 +90,37 @@ function toggleSenha() {
 }
 async function realizarLogout() { await fetch('/api/logout'); renderView('login'); }
 
+/// ==========================================
+// FORMATADORES DE TEXTO (CPF e WhatsApp)
 // ==========================================
-// FUNÇÕES DA BASE TINY (Dados, Selos e Paginação)
+function formatarDocumento(doc) {
+    if (!doc) return '-';
+    const num = doc.replace(/\D/g, ''); // Remove tudo que não é número
+    if (num.length === 11) return num.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4"); // CPF
+    if (num.length === 14) return num.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5"); // CNPJ
+    return doc; // Retorna original se não for 11 ou 14
+}
+
+function formatarWhatsAppClicavel(tel) {
+    if (!tel || tel === '-') return '-';
+    const num = tel.replace(/\D/g, ''); // Apenas números
+    if (num.length < 10) return tel; // Muito curto para ser número BR válido
+    
+    // Formatação visual: (XX) 9XXXX-XXXX
+    let formatado = tel;
+    if (num.length === 11) formatado = `(${num.substring(0,2)}) ${num.substring(2,7)}-${num.substring(7)}`;
+    else if (num.length === 10) formatado = `(${num.substring(0,2)}) ${num.substring(2,6)}-${num.substring(6)}`;
+    
+    // Cria o link wa.me (adicionando o 55 do Brasil)
+    return `<a href="https://wa.me/55${num}" target="_blank" class="link-tabela">${formatado}</a>`;
+}
+
+// ==========================================
+// FUNÇÕES DA BASE TINY (Filtros e Renderização)
 // ==========================================
 function classificarClienteVisual(totalPedidos, valorTotal) {
-    if (totalPedidos === 0) return '<span class="selo sem-compra">SEM COMPRAS</span>';
+    // Retorna vazio (hífen) se não houver compras, conforme solicitado
+    if (totalPedidos === 0) return '-'; 
     if (totalPedidos === 1) return '<span class="selo primeira-compra">1ª COMPRA</span>';
     if (valorTotal <= 1000) return '<span class="selo bronze">BRONZE</span>';
     if (valorTotal <= 3000) return '<span class="selo prata">PRATA</span>';
@@ -102,31 +128,27 @@ function classificarClienteVisual(totalPedidos, valorTotal) {
     return '<span class="selo diamante">DIAMANTE</span>';
 }
 
-async function carregarRelatorioClientes() {
-    const tbody = document.getElementById('tabela-clientes-body');
-    if (!tbody) return; 
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Carregando banco de dados...</td></tr>';
-    try {
-        const resposta = await fetch('/api/relatorios/clientes');
-        const dados = await resposta.json();
-        if (dados.sucesso && dados.clientes.length > 0) {
-            todaABaseDeClientes = dados.clientes;
-            paginaAtualRelatorio = 1; 
-            renderizarPaginaRelatorio(); 
-        } else {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhum cliente no banco.</td></tr>';
-        }
-    } catch (erro) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color: red;">Erro de conexão.</td></tr>'; }
-}
-
 function renderizarPaginaRelatorio() {
     const tbody = document.getElementById('tabela-clientes-body');
     if(!tbody) return;
-    const filtro = document.getElementById("filtro-grupo").value;
+    
+    const filtroGrupo = document.getElementById("filtro-grupo").value;
+    const filtroTexto = (document.getElementById("filtro-texto")?.value || "").toLowerCase();
+    
     let dadosFiltrados = todaABaseDeClientes;
     
-    if (filtro !== "TODOS") {
-        dadosFiltrados = todaABaseDeClientes.filter(c => {
+    // 1. Aplica o Filtro de Texto (Nome ou CPF)
+    if (filtroTexto !== "") {
+        dadosFiltrados = dadosFiltrados.filter(c => {
+            const nomeStr = (c.nome || "").toLowerCase();
+            const cpfStr = (c.cpf || "").toLowerCase();
+            return nomeStr.includes(filtroTexto) || cpfStr.includes(filtroTexto);
+        });
+    }
+    
+    // 2. Aplica o Filtro de Grupo
+    if (filtroGrupo !== "TODOS") {
+        dadosFiltrados = dadosFiltrados.filter(c => {
             let totalPedidos = c.total_pedidos || 0;
             let valorTotal = parseFloat(c.valor_total || 0);
             let grupoReal = "SEM COMPRAS";
@@ -137,7 +159,7 @@ function renderizarPaginaRelatorio() {
                 else if (valorTotal <= 6000) grupoReal = "OURO";
                 else grupoReal = "DIAMANTE";
             }
-            return grupoReal === filtro; 
+            return grupoReal === filtroGrupo; 
         });
     }
 
@@ -150,18 +172,22 @@ function renderizarPaginaRelatorio() {
 
     tbody.innerHTML = ''; 
     if (itensDaPagina.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhum cliente neste grupo.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhum cliente encontrado.</td></tr>';
     } else {
         itensDaPagina.forEach(cliente => {
             const valTotalNum = parseFloat(cliente.valor_total || 0);
             const seloHtml = classificarClienteVisual(cliente.total_pedidos || 0, valTotalNum);
             const valorFormatado = valTotalNum.toFixed(2).replace('.', ',');
             
+            // Aplica as formatações
+            const cpfFormatado = formatarDocumento(cliente.cpf);
+            const wppFormatado = formatarWhatsAppClicavel(cliente.telefone);
+            
             const linha = document.createElement('tr');
             linha.innerHTML = `
                 <td>${cliente.nome}</td>
-                <td style="white-space:nowrap">${cliente.telefone || '-'}</td>
-                <td>${cliente.cpf}</td>
+                <td style="white-space:nowrap">${wppFormatado}</td>
+                <td style="white-space:nowrap">${cpfFormatado}</td>
                 <td>${cliente.cidade || '-'}</td>
                 <td>${cliente.estado || '-'}</td>
                 <td>${seloHtml}</td>
@@ -174,98 +200,39 @@ function renderizarPaginaRelatorio() {
     renderizarControlesPaginacao(totalPaginas);
 }
 
+// A NOVA PAGINAÇÃO (Com botões Primeira e Última)
 function renderizarControlesPaginacao(totalPaginas) {
     const container = document.getElementById('paginacao-ltv');
     if (!container) return;
     if (totalPaginas <= 1) { container.innerHTML = ''; return; }
-    let html = `<button class="btn-pag-nav" onclick="mudarPaginaRelatorio(-1)" ${paginaAtualRelatorio === 1 ? 'disabled' : ''}>«</button>`;
+    
+    // Botões: « (Primeira) e < (Anterior)
+    let html = `
+        <button class="btn-pag-nav" onclick="irParaPaginaRelatorio(1)" ${paginaAtualRelatorio === 1 ? 'disabled' : ''} title="Primeira Página">«</button>
+        <button class="btn-pag-nav" onclick="mudarPaginaRelatorio(-1)" ${paginaAtualRelatorio === 1 ? 'disabled' : ''} title="Página Anterior">‹</button>
+    `;
+    
     let startPage = Math.max(1, paginaAtualRelatorio - 2);
     let endPage = Math.min(totalPaginas, startPage + 4);
     if (endPage - startPage < 4) { startPage = Math.max(1, endPage - 4); }
+    
     for (let i = startPage; i <= endPage; i++) {
-        html += (i === paginaAtualRelatorio) ? `<button class="btn-pag-num active">${i}</button>` : `<button class="btn-pag-num" onclick="irParaPaginaRelatorio(${i})">${i}</button>`;
+        html += (i === paginaAtualRelatorio) 
+            ? `<button class="btn-pag-num active">${i}</button>` 
+            : `<button class="btn-pag-num" onclick="irParaPaginaRelatorio(${i})">${i}</button>`;
     }
-    html += `<button class="btn-pag-nav" onclick="mudarPaginaRelatorio(1)" ${paginaAtualRelatorio === totalPaginas ? 'disabled' : ''}>»</button>`;
+    
+    // Botões: > (Próxima) e » (Última)
+    html += `
+        <button class="btn-pag-nav" onclick="mudarPaginaRelatorio(1)" ${paginaAtualRelatorio === totalPaginas ? 'disabled' : ''} title="Próxima Página">›</button>
+        <button class="btn-pag-nav" onclick="irParaPaginaRelatorio(${totalPaginas})" ${paginaAtualRelatorio === totalPaginas ? 'disabled' : ''} title="Última Página">»</button>
+    `;
+    
     container.innerHTML = html;
-}
-function mudarPaginaRelatorio(delta) { paginaAtualRelatorio += delta; renderizarPaginaRelatorio(); }
-function irParaPaginaRelatorio(pagina) { paginaAtualRelatorio = pagina; renderizarPaginaRelatorio(); }
-function resetarEPaginacao() { paginaAtualRelatorio = 1; renderizarPaginaRelatorio(); }
-
-function ordenarTabela(colunaIndex) {
-    if (todaABaseDeClientes.length === 0) return;
-    
-    if (ordemAtualRelatorio.coluna === colunaIndex) {
-        ordemAtualRelatorio.crescente = !ordemAtualRelatorio.crescente;
-    } else {
-        ordemAtualRelatorio.coluna = colunaIndex;
-        ordemAtualRelatorio.crescente = false; 
-    }
-
-    todaABaseDeClientes.sort((a, b) => {
-        let valA, valB;
-        if (colunaIndex === 6) { 
-            valA = parseInt(a.total_pedidos) || 0;
-            valB = parseInt(b.total_pedidos) || 0;
-        } else if (colunaIndex === 7) { 
-            valA = parseFloat(a.valor_total) || 0;
-            valB = parseFloat(b.valor_total) || 0;
-        } else { return 0; }
-
-        if (valA < valB) return ordemAtualRelatorio.crescente ? -1 : 1;
-        if (valA > valB) return ordemAtualRelatorio.crescente ? 1 : -1;
-        return 0;
-    });
-
-    const iconPedidos = document.getElementById('sort-icon-6');
-    const iconValor = document.getElementById('sort-icon-7');
-    if(iconPedidos) iconPedidos.innerText = '↕️';
-    if(iconValor) iconValor.innerText = '↕️';
-
-    const iconeAtivo = document.getElementById(`sort-icon-${colunaIndex}`);
-    if (iconeAtivo) iconeAtivo.innerText = ordemAtualRelatorio.crescente ? '↑' : '↓';
-
-    resetarEPaginacao(); 
-}
-
-// SINCRONIZAR TINY (Corrigido o bug do clique no ícone)
-async function sincronizarTiny() {
-    // Agora ele busca o botão pelo seletor CSS, não importa onde você clicou
-    const btn = document.querySelector('.card-header-actions .btn-azul');
-    if (!btn) return;
-    
-    btn.disabled = true;
-    const textoOriginal = btn.innerHTML;
-    let paginaAtual = 1; 
-    let terminou = false;
-
-    while (!terminou) {
-        btn.innerHTML = `<span class="material-symbols-outlined">sync</span> Sincronizando (Pág ${paginaAtual})...`;
-        try {
-            const resposta = await fetch('/api/relatorios/sincronizar-contatos', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pagina: paginaAtual })
-            });
-            const dados = await resposta.json();
-            if (dados.sucesso) { 
-                paginaAtual = dados.proximaPagina; 
-                terminou = dados.concluiu; 
-            } else { 
-                alert("Erro ao sincronizar na página " + paginaAtual); 
-                terminou = true; 
-            }
-        } catch (erro) { 
-            alert("Erro de conexão na página " + paginaAtual); 
-            terminou = true; 
-        }
-    }
-    btn.innerHTML = textoOriginal; 
-    btn.disabled = false;
-    carregarRelatorioClientes();
 }
 
 // ==========================================
-// FUNÇÕES NUVEMSHOP (Com sistema Anti-Travamento)
+// FUNÇÕES NUVEMSHOP (Timeout aumentado para 45s)
 // ==========================================
 async function buscarPedidosNuvemshop() {
     const btn = document.getElementById('btn-buscar-pedidos');
@@ -277,20 +244,17 @@ async function buscarPedidosNuvemshop() {
     btn.disabled = true;
     tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">Conectando com Nuvemshop... Aguarde.</td></tr>';
 
-    // Cria um sistema de abortar a chamada se demorar mais que 15 segundos
+    // Aumentamos a tolerância para 45 segundos!
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
 
     try {
         const resposta = await fetch('/api/pedidos', { signal: controller.signal });
-        clearTimeout(timeoutId); // Limpa o timer se a resposta chegar a tempo
+        clearTimeout(timeoutId); 
         
         const pedidos = await resposta.json();
         
-        // Verifica se a resposta não é um Array (ex: Sessão Expirada)
-        if (!resposta.ok || !Array.isArray(pedidos)) {
-            throw new Error(pedidos.erro || "Falha de autenticação com a Nuvemshop");
-        }
+        if (!resposta.ok || !Array.isArray(pedidos)) throw new Error(pedidos.erro || "Falha de autenticação com a Nuvemshop");
 
         tbody.innerHTML = '';
         if(pedidos.length === 0) {
@@ -303,7 +267,6 @@ async function buscarPedidosNuvemshop() {
             const dataF = dataO.toLocaleDateString('pt-BR') + ' ' + dataO.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
             const cidade = p.shipping_address ? p.shipping_address.city : '-';
             const uf = p.shipping_address ? p.shipping_address.province : '-';
-            
             let statusPt = p.status;
             if (p.status === 'open') statusPt = 'Aberto';
             if (p.status === 'closed') statusPt = 'Arquivado';
@@ -314,7 +277,7 @@ async function buscarPedidosNuvemshop() {
                 <td style="white-space:nowrap">${dataF}</td>
                 <td style="font-weight:bold; color:#2563eb;">#${p.number}</td>
                 <td>${p.customer ? p.customer.name : '-'}</td>
-                <td>${p.customer ? p.customer.identification : '-'}</td>
+                <td>${formatarDocumento(p.customer ? p.customer.identification : '-')}</td>
                 <td>${cidade}/${uf}</td>
                 <td>${p.shipping_option || '-'}</td>
                 <td>${p.shipping_tracking_number || '-'}</td>
@@ -324,16 +287,72 @@ async function buscarPedidosNuvemshop() {
             tbody.appendChild(linha);
         });
     } catch (e) { 
-        console.error("Erro na busca da Nuvemshop:", e);
         if (e.name === 'AbortError') {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: red;">A conexão demorou muito (Timeout). Tente novamente.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: red;">A conexão demorou muito (Timeout de 45s). Tente novamente.</td></tr>';
         } else {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: red;"><b>Erro:</b> ${e.message}<br>Você pode precisar reinstalar o aplicativo ou fazer login novamente.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: red;"><b>Erro:</b> ${e.message}</td></tr>`;
         }
     } finally { 
         btn.innerHTML = textoOriginal; 
         btn.disabled = false; 
     }
+}
+
+// ==========================================
+// ROBÔ: CÁLCULO DO HISTÓRICO EM MASSA
+// ==========================================
+async function calcularHistoricoMassa() {
+    const btn = document.getElementById('btn-calc-massa');
+    if (!btn) return;
+
+    // 1. Pega apenas os CPFs válidos dos clientes que já estão na tela
+    const cpfsParaCalcular = todaABaseDeClientes
+        .map(cliente => cliente.cpf)
+        .filter(cpf => cpf && cpf.length >= 11);
+
+    if (cpfsParaCalcular.length === 0) {
+        alert("Nenhum cliente para calcular. Sincronize os contatos primeiro.");
+        return;
+    }
+
+    // 2. Confirmação com o usuário
+    const confirmacao = confirm(`Você vai calcular o histórico de ${cpfsParaCalcular.length} clientes. Isso pode levar alguns minutos. A página não deve ser fechada durante o processo. Deseja iniciar?`);
+    if (!confirmacao) return;
+
+    btn.disabled = true;
+    let processados = 0;
+    const tamanhoLote = 5; // Lote de 5 é extremamente seguro e não dá Timeout
+
+    // 3. O Loop que fatia os CPFs e manda para o Back-end
+    for (let i = 0; i < cpfsParaCalcular.length; i += tamanhoLote) {
+        const loteDeCpfs = cpfsParaCalcular.slice(i, i + tamanhoLote);
+        
+        // Atualiza o texto do botão para você ver a mágica acontecendo
+        btn.innerHTML = `<span class="material-symbols-outlined">hourglass_top</span> Calculando (${processados} de ${cpfsParaCalcular.length})...`;
+
+        try {
+            const resposta = await fetch('/api/relatorios/calcular-lote-financeiro', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cpfs: loteDeCpfs })
+            });
+            const dados = await resposta.json();
+            
+            // Independente de sucesso ou erro leve, avança a contagem
+            processados += loteDeCpfs.length;
+        } catch (e) {
+            console.error("Falha de rede no lote, mas continuaremos.", loteDeCpfs);
+            processados += loteDeCpfs.length;
+        }
+    }
+
+    // 4. Finalização
+    btn.innerHTML = `<span class="material-symbols-outlined">calculate</span> Histórico Atualizado!`;
+    btn.disabled = false;
+    alert("Cálculo do histórico concluído com sucesso!");
+    
+    // Recarrega a tabela para mostrar os valores novos e os selos aplicados!
+    carregarRelatorioClientes(); 
 }
 
 // INICIALIZAÇÃO

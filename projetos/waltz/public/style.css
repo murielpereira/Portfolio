@@ -60,11 +60,24 @@ button:disabled { background-color: #cbd5e1 !important; cursor: not-allowed; opa
 .filtros-area label { font-weight: bold; font-size: 14px; color: #475569; }
 .filtros-area select { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; color: #333; cursor: pointer;}
 
-/* Tabela Profissional */
-.tabela-responsiva { overflow-x: auto; }
-.tabela-dados { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; min-width: 800px; }
+/* Tabela Profissional com Cabeçalho Fixo */
+.tabela-responsiva { overflow-y: auto; overflow-x: auto; max-height: 65vh; position: relative; }
+.tabela-dados { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; min-width: 900px; }
 .tabela-dados th, .tabela-dados td { padding: 14px 12px; border-bottom: 1px solid #e2e8f0; }
-.tabela-dados th { background-color: #f8fafc; color: #475569; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;}
+
+/* A mágica do cabeçalho fixo (Sticky) */
+.tabela-dados th { 
+    background-color: #f8fafc; color: #475569; font-weight: 700; text-transform: uppercase; 
+    font-size: 12px; letter-spacing: 0.5px;
+    position: sticky; top: 0; z-index: 10; 
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1); /* Sombra suave para separar do conteúdo rolando */
+}
+
+/* Estilo para links clicáveis na tabela (WhatsApp) */
+.link-tabela { color: #2563eb; text-decoration: none; font-weight: 600; transition: 0.2s; }
+.link-tabela:hover { text-decoration: underline; color: #1d4ed8; }
+
+/* ... resto do CSS (Paginação, etc) mantido ... */
 
 /* Estilo para colunas clicáveis de ordenação */
 .col-sort { cursor: pointer; color: #2563eb; transition: 0.2s; white-space: nowrap; }

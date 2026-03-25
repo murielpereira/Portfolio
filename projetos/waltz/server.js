@@ -54,6 +54,7 @@ app.post('/api/webhook/tiny', async (req, res) => {
     }
 });
 
+// A INTELIGÊNCIA DOS SELOS COM SALVAMENTO NO BANCO DE DADOS
 async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const TOKEN = process.env.TINY_TOKEN;
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
@@ -71,7 +72,14 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
             valorTotalGasto = dadosBusca.retorno.pedidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
         }
 
-        // A REGRA DOS SELOS SOLICITADA
+        // SALVA OS TOTAIS E HISTÓRICO NO BANCO DE DADOS POSTGRES
+        await sql`
+            UPDATE clientes 
+            SET total_pedidos = ${totalPedidos}, 
+                valor_total = ${valorTotalGasto}
+            WHERE cpf = ${cpfLimpo};
+        `;
+
         let grupo = "PRIMEIRA COMPRA";
         if (totalPedidos > 1) {
             if (valorTotalGasto <= 1000) grupo = "BRONZE";
@@ -80,10 +88,10 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
             else grupo = "DIAMANTE";
         }
 
-        console.log(`📢 Cliente classificado como: [${grupo}] (R$ ${valorTotalGasto.toFixed(2)})`);
-        // Aqui aguardamos a resposta do Tiny sobre o payload para injetar a observação
+        console.log(`📢 Cliente CPF ${cpfLimpo} salvo no banco: [${grupo}] (R$ ${valorTotalGasto.toFixed(2)})`);
+        
     } catch (erro) {
-        console.error("❌ Falha na API do Tiny:", erro);
+        console.error("❌ Falha na API do Tiny ou Banco:", erro);
     }
 }
 
@@ -149,6 +157,54 @@ app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
         res.status(500).json({ sucesso: false, erro: 'Falha no lote.' }); 
     }
 });
+// ==========================================
+// ROTA: CÁLCULO DE HISTÓRICO FINANCEIRO EM LOTE
+// ==========================================
+// Objetivo: Recebe até 5 CPFs por vez, busca os pedidos no Tiny, soma os valores e salva no banco.
+app.post('/api/relatorios/calcular-lote-financeiro', async (req, res) => {
+    // Proteção de segurança
+    if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    
+    const TOKEN = process.env.TINY_TOKEN;
+    const cpfs = req.body.cpfs; // Recebe o array de CPFs do Front-end
+    let atualizados = 0;
+
+    try {
+        // Para cada CPF do pequeno lote, fazemos a pesquisa
+        for (const cpf of cpfs) {
+            const urlBusca = `https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpf}&formato=JSON`;
+            const resposta = await fetch(urlBusca);
+            const dados = await resposta.json();
+
+            let totalPedidos = 0;
+            let valorTotalGasto = 0;
+
+            // Se o Tiny encontrar pedidos para este CPF, fazemos a matemática
+            if (dados.retorno.status === 'OK' && dados.retorno.pedidos) {
+                totalPedidos = dados.retorno.pedidos.length;
+                // A função reduce soma o valor de todos os pedidos encontrados
+                valorTotalGasto = dados.retorno.pedidos.reduce((acumulador, p) => {
+                    return acumulador + parseFloat(p.pedido.valor || 0);
+                }, 0);
+            }
+
+            // Atualizamos a "gaveta" deste cliente no Banco de Dados
+            await sql`
+                UPDATE clientes
+                SET total_pedidos = ${totalPedidos}, valor_total = ${valorTotalGasto}
+                WHERE cpf = ${cpf};
+            `;
+            atualizados++;
+        }
+        
+        // Devolve o sucesso para o navegador pedir o próximo lote
+        res.json({ sucesso: true, atualizados });
+    } catch (erro) {
+        console.error("Erro no cálculo do lote financeiro:", erro);
+        res.status(500).json({ sucesso: false, erro: 'Falha no servidor.' });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor rodando na porta: ${PORT}`));
 module.exports = app;

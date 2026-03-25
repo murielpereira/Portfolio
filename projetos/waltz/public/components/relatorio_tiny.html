@@ -1,7 +1,10 @@
 <section class="card">
     <div class="card-header-actions">
-        <div class="filtros-area">
-            <label for="filtro-grupo">Grupo:</label>
+        <div class="filtros-area" style="flex-wrap: wrap;">
+            <label for="filtro-texto">Buscar:</label>
+            <input type="text" id="filtro-texto" class="input-padrao" placeholder="Nome ou CPF/CNPJ..." onkeyup="resetarEPaginacao()" style="max-width: 250px; padding: 8px;">
+
+            <label for="filtro-grupo" style="margin-left: 15px;">Grupo:</label>
             <select id="filtro-grupo" onchange="resetarEPaginacao()">
                 <option value="TODOS">Todos os Grupos</option>
                 <option value="SEM COMPRAS">Sem Compras</option>
@@ -16,6 +19,11 @@
             <span class="material-symbols-outlined">sync</span>
             Atualizar com Tiny
         </button>
+        <!-- Adicione este botão logo após o botão btn-azul que já existe -->
+        <button onclick="calcularHistoricoMassa()" id="btn-calc-massa" class="btn-primario" style="margin-left: 10px;">
+            <span class="material-symbols-outlined">calculate</span>
+            Calcular Histórico Financeiro
+        </button>
     </div>
     
     <div class="tabela-responsiva">
@@ -27,7 +35,7 @@
                     <th>CPF/CNPJ</th>
                     <th>Cidade</th>
                     <th>UF</th>
-                    <th>Grupo / Selo</th>
+                    <th>Grupo</th> 
                     <th class="col-sort" onclick="ordenarTabela(6)" id="th-pedidos">Pedidos <span id="sort-icon-6">↕️</span></th>
                     <th class="col-sort" onclick="ordenarTabela(7)" id="th-valor">Valor Total <span id="sort-icon-7">↕️</span></th>
                 </tr>
@@ -38,6 +46,5 @@
         </table>
     </div>
 
-    <div class="paginacao-controles" id="paginacao-ltv">
-        </div>
+    <div class="paginacao-controles" id="paginacao-ltv"></div>
 </section>
