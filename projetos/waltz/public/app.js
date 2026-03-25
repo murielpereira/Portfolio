@@ -383,3 +383,80 @@ function renderizarControlesPaginacao(totalPaginas) {
 function mudarPagina(delta) { paginaAtualRelatorio += delta; renderizarPaginaRelatorio(); }
 function irParaPagina(pagina) { paginaAtualRelatorio = pagina; renderizarPaginaRelatorio(); }
 function resetarEPaginacao() { paginaAtualRelatorio = 1; renderizarPaginaRelatorio(); }
+
+// ============================================================================
+// MÓDULO 5: AUTENTICAÇÃO E INICIALIZAÇÃO (O Motor de Partida)
+// ============================================================================
+
+// 1. Função que envia os dados de Login para o servidor
+async function realizarLogin(event) {
+    event.preventDefault(); // Impede a página de piscar/recarregar
+    
+    const usuario = document.getElementById('usuario')?.value;
+    const senha = document.getElementById('senha')?.value;
+    const btn = document.getElementById('btn-login');
+    
+    if (btn) { btn.innerText = 'Acessando...'; btn.disabled = true; }
+
+    try {
+        const resposta = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuario, senha })
+        });
+        const dados = await resposta.json();
+        
+        if (dados.sucesso) {
+            window.location.reload(); // Atualiza a página para carregar o painel
+        } else {
+            alert('Usuário ou senha incorretos!');
+        }
+    } catch (erro) {
+        alert('Erro ao conectar com o servidor.');
+    } finally {
+        if (btn) { btn.innerText = 'Entrar'; btn.disabled = false; }
+    }
+}
+
+// 2. Função para sair do sistema
+async function realizarLogout() {
+    try {
+        await fetch('/api/logout');
+        window.location.reload();
+    } catch (erro) {
+        console.error("Erro ao sair:", erro);
+    }
+}
+
+// 3. A IGNição: O que o navegador faz assim que a tela abre
+document.addEventListener('DOMContentLoaded', async () => {
+    
+    // Conecta o botão de login à nossa função
+    const formLogin = document.getElementById('form-login');
+    if (formLogin) formLogin.addEventListener('submit', realizarLogin);
+
+    try {
+        // Pergunta ao servidor se existe alguém logado
+        const resposta = await fetch('/api/check-session');
+        const dados = await resposta.json();
+        
+        // Mapeia as "caixas" principais do seu HTML
+        // Nota: Se os IDs no seu HTML forem diferentes, basta ajustar aqui!
+        const telaLogin = document.getElementById('tela-login') || document.querySelector('.login-container'); 
+        const telaPainel = document.getElementById('tela-painel') || document.querySelector('.painel-container');
+        
+        if (dados.logado) {
+            // Se tem acesso: Esconde o login e mostra o painel
+            if (telaLogin) telaLogin.style.display = 'none';
+            if (telaPainel) telaPainel.style.display = 'block';
+            loadApp('painel'); // Aciona as abas (Tiny e Nuvemshop)
+        } else {
+            // Se não tem acesso: Esconde o painel e mostra o login
+            if (telaLogin) telaLogin.style.display = 'flex'; // ou 'block'
+            if (telaPainel) telaPainel.style.display = 'none';
+            loadApp('login'); // Prepara o olho de mostrar senha
+        }
+    } catch (erro) {
+        console.error("Erro fatal na inicialização:", erro);
+    }
+});
