@@ -17,11 +17,22 @@ app.use(cookieSession({
     sameSite: 'lax' 
 }));
 
-// Serve a pasta 'public' onde estão seus arquivos HTML, CSS, JS e a pasta 'images'
+// Serve a pasta 'public' onde estão seus arquivos HTML, CSS, JS e imagens
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Função auxiliar: Faz o servidor "dormir" por alguns milissegundos para não ser bloqueado
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
+// ==========================================
+// ROTA: VERIFICADOR DE SESSÃO (Evita dados na URL ao dar F5)
+// ==========================================
+app.get('/api/check-session', (req, res) => {
+    if (req.session && req.session.logado) {
+        res.json({ logado: true });
+    } else {
+        res.json({ logado: false });
+    }
+});
 
 // ==========================================
 // ROTAS DE LOGIN E LOGOUT
@@ -38,18 +49,6 @@ app.post('/api/login', (req, res) => {
 app.get('/api/logout', (req, res) => { 
     req.session = null; 
     res.json({ sucesso: true }); 
-});
-
-// ==========================================
-// ROTA: VERIFICADOR DE SESSÃO
-// ==========================================
-// O Front-end chama esta rota ao abrir a página para saber se deve mostrar o painel ou o login
-app.get('/api/check-session', (req, res) => {
-    if (req.session && req.session.logado) {
-        res.json({ logado: true });
-    } else {
-        res.json({ logado: false });
-    }
 });
 
 // ==========================================
@@ -79,7 +78,7 @@ app.get('/api/pedidos', async (req, res) => {
 });
 
 // ==========================================
-// ROTA: WEBHOOK TINY (Entrada de Novos Pedidos)
+// A INTELIGÊNCIA DO WEBHOOK (Cria o cliente se não existir)
 // ==========================================
 app.post('/api/webhook/tiny', async (req, res) => {
     try {
@@ -103,37 +102,51 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
 
     try {
+        // Busca TODOS os pedidos desse CPF no Tiny
         const urlBusca = `https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`;
         const respostaBusca = await fetch(urlBusca);
         const textoResposta = await respostaBusca.text();
         
-        const dadosBusca = JSON.parse(textoResposta);
+        try {
+            const dadosBusca = JSON.parse(textoResposta);
 
-        let totalPedidos = 0;
-        let valorTotalGasto = 0;
+            if (dadosBusca.retorno && dadosBusca.retorno.status === 'OK' && dadosBusca.retorno.pedidos) {
+                const totalPedidos = dadosBusca.retorno.pedidos.length;
+                const valorTotalGasto = dadosBusca.retorno.pedidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
 
-        if (dadosBusca.retorno && dadosBusca.retorno.status === 'OK' && dadosBusca.retorno.pedidos) {
-            totalPedidos = dadosBusca.retorno.pedidos.length;
-            valorTotalGasto = dadosBusca.retorno.pedidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
+                // Extrai os dados cadastrais do cliente direto do pedido mais recente
+                const infoCliente = dadosBusca.retorno.pedidos[0].pedido.cliente;
+                const nome = infoCliente.nome || 'Cliente Importado';
+                const cidade = infoCliente.cidade || '-';
+                const uf = infoCliente.uf || '-';
+                const telefone = infoCliente.fone || infoCliente.celular || '-';
+
+                // O COMANDO UPSERT: Insere o cliente novo. Se o CPF já existir, ele só atualiza os dados!
+                await sql`
+                    INSERT INTO clientes (cpf, nome, cidade, estado, telefone, total_pedidos, valor_total)
+                    VALUES (${cpfLimpo}, ${nome}, ${cidade}, ${uf}, ${telefone}, ${totalPedidos}, ${valorTotalGasto})
+                    ON CONFLICT (cpf) DO UPDATE SET 
+                        nome = EXCLUDED.nome,
+                        cidade = EXCLUDED.cidade,
+                        estado = EXCLUDED.estado,
+                        telefone = EXCLUDED.telefone,
+                        total_pedidos = EXCLUDED.total_pedidos,
+                        valor_total = EXCLUDED.valor_total;
+                `;
+
+                let grupo = "PRIMEIRA COMPRA";
+                if (totalPedidos > 1) {
+                    if (valorTotalGasto <= 1000) grupo = "BRONZE";
+                    else if (valorTotalGasto <= 3000) grupo = "PRATA";
+                    else if (valorTotalGasto <= 6000) grupo = "OURO";
+                    else grupo = "DIAMANTE";
+                }
+
+                console.log(`📢 Cliente CPF ${cpfLimpo} importado/atualizado via Webhook: [${grupo}] (R$ ${valorTotalGasto.toFixed(2)})`);
+            }
+        } catch (jsonErro) {
+            console.error(`⚠️ Tiny retornou texto ao invés de JSON no Webhook (Possível bloqueio).`);
         }
-
-        // SALVA OS TOTAIS E HISTÓRICO NO BANCO DE DADOS POSTGRES
-        await sql`
-            UPDATE clientes 
-            SET total_pedidos = ${totalPedidos}, 
-                valor_total = ${valorTotalGasto}
-            WHERE cpf = ${cpfLimpo};
-        `;
-
-        let grupo = "PRIMEIRA COMPRA";
-        if (totalPedidos > 1) {
-            if (valorTotalGasto <= 1000) grupo = "BRONZE";
-            else if (valorTotalGasto <= 3000) grupo = "PRATA";
-            else if (valorTotalGasto <= 6000) grupo = "OURO";
-            else grupo = "DIAMANTE";
-        }
-
-        console.log(`📢 Cliente CPF ${cpfLimpo} atualizado via Webhook: [${grupo}] (R$ ${valorTotalGasto.toFixed(2)})`);
     } catch (erro) {
         console.error("❌ Falha na API do Tiny ou Banco durante Webhook:", erro);
     }
@@ -183,13 +196,12 @@ app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
                         const c = item.contato;
                         
                         // FILTRO INTELIGENTE: Verifica se é cliente
-                        // Pega os tipos de contato e transforma em texto para facilitar a busca
                         const tiposDeContato = JSON.stringify(c.tipos_contato || '').toLowerCase();
                         
-                        // Se houver a informação de tipo e NÃO for cliente, nós pulamos!
+                        // Ignora se não for explicitamente "cliente"
                         if (tiposDeContato !== '""' && !tiposDeContato.includes('cliente')) {
                             ignoradosNesteLote++;
-                            continue; // Pula o salvamento deste e vai para o próximo
+                            continue; 
                         }
 
                         const cpfLimpo = c.cpf_cnpj ? c.cpf_cnpj.replace(/\D/g, '') : null;
@@ -216,7 +228,7 @@ app.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
                 terminou = true; break;
             }
             
-            await delay(500); // Pausa leve para não sobrecarregar o Tiny na paginação
+            await delay(500); // Pausa leve para não sobrecarregar o Tiny
         }
         
         console.log(`Lote finalizado. Salvos: ${salvosNesteLote} | Ignorados (Fornecedores/Outros): ${ignoradosNesteLote}`);
@@ -250,10 +262,24 @@ app.post('/api/relatorios/calcular-lote-financeiro', async (req, res) => {
                     const totalPedidos = dados.retorno.pedidos.length;
                     const valorTotalGasto = dados.retorno.pedidos.reduce((acumulador, p) => acumulador + parseFloat(p.pedido.valor || 0), 0);
 
+                    // Extrai os dados do pedido para garantir que o cliente exista no banco
+                    const infoCliente = dados.retorno.pedidos[0].pedido.cliente;
+                    const nome = infoCliente.nome || 'Cliente Importado';
+                    const cidade = infoCliente.cidade || '-';
+                    const uf = infoCliente.uf || '-';
+                    const telefone = infoCliente.fone || infoCliente.celular || '-';
+
+                    // UPSERT: Mesma lógica de proteção do Webhook
                     await sql`
-                        UPDATE clientes
-                        SET total_pedidos = ${totalPedidos}, valor_total = ${valorTotalGasto}
-                        WHERE cpf = ${cpf};
+                        INSERT INTO clientes (cpf, nome, cidade, estado, telefone, total_pedidos, valor_total)
+                        VALUES (${cpf}, ${nome}, ${cidade}, ${uf}, ${telefone}, ${totalPedidos}, ${valorTotalGasto})
+                        ON CONFLICT (cpf) DO UPDATE SET 
+                            nome = EXCLUDED.nome,
+                            cidade = EXCLUDED.cidade,
+                            estado = EXCLUDED.estado,
+                            telefone = EXCLUDED.telefone,
+                            total_pedidos = EXCLUDED.total_pedidos,
+                            valor_total = EXCLUDED.valor_total;
                     `;
                     atualizados++;
                 }
@@ -261,7 +287,7 @@ app.post('/api/relatorios/calcular-lote-financeiro', async (req, res) => {
                 console.error(`⚠️ Tiny retornou erro de leitura para o CPF ${cpf}. Pulando para o próximo.`);
             }
 
-            // O FREIO DE MÃO (Anti-Bloqueio): 1 segundo entre cada pedido de CPF
+            // O FREIO DE MÃO (Anti-Bloqueio): Espera 1 segundo entre as requisições
             await delay(1000); 
         }
         

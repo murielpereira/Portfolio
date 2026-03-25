@@ -153,6 +153,7 @@ function renderizarPaginaRelatorio() {
     
     let dadosFiltrados = todaABaseDeClientes;
     
+    // 1. Aplica o Filtro de Texto
     if (filtroTexto !== "") {
         dadosFiltrados = dadosFiltrados.filter(c => {
             const nomeStr = (c.nome || "").toLowerCase();
@@ -161,6 +162,7 @@ function renderizarPaginaRelatorio() {
         });
     }
     
+    // 2. Aplica o Filtro de Grupo
     if (filtroGrupo !== "TODOS") {
         dadosFiltrados = dadosFiltrados.filter(c => {
             let totalPedidos = c.total_pedidos || 0;
@@ -177,16 +179,24 @@ function renderizarPaginaRelatorio() {
         });
     }
 
+    // 3. A MÁGICA DO CONTADOR DE CADASTROS:
     const totalItens = dadosFiltrados.length;
+    const contadorElem = document.getElementById('contador-cadastros');
+    if (contadorElem) {
+        contadorElem.innerText = `${totalItens} cadastro(s)`;
+    }
+
+    // 4. Lógica de Paginação Front-end
     const totalPaginas = Math.ceil(totalItens / itensPorPaginaRelatorio);
     if (paginaAtualRelatorio > totalPaginas && totalPaginas > 0) paginaAtualRelatorio = totalPaginas;
     const inicio = (paginaAtualRelatorio - 1) * itensPorPaginaRelatorio;
     const fim = inicio + itensPorPaginaRelatorio;
     const itensDaPagina = dadosFiltrados.slice(inicio, fim);
 
+    // 5. Desenha a Tabela
     tbody.innerHTML = ''; 
     if (itensDaPagina.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhum cliente encontrado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">Nenhum cliente encontrado com estes filtros.</td></tr>';
     } else {
         itensDaPagina.forEach(cliente => {
             const valTotalNum = parseFloat(cliente.valor_total || 0);

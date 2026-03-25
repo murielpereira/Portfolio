@@ -1,29 +1,47 @@
 <section class="card">
-    <div class="card-header-actions">
-        <div class="filtros-area" style="flex-wrap: wrap;">
-            <label for="filtro-texto">Buscar:</label>
-            <input type="text" id="filtro-texto" class="input-padrao" placeholder="Nome ou CPF/CNPJ..." onkeyup="resetarEPaginacao()" style="max-width: 250px; padding: 8px;">
+    <!-- Cabeçalho de Ações: Usamos display: flex para alinhar tudo horizontalmente -->
+    <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center;">
+        
+        <!-- Área Esquerda: Filtros e Contador -->
+        <div class="filtros-area" style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+            
+            <!-- Grupo 1: Buscar -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label for="filtro-texto" style="margin: 0; font-weight: bold; color: #475569;">Buscar:</label>
+                <input type="text" id="filtro-texto" class="input-padrao" placeholder="Nome ou CPF/CNPJ..." onkeyup="resetarEPaginacao()" style="width: 220px; padding: 8px;">
+            </div>
+            
+            <!-- Grupo 2: Seleção de Categoria -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label for="filtro-grupo" style="margin: 0; font-weight: bold; color: #475569;">Grupo:</label>
+                <select id="filtro-grupo" class="input-padrao" onchange="resetarEPaginacao()" style="width: 180px; padding: 8px; cursor: pointer;">
+                    <option value="TODOS">Todos os Grupos</option>
+                    <option value="SEM COMPRAS">Sem Compras</option>
+                    <option value="PRIMEIRA COMPRA">1ª Compra</option>
+                    <option value="BRONZE">Bronze</option>
+                    <option value="PRATA">Prata</option>
+                    <option value="OURO">Ouro</option>
+                    <option value="DIAMANTE">Diamante</option>
+                </select>
+            </div>
 
-            <label for="filtro-grupo" style="margin-left: 15px;">Grupo:</label>
-            <select id="filtro-grupo" onchange="resetarEPaginacao()">
-                <option value="TODOS">Todos os Grupos</option>
-                <option value="SEM COMPRAS">Sem Compras</option>
-                <option value="PRIMEIRA COMPRA">1ª Compra</option>
-                <option value="BRONZE">Bronze</option>
-                <option value="PRATA">Prata</option>
-                <option value="OURO">Ouro</option>
-                <option value="DIAMANTE">Diamante</option>
-            </select>
+            <!-- Grupo 3: A Etiqueta do Contador -->
+            <span id="contador-cadastros" style="background: #e2e8f0; color: #334155; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
+                0 cadastros
+            </span>
         </div>
-        <button onclick="sincronizarTiny()" class="btn-azul">
-            <span class="material-symbols-outlined">sync</span>
-            Atualizar com Tiny
-        </button>
-        <!-- Adicione este botão logo após o botão btn-azul que já existe -->
-        <button onclick="calcularHistoricoMassa()" id="btn-calc-massa" class="btn-primario" style="margin-left: 10px;">
-            <span class="material-symbols-outlined">calculate</span>
-            Calcular Histórico Financeiro
-        </button>
+        
+        <!-- Área Direita: Botões -->
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="sincronizarTiny()" class="btn-azul">
+                <span class="material-symbols-outlined">sync</span>
+                Atualizar com Tiny
+            </button>
+            <button onclick="calcularHistoricoMassa()" id="btn-calc-massa" class="btn-primario">
+                <span class="material-symbols-outlined">calculate</span>
+                Calcular Histórico
+            </button>
+        </div>
     </div>
     
     <div class="tabela-responsiva">
@@ -36,12 +54,12 @@
                     <th>Cidade</th>
                     <th>UF</th>
                     <th>Grupo</th> 
-                    <th class="col-sort" onclick="ordenarTabela(6)" id="th-pedidos">Pedidos <span id="sort-icon-6">↕️</span></th>
-                    <th class="col-sort" onclick="ordenarTabela(7)" id="th-valor">Valor Total <span id="sort-icon-7">↕️</span></th>
+                    <th class="col-sort" onclick="ordenarTabela(6)" id="th-pedidos" title="Clique para ordenar">Pedidos <span id="sort-icon-6">↕️</span></th>
+                    <th class="col-sort" onclick="ordenarTabela(7)" id="th-valor" title="Clique para ordenar">Valor Total <span id="sort-icon-7">↕️</span></th>
                 </tr>
             </thead>
             <tbody id="tabela-clientes-body">
-                <tr><td colspan="8">Buscando banco de dados Waltz...</td></tr>
+                <tr><td colspan="8" style="text-align:center; padding: 30px;">Buscando banco de dados Waltz...</td></tr>
             </tbody>
         </table>
     </div>
