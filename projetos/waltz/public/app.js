@@ -215,7 +215,6 @@ function getTemplatePainel() {
 // MÓDULO 3: AUTENTICAÇÃO E INICIALIZAÇÃO SPA
 // ============================================================================
 
-// O Gatilho Inicial: Executado assim que a página carrega
 document.addEventListener('DOMContentLoaded', async () => {
     await inicializarApp();
 });
@@ -229,12 +228,10 @@ async function inicializarApp() {
         const dados = await resposta.json();
 
         if (dados.logado) {
-            // Injeta o HTML do Painel
             appDiv.innerHTML = getTemplatePainel();
             document.getElementById('btn-logout')?.addEventListener('click', realizarLogout);
-            mostrarSubPaginaDash('tiny'); // Aciona a primeira aba
+            mostrarSubPaginaDash('tiny'); 
         } else {
-            // Injeta o HTML do Login
             appDiv.innerHTML = getTemplateLogin();
             document.getElementById('form-login')?.addEventListener('submit', realizarLogin);
             document.getElementById('btn-mostrar-senha')?.addEventListener('click', toggleSenha);
@@ -338,7 +335,6 @@ async function enviarFeedbackWpp(idPedido, telefone, nome, numPedido, produtosCo
         trechoProdutos = `\n\n📦 *Itens do pedido:* ${produtos}`;
     }
 
-    // A MENSAGEM ATUALIZADA DA BIA
     const mensagem = `Oii ${primeiroNome}, tudo bem? Aqui é a Bia, da Âme Acessórios Pet.\n\nEstou entrando em contato pra saber se deu tudo certo com o seu pedido #${numPedido}.${trechoProdutos}\n\nVocê gostou do produto? Serviu direitinho? Teve algum problema ou dificuldade desde o momento da compra até a entrega?😀\n\nEsperamos sempre esse prazo para saber seu feedback, pois é o tempo que seu pet já usou e se adaptou com as nossas peças, e queremos sua opinião sincera, para que possamos sempre melhorar 🥰\n\nFico no aguardo da sua resposta.\n☺️☺️`;
     
     const linkZap = `https://wa.me/55${numeroApenasDigitos}?text=${encodeURIComponent(mensagem)}`;
@@ -392,7 +388,10 @@ function renderizarPaginaNuvem() {
     } else {
         itensDaPagina.forEach(p => {
             const dataO = new Date(p.data_criacao);
-            const dataF = dataO.toLocaleDateString('pt-BR') + ' ' + dataO.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+            
+            // A CORREÇÃO DO FUSO HORÁRIO ESTÁ AQUI: Forçamos a exibição em 'UTC'
+            const dataF = dataO.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) + ' ' + dataO.toLocaleTimeString('pt-BR', { timeZone: 'UTC', hour: '2-digit', minute:'2-digit' });
+            
             const cpfFormatado = formatarDocumento(p.cpf_cliente || '-');
             
             let acaoFeedback = `<span class="selo status-wpp-pendente">Aguardando</span>`;
@@ -478,9 +477,7 @@ async function carregarClientesTinyDB() {
     }
 }
 
-// Função responsável por gerar o HTML do selo de classificação do cliente
 function classificarClienteVisual(totalPedidos, valorTotal) {
-    // Retorna o selo usando as classes exatas do seu style.css (sem o prefixo 'selo-')
     if (totalPedidos === 0) return '<span class="selo sem-compra">Sem Compras</span>';
     if (totalPedidos === 1) return '<span class="selo primeira-compra">1ª Compra</span>';
     if (valorTotal <= 1000) return '<span class="selo bronze">Bronze</span>';
