@@ -114,13 +114,15 @@ async function fetchComRetry(url, options, tentativas = 3) {
 }
 
 // ==========================================
-// WEBHOOK: NUVEMSHOP (Busca Inteligente, Filtro e Retry)
+// WEBHOOK: NUVEMSHOP (Busca Inteligente, Filtro e Retry - Correção Vercel)
 // ==========================================
 app.post('/api/webhook/nuvemshop', async (req, res) => {
-    res.status(200).send('Recebido'); 
-
     const payload = req.body;
-    if (!payload || !payload.id) return;
+    
+    // Se não tiver ID válido, encerra a conversa rapidamente
+    if (!payload || !payload.id) {
+        return res.status(200).send('Ignorado - Sem ID'); 
+    }
 
     const idPedidoNuvem = payload.id;
     const evento = payload.event || req.headers['x-linked-store-event'] || 'Atualização';
@@ -131,7 +133,7 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
         const STORE_ID = process.env.NUVEMSHOP_STORE_ID;
         const ACCESS_TOKEN = process.env.NUVEMSHOP_TOKEN;
 
-        // USA O NOVO SISTEMA BLINDADO AQUI
+        // Usa o sistema blindado de tentativas (Retry)
         const resposta = await fetchComRetry(`https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${idPedidoNuvem}`, {
             headers: { 'Authentication': `bearer ${ACCESS_TOKEN}`, 'User-Agent': 'Waltz' }
         });
@@ -153,31 +155,28 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
         transportadora = transportadora.replace(/via SmartEnvios/gi, '').trim();
         const rastreio = dadosPedido.shipping_tracking_number || '';
         
-        // ---------------------------------------------------------
-        // A NOVA REGRA DE STATUS (Lendo todas as "gavetas")
-        // ---------------------------------------------------------
+        // Regras de Status
         let status = 'Aberto';
         const statusPrincipal = (dadosPedido.status || '').toLowerCase();
         const statusPagamento = (dadosPedido.payment_status || '').toLowerCase();
-        const statusEnvio = (dadosPedido.shipping_status || '').toLowerCase(); // NOVA GAVETA
+        const statusEnvio = (dadosPedido.shipping_status || '').toLowerCase();
 
         if (statusPrincipal === 'closed') status = 'Arquivado';
-        if (statusEnvio === 'delivered') status = 'Entregue'; // Se estiver entregue lá, atualiza aqui!
+        if (statusEnvio === 'delivered') status = 'Entregue';
         
-        // Regra de cancelamento (é a mais forte, por isso fica no final)
         if (
             statusPrincipal === 'canceled' || statusPrincipal === 'cancelled' ||
             statusPagamento === 'canceled' || statusPagamento === 'voided' || statusPagamento === 'abandoned'
         ) {
             status = 'Cancelado';
         }
-        // ---------------------------------------------------------
 
         let listaProdutos = '';
         if (dadosPedido.products && Array.isArray(dadosPedido.products)) {
             listaProdutos = dadosPedido.products.map(item => `${item.quantity}x ${item.name}`).join(', ');
         }
 
+        // Salva no Banco de Dados Postgres
         await sql`
             INSERT INTO pedidos_nuvemshop (
                 id_pedido, numero_pedido, data_criacao, nome_cliente, cpf_cliente, telefone,
@@ -199,9 +198,18 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
                 data_envio = EXCLUDED.data_envio,
                 produtos = EXCLUDED.produtos;
         `;
+        
         console.log(`✅ SUCESSO! Pedido #${numero_pedido} salvo! Status: ${status}`);
+        
+        // -------------------------------------------------------------
+        // SOMENTE AQUI, DEPOIS DE TUDO PRONTO, LIBERAMOS A RESPOSTA!
+        // -------------------------------------------------------------
+        res.status(200).send('Processado e salvo com sucesso');
+
     } catch (erro) {
         console.error(`❌ Erro definitivo ao processar webhook Nuvemshop:`, erro.message);
+        // Mesmo se der erro na lógica, respondemos OK para a Nuvemshop não ficar repetindo infinitamente
+        res.status(200).send('Falha interna, mas recebido'); 
     }
 });
 
@@ -209,69 +217,73 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
 // ROBÔ DE RASTREAMENTO: SMARTENVIOS (Agendado via Vercel Cron)
 // ==========================================
 app.get('/api/cron/verificar-entregas', async (req, res) => {
-    console.log("🤖 Iniciando verificação automática de rastreios...");
+    console.log("🤖 Iniciando verificação automática de rastreios (Cron Job da Madrugada)...");
     
     try {
-        // Busca no banco de dados pedidos criados há mais de 15 dias, com rastreio e que não estão Entregues
         const { rows: pedidosPendentes } = await sql`
             SELECT id_pedido, numero_pedido, rastreio 
             FROM pedidos_nuvemshop
             WHERE rastreio IS NOT NULL 
               AND rastreio != '' 
-              AND status_nuvemshop != 'Entregue'
-              AND data_criacao <= NOW() - INTERVAL '15 days';
+              AND status_nuvemshop = 'Aberto';
         `;
 
-        console.log(`🔎 Encontrados ${pedidosPendentes.length} pedidos antigos para verificar.`);
+        console.log(`🔎 Encontrados ${pedidosPendentes.length} pedidos em trânsito.`);
 
         let atualizados = 0;
         const TOKEN_SMART = process.env.SMARTENVIOS_TOKEN;
+        const STORE_ID = process.env.NUVEMSHOP_STORE_ID;
+        const TOKEN_NUVEM = process.env.NUVEMSHOP_TOKEN;
         const URL_API = "https://api.smartenvios.com/v1/freight-order/tracking";
 
-        // Loop de verificação
         for (const pedido of pedidosPendentes) {
             try {
-                const resposta = await fetch(URL_API, {
+                const respostaSmart = await fetch(URL_API, {
                     method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json", 
-                        "Accept": "application/json", 
-                        "token": TOKEN_SMART 
-                    },
+                    headers: { "Content-Type": "application/json", "Accept": "application/json", "token": TOKEN_SMART },
                     body: JSON.stringify({ "tracking_code": pedido.rastreio })
                 });
 
-                if (resposta.ok) {
-                    const json = await resposta.json();
-                    const r = json.result;
+                if (respostaSmart.ok) {
+                    const jsonSmart = await respostaSmart.json();
+                    const resultado = jsonSmart.result;
 
-                    if (r && r.trackings && r.trackings.length > 0) {
-                        const eventos = r.trackings.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    if (resultado && resultado.trackings && resultado.trackings.length > 0) {
+                        const eventos = resultado.trackings.sort((a, b) => new Date(b.date) - new Date(a.date));
                         const statusAtual = eventos[0].code.tracking_type;
 
                         if (statusAtual === 'DELIVERED') {
-                            await sql`
-                                UPDATE pedidos_nuvemshop 
-                                SET status_nuvemshop = 'Entregue'
-                                WHERE id_pedido = ${pedido.id_pedido};
-                            `;
-                            console.log(`✅ Pedido #${pedido.numero_pedido} marcado como ENTREGUE!`);
-                            atualizados++;
+                            
+                            const respostaNuvem = await fetch(`https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${pedido.id_pedido}`, {
+                                method: "PUT",
+                                headers: { 
+                                    'Authentication': `bearer ${TOKEN_NUVEM}`, 
+                                    'Content-Type': 'application/json',
+                                    'User-Agent': 'Waltz'
+                                },
+                                body: JSON.stringify({ shipping_status: "delivered" })
+                            });
+
+                            if (!respostaNuvem.ok) {
+                                console.error(`⚠️ Nuvemshop recusou pedido #${pedido.numero_pedido}.`);
+                            } else {
+                                console.log(`📡 Solicitação enviada à Nuvemshop (Pedido #${pedido.numero_pedido}).`);
+                                atualizados++;
+                            }
+                            // ❌ Banco de dados local intocado! O Webhook assume daqui.
                         }
                     }
                 }
             } catch (erroLoop) {
                 console.error(`⚠️ Falha ao verificar rastreio do pedido #${pedido.numero_pedido}:`, erroLoop.message);
             }
-            
-            // Pausa de 500ms para não bombardear o servidor da SmartEnvios
-            await delay(500);
+            await delay(1000);
         }
 
-        res.json({ sucesso: true, mensagem: `Verificação concluída. ${atualizados} pedidos atualizados para Entregue.` });
+        res.json({ sucesso: true, mensagem: `Processo concluído. ${atualizados} pedidos notificados à Nuvemshop.` });
 
     } catch (erro) {
-        console.error("❌ Erro fatal no Robô de Rastreamento:", erro);
+        console.error("❌ Erro fatal no Robô de Rastreamento:", erro.message);
         res.status(500).json({ sucesso: false, erro: "Falha na verificação." });
     }
 });
