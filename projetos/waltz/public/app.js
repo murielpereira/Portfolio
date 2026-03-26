@@ -84,6 +84,12 @@ function getTemplatePainel() {
                         Pedidos
                     </div>
                 </li>
+                <li>
+                    <div id="nav-cep" class="nav-link" onclick="mostrarSubPaginaDash('cep')">
+                        <span class="material-symbols-outlined">map</span>
+                        Regiões e CEPs
+                    </div>
+                </li>
             </ul>
             <div class="user-menu-area" style="margin-top: auto; border-top: 1px solid #2d3748; padding-top: 20px;">
                 <button id="btn-logout" class="btn-sair">
@@ -210,6 +216,44 @@ function getTemplatePainel() {
                     </section>
                 </div>
 
+                <!-- ========================================== -->
+                <!-- ABA CEPs E REGIÕES (Média de Entregas)     -->
+                <!-- ========================================== -->
+                <div id="sub-cep" class="sub-pagina" style="display: none;">
+                    <section class="card">
+                        <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div class="filtros-area" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: bold; color: #475569;">Buscar CEP:</label>
+                                    <input type="text" id="busca-cep-analise" class="input-padrao" placeholder="Ex: 01000-000" onkeyup="renderizarTabelaCEPs()" style="width: 150px; padding: 8px;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: bold; color: #475569;">Estado/UF:</label>
+                                    <input type="text" id="busca-uf-analise" class="input-padrao" placeholder="Ex: SP, Paraná..." onkeyup="renderizarTabelaCEPs()" style="width: 150px; padding: 8px;">
+                                </div>
+                                <span style="font-size: 12px; color: #64748b; margin-left: 10px;">
+                                    *Apenas pedidos já entregues são contabilizados.
+                                </span>
+                            </div>
+                        </div>
+                        <div class="tabela-responsiva">
+                            <table class="tabela-dados">
+                                <thead>
+                                    <tr>
+                                        <th>Estado (UF)</th>
+                                        <th>CEP Base</th>
+                                        <th>Média de Tempo de Entrega</th>
+                                        <th>Volume (Qtd de Pedidos)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpo-tabela-ceps">
+                                    <tr><td colspan="4" style="text-align: center; padding: 30px;">Aguardando processamento analítico...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
             </div>
         </main>
     </div>`;
@@ -298,6 +342,11 @@ async function mostrarSubPaginaDash(idAlvo) {
     } else if (idAlvo === 'nuvem') {
         document.getElementById('dash-page-title').innerText = "Pedidos";
         await carregarPedidosNuvemDB();
+    } else if (idAlvo === 'cep') { // 👇 NOVA REGRA AQUI
+        document.getElementById('dash-page-title').innerText = "Desempenho Logístico por Região";
+        // Garante que a lista de pedidos esteja carregada para fazermos a matemática
+        if (todosOsPedidosNuvem.length === 0) await carregarPedidosNuvemDB(); 
+        renderizarTabelaCEPs();
     }
 }
 
@@ -663,3 +712,93 @@ function renderizarControlesPaginacao(totalPaginas) {
 function mudarPagina(delta) { paginaAtualRelatorio += delta; renderizarPaginaRelatorio(); }
 function irParaPagina(pagina) { paginaAtualRelatorio = pagina; renderizarPaginaRelatorio(); }
 function resetarEPaginacao() { paginaAtualRelatorio = 1; renderizarPaginaRelatorio(); }
+
+// ============================================================================
+// MÓDULO 6: INTELIGÊNCIA LOGÍSTICA (Análise de CEPs)
+// ============================================================================
+
+function renderizarTabelaCEPs() {
+    const tbody = document.getElementById('corpo-tabela-ceps');
+    if (!tbody) return;
+
+    // 1. Pega o que o usuário digitou na tela e limpa a formatação
+    const filtroCep = (document.getElementById("busca-cep-analise")?.value || "").replace(/\D/g, '');
+    const filtroUF = (document.getElementById("busca-uf-analise")?.value || "").toLowerCase().trim();
+
+    // 2. Cria uma "caixa" (Objeto) para agrupar os dados
+    let analiseAgrupada = {};
+
+    // 3. Varre todos os pedidos da base de dados
+    todosOsPedidosNuvem.forEach(p => {
+        // Só fazemos a conta se o pedido tiver data de envio e data de entrega
+        if (!p.data_envio || !p.data_entrega) return;
+        
+        const status = (p.status_nuvemshop || '').toUpperCase();
+        if (status !== 'ENTREGUE' && status !== 'ARQUIVADO') return;
+
+        const cepOriginal = p.cep || '';
+        const cepLimpo = cepOriginal.replace(/\D/g, '');
+        const ufOriginal = p.estado || 'Não Informado';
+        const ufLimpo = ufOriginal.toLowerCase();
+
+        // Aplica os filtros da barra de pesquisa em tempo real
+        if (filtroCep && !cepLimpo.includes(filtroCep)) return;
+        if (filtroUF && !ufLimpo.includes(filtroUF)) return;
+
+        // Calcula a quantidade de dias físicos que a entrega levou
+        const dataEnvio = new Date(p.data_envio);
+        const dataEntrega = new Date(p.data_entrega);
+        const diffDias = Math.ceil(Math.abs(dataEntrega - dataEnvio) / (1000 * 60 * 60 * 24));
+
+        // Cria uma chave única para agrupar (Ex: "SP-01000")
+        // Agrupamos pelos primeiros 5 dígitos do CEP (região) para a média fazer mais sentido
+        const cepBase = cepLimpo.length >= 5 ? cepLimpo.substring(0, 5) + '-***' : cepLimpo;
+        const chaveGrupo = `${ufOriginal}|${cepBase}`;
+
+        // Se o grupo ainda não existir, cria-o
+        if (!analiseAgrupada[chaveGrupo]) {
+            analiseAgrupada[chaveGrupo] = {
+                estado: ufOriginal,
+                cep: cepBase,
+                somaDias: 0,
+                quantidadePedidos: 0
+            };
+        }
+
+        // Adiciona a matemática a este grupo
+        analiseAgrupada[chaveGrupo].somaDias += diffDias;
+        analiseAgrupada[chaveGrupo].quantidadePedidos += 1;
+    });
+
+    // 4. Transforma a "caixa" numa lista (Array) e calcula a média final
+    let resultados = Object.values(analiseAgrupada).map(item => {
+        return {
+            estado: item.estado,
+            cep: item.cep,
+            mediaDias: Math.round(item.somaDias / item.quantidadePedidos),
+            quantidade: item.quantidadePedidos
+        };
+    });
+
+    // 5. Ordena a lista para mostrar primeiro os locais com maior volume de pedidos
+    resultados.sort((a, b) => b.quantidade - a.quantidade);
+
+    // 6. Desenha a tabela na tela
+    tbody.innerHTML = '';
+    
+    if (resultados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico de entrega encontrado para esta região.</td></tr>';
+        return;
+    }
+
+    resultados.forEach(r => {
+        const linha = document.createElement('tr');
+        linha.innerHTML = `
+            <td>${r.estado}</td>
+            <td style="font-family: monospace; font-size: 14px;">${r.cep || 'Sem CEP'}</td>
+            <td style="font-weight: bold; color: #2563eb; font-size: 15px;">${r.mediaDias} dias</td>
+            <td style="color: #475569;">${r.quantidade} entregas mapeadas</td>
+        `;
+        tbody.appendChild(linha);
+    });
+}

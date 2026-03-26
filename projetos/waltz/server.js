@@ -239,7 +239,7 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
     console.log("🤖 Iniciando verificação automática de rastreios (Cron Job da Madrugada)...");
     
     try {
-        // Puxa os pedidos que estão em trânsito
+        // Puxa os pedidos que estão em trânsito (Abertos) e que possuem rastreio
         const { rows: pedidosPendentes } = await sql`
             SELECT id_pedido, numero_pedido, rastreio 
             FROM pedidos_nuvemshop
@@ -256,9 +256,10 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
         const TOKEN_NUVEM = process.env.NUVEMSHOP_TOKEN;
         const URL_API = "https://api.smartenvios.com/v1/freight-order/tracking";
 
+        // Loop passando por cada pedido pendente
         for (const pedido of pedidosPendentes) {
             try {
-                // Pergunta à SmartEnvios
+                // 1. Pergunta o histórico à SmartEnvios
                 const respostaSmart = await fetch(URL_API, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Accept": "application/json", "token": TOKEN_SMART },
@@ -270,13 +271,22 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
                     const resultado = jsonSmart.result;
 
                     if (resultado && resultado.trackings && resultado.trackings.length > 0) {
-                        const eventos = resultado.trackings.sort((a, b) => new Date(b.date) - new Date(a.date));
-                        const statusAtual = eventos[0].code.tracking_type;
+                        
+                        // 2. A MÁGICA DO TEMPO: Ordena os eventos do mais antigo (coleta) para o mais novo (hoje)
+                        const eventosOrdenados = resultado.trackings.sort((a, b) => new Date(a.date) - new Date(b.date));
+                        
+                        // Pega o status do último evento que aconteceu
+                        const ultimoEvento = eventosOrdenados[eventosOrdenados.length - 1];
+                        const statusAtual = ultimoEvento.code.tracking_type;
 
                         // SE FOI ENTREGUE FISICAMENTE...
                         if (statusAtual === 'DELIVERED') {
                             
-                            // 1. A MÁGICA: Arquiva o pedido na Nuvemshop para encerrar o ciclo
+                            // 3. Captura as datas reais da transportadora
+                            const dataColetaReal = new Date(eventosOrdenados[0].date);
+                            const dataEntregaReal = new Date(ultimoEvento.date);
+
+                            // 4. Arquiva o pedido na Nuvemshop para encerrar o ciclo na plataforma deles
                             const respostaNuvem = await fetch(`https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${pedido.id_pedido}`, {
                                 method: "PUT",
                                 headers: { 
@@ -290,13 +300,15 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
                             if (!respostaNuvem.ok) {
                                 console.error(`⚠️ Nuvemshop recusou o arquivamento do pedido #${pedido.numero_pedido}.`);
                             } else {
-                                // 2. Atualiza o banco do Waltz (Seta como Arquivado e preenche a data de entrega pro BI)
+                                // 5. Atualiza o banco do Waltz com o status Arquivado E as datas precisas!
                                 await sql`
                                     UPDATE pedidos_nuvemshop 
-                                    SET status_nuvemshop = 'Arquivado', data_entrega = NOW()
+                                    SET status_nuvemshop = 'Arquivado',
+                                        data_envio = ${dataColetaReal},
+                                        data_entrega = ${dataEntregaReal}
                                     WHERE id_pedido = ${pedido.id_pedido};
                                 `;
-                                console.log(`📡 Sucesso! Pedido #${pedido.numero_pedido} entregue na transportadora e Arquivado na Nuvemshop.`);
+                                console.log(`📡 Sucesso! Pedido #${pedido.numero_pedido} arquivado. Coleta: ${dataColetaReal.toLocaleDateString()} | Entrega: ${dataEntregaReal.toLocaleDateString()}`);
                                 atualizados++;
                             }
                         }
@@ -306,11 +318,11 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
                 console.error(`⚠️ Falha ao verificar rastreio do pedido #${pedido.numero_pedido}:`, erroLoop.message);
             }
             
-            // Pausa de segurança de 1 segundo para não sobrecarregar as APIs
+            // Pausa de segurança de 1 segundo para não sobrecarregar as APIs (Rate Limit)
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        res.json({ sucesso: true, mensagem: `Processo concluído. ${atualizados} pedidos entregues e arquivados.` });
+        res.json({ sucesso: true, mensagem: `Processo concluído. ${atualizados} pedidos entregues e arquivados com datas exatas.` });
 
     } catch (erro) {
         console.error("❌ Erro fatal no Robô de Rastreamento:", erro.message);
