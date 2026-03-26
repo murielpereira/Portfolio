@@ -111,15 +111,15 @@ function getTemplatePainel() {
                                     <input type="text" id="filtro-texto" class="input-padrao" placeholder="Nome ou CPF/CNPJ..." onkeyup="resetarEPaginacao()" style="width: 220px; padding: 8px;">
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-weight: bold; color: #475569;">Grupo:</label>
-                                    <select id="filtro-grupo" class="input-padrao" onchange="resetarEPaginacao()" style="width: 180px; padding: 8px; cursor: pointer;">
-                                        <option value="TODOS">Todos os Grupos</option>
-                                        <option value="SEM COMPRAS">Sem Compras</option>
-                                        <option value="PRIMEIRA COMPRA">1ª Compra</option>
-                                        <option value="BRONZE">Bronze</option>
-                                        <option value="PRATA">Prata</option>
-                                        <option value="OURO">Ouro</option>
-                                        <option value="DIAMANTE">Diamante</option>
+                                    <!-- Menu suspenso de Status -->
+                                    <label style="margin-left:15px; font-weight:bold; font-size:12px; color:#475569;">Status:</label>
+                                    <select id="filtro-status-nuvem" onchange="paginaAtualNuvem = 1; renderizarPaginaNuvem()" style="padding:6px; border:1px solid #cbd5e1; border-radius:6px; outline:none; font-size:13px; margin-left:5px;">
+                                        <option value="TODOS">Todos</option>
+                                        <option value="Aberto">Aberto</option>
+                                        <!-- Adicionamos a opção Entregue logo abaixo de Aberto -->
+                                        <option value="Entregue">Entregue</option>
+                                        <option value="Arquivado">Arquivado</option>
+                                        <option value="Cancelado">Cancelado</option>
                                     </select>
                                 </div>
                                 <span id="contador-cadastros" style="background: #e2e8f0; color: #334155; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold;">
