@@ -368,15 +368,75 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
 }
 
 // ==========================================
-// ROTAS DE RELATÓRIOS E BANCO DE DADOS TINY
+// ROTA: RELATÓRIO DE CLIENTES (BI - CRUZAMENTO DE DADOS)
 // ==========================================
 app.get('/api/relatorios/clientes', async (req, res) => {
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+
     try {
-        const { rows } = await sql`SELECT * FROM clientes ORDER BY nome ASC`;
-        res.json({ sucesso: true, clientes: rows });
+        // 1. A Mágica do SQL Relacional (JOIN) e Agrupamento (GROUP BY)
+        const { rows: clientesBI } = await sql`
+            SELECT 
+                c.cpf, 
+                c.nome, 
+                c.telefone, 
+                c.cidade, 
+                c.estado,
+                COUNT(p.id_pedido) AS total_pedidos,
+                COALESCE(SUM(p.valor_total), 0) AS valor_total,
+                COALESCE(AVG(p.valor_total), 0) AS ticket_medio,
+                COALESCE(AVG(p.valor_frete), 0) AS frete_medio,
+                AVG(EXTRACT(EPOCH FROM (p.data_entrega - p.data_criacao)) / 86400) AS tempo_medio_entrega_dias,
+                STRING_AGG(p.produtos, ' || ') AS todos_produtos
+            FROM clientes c
+            LEFT JOIN pedidos_nuvemshop p 
+                ON c.cpf = p.cpf_cliente AND p.status_nuvemshop != 'Cancelado'
+            GROUP BY c.cpf, c.nome, c.telefone, c.cidade, c.estado
+            ORDER BY valor_total DESC;
+        `;
+
+        // 2. Processamento em JavaScript para a Quantidade de Produtos
+        const clientesProcessados = clientesBI.map(cliente => {
+            let totalItensComprados = 0;
+            
+            // Lendo o texto de produtos (ex: "2x Guia || 1x Coleira")
+            if (cliente.todos_produtos) {
+                // Separa o texto toda vez que achar uma vírgula ou "||"
+                const partes = cliente.todos_produtos.split(/[,||]+/); 
+                
+                partes.forEach(parte => {
+                    const textoLimpo = parte.trim();
+                    // Regex: Procura qualquer número (\d+) que esteja colado num "x"
+                    const match = textoLimpo.match(/^(\d+)x/); 
+                    if (match) {
+                        totalItensComprados += parseInt(match[1], 10);
+                    }
+                });
+            }
+
+            // Calcula a média de produtos por compra
+            const mediaProdutos = cliente.total_pedidos > 0 ? (totalItensComprados / cliente.total_pedidos).toFixed(1) : 0;
+
+            // 3. Monta o "Pacote Final" para enviar ao Front-end
+            return {
+                cpf: cliente.cpf,
+                nome: cliente.nome,
+                telefone: cliente.telefone,
+                cidade: cliente.cidade,
+                estado: cliente.estado,
+                total_pedidos: parseInt(cliente.total_pedidos),
+                valor_total: parseFloat(cliente.valor_total),
+                ticket_medio: parseFloat(cliente.ticket_medio),
+                frete_medio: parseFloat(cliente.frete_medio),
+                tempo_medio_entrega_dias: Math.round(cliente.tempo_medio_entrega_dias || 0), // Arredonda para dias inteiros
+                media_produtos_por_compra: parseFloat(mediaProdutos)
+            };
+        });
+
+        res.json({ sucesso: true, clientes: clientesProcessados });
     } catch (erro) {
-        res.status(500).json({ sucesso: false });
+        console.error("❌ Erro ao gerar BI de clientes:", erro);
+        res.status(500).json({ sucesso: false, erro: 'Erro interno ao cruzar dados.' });
     }
 });
 

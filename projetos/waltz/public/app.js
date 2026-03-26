@@ -131,14 +131,18 @@ function getTemplatePainel() {
                             <table class="tabela-dados">
                                 <thead>
                                     <tr>
-                                        <th>Nome</th>
-                                        <th>WhatsApp</th>
-                                        <th>CPF/CNPJ</th>
-                                        <th>Cidade</th>
-                                        <th>UF</th>
-                                        <th>Grupo</th> 
+                                        <th class="col-sort" onclick="ordenarTabela(0)">Nome <span id="sort-icon-0">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(1)">WhatsApp <span id="sort-icon-1">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(2)">CPF/CNPJ <span id="sort-icon-2">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(3)">Cidade <span id="sort-icon-3">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(4)">UF <span id="sort-icon-4">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(5)">Grupo <span id="sort-icon-5">↕️</span></th> 
                                         <th class="col-sort" onclick="ordenarTabela(6)">Pedidos <span id="sort-icon-6">↕️</span></th>
-                                        <th class="col-sort" onclick="ordenarTabela(7)">Valor Total <span id="sort-icon-7">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(7)">Itens/Compra <span id="sort-icon-7">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(8)">Ticket Médio <span id="sort-icon-8">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(9)">Frete Médio <span id="sort-icon-9">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(10)">Entrega <span id="sort-icon-10">↕️</span></th>
+                                        <th class="col-sort" onclick="ordenarTabela(11)">Valor Total <span id="sort-icon-11">↕️</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-clientes-body">
@@ -404,8 +408,10 @@ function renderizarPaginaNuvem() {
         itensDaPagina.forEach(p => {
             const dataO = new Date(p.data_criacao);
             
-            // A CORREÇÃO DO FUSO HORÁRIO ESTÁ AQUI: Forçamos a exibição em 'UTC'
-            const dataF = dataO.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) + ' ' + dataO.toLocaleTimeString('pt-BR', { timeZone: 'UTC', hour: '2-digit', minute:'2-digit' });
+            // CORREÇÃO DEFINITIVA DO FUSO HORÁRIO: Horário Oficial de Brasília
+            const opcoesData = { timeZone: 'America/Sao_Paulo' };
+            const opcoesHora = { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute:'2-digit' };
+            const dataF = dataO.toLocaleDateString('pt-BR', opcoesData) + ' ' + dataO.toLocaleTimeString('pt-BR', opcoesHora);
             
             const cpfFormatado = formatarDocumento(p.cpf_cliente || '-');
             
@@ -502,20 +508,48 @@ function classificarClienteVisual(totalPedidos, valorTotal) {
 }
 
 function ordenarTabela(colIndex) {
+    // 1. Define se vai ser crescente ou decrescente
     if (colunaOrdenacao === colIndex) {
         ordemCrescente = !ordemCrescente;
     } else {
         colunaOrdenacao = colIndex;
         ordemCrescente = true;
     }
+
+    // 2. Ordena a base de dados
     todaABaseDeClientes.sort((a, b) => {
         let valA, valB;
-        if (colIndex === 6) { valA = a.total_pedidos || 0; valB = b.total_pedidos || 0; }
-        else if (colIndex === 7) { valA = parseFloat(a.valor_total || 0); valB = parseFloat(b.valor_total || 0); }
-        return ordemCrescente ? valA - valB : valB - valA;
+        
+        // O Motor sabe exatamente que tipo de dado está em cada coluna
+        switch(colIndex) {
+            case 0: valA = (a.nome || '').toLowerCase(); valB = (b.nome || '').toLowerCase(); break;
+            case 1: valA = (a.telefone || '').replace(/\D/g, ''); valB = (b.telefone || '').replace(/\D/g, ''); break;
+            case 2: valA = (a.cpf || '').replace(/\D/g, ''); valB = (b.cpf || '').replace(/\D/g, ''); break;
+            case 3: valA = (a.cidade || '').toLowerCase(); valB = (b.cidade || '').toLowerCase(); break;
+            case 4: valA = (a.estado || '').toLowerCase(); valB = (b.estado || '').toLowerCase(); break;
+            case 5: valA = parseFloat(a.valor_total || 0); valB = parseFloat(b.valor_total || 0); break; // O Grupo é baseado no valor
+            case 6: valA = parseInt(a.total_pedidos || 0); valB = parseInt(b.total_pedidos || 0); break;
+            case 7: valA = parseFloat(a.media_produtos_por_compra || 0); valB = parseFloat(b.media_produtos_por_compra || 0); break;
+            case 8: valA = parseFloat(a.ticket_medio || 0); valB = parseFloat(b.ticket_medio || 0); break;
+            case 9: valA = parseFloat(a.frete_medio || 0); valB = parseFloat(b.frete_medio || 0); break;
+            case 10: valA = parseInt(a.tempo_medio_entrega_dias || 0); valB = parseInt(b.tempo_medio_entrega_dias || 0); break;
+            case 11: valA = parseFloat(a.valor_total || 0); valB = parseFloat(b.valor_total || 0); break;
+        }
+
+        if (valA < valB) return ordemCrescente ? -1 : 1;
+        if (valA > valB) return ordemCrescente ? 1 : -1;
+        return 0;
     });
-    document.getElementById('sort-icon-6').innerText = colIndex === 6 ? (ordemCrescente ? '▲' : '▼') : '↕️';
-    document.getElementById('sort-icon-7').innerText = colIndex === 7 ? (ordemCrescente ? '▲' : '▼') : '↕️';
+
+    // 3. Atualiza os ícones de setinhas na tela
+    for(let i = 0; i <= 11; i++) {
+        const icon = document.getElementById(`sort-icon-${i}`);
+        if(icon) icon.innerText = '↕️'; // Reseta todos
+    }
+    const activeIcon = document.getElementById(`sort-icon-${colIndex}`);
+    if(activeIcon) activeIcon.innerText = ordemCrescente ? '▲' : '▼'; // Acende o atual
+
+    // 4. Redesenha a tela
     resetarEPaginacao();
 }
 
@@ -567,6 +601,14 @@ function renderizarPaginaRelatorio() {
             const wppFormatado = formatarWhatsAppClicavel(cliente.telefone);
             const cpfFormatado = formatarDocumento(cliente.cpf);
             
+            // Formatando as novas métricas
+            const mediaItens = parseFloat(cliente.media_produtos_por_compra || 0).toFixed(1).replace('.', ',');
+            const ticketMedio = parseFloat(cliente.ticket_medio || 0).toFixed(2).replace('.', ',');
+            const freteMedio = parseFloat(cliente.frete_medio || 0).toFixed(2).replace('.', ',');
+            
+            // Regra para tempo de entrega: se for 0, mostra '-' para não confundir
+            const tempoEntrega = cliente.tempo_medio_entrega_dias > 0 ? `${cliente.tempo_medio_entrega_dias} dias` : '-';
+            
             const linha = document.createElement('tr');
             linha.innerHTML = `
                 <td>${cliente.nome}</td>
@@ -575,8 +617,12 @@ function renderizarPaginaRelatorio() {
                 <td>${cliente.cidade || '-'}</td>
                 <td>${cliente.estado || '-'}</td>
                 <td>${seloHtml}</td>
-                <td>${cliente.total_pedidos || 0}</td>
-                <td data-valor="${valTotalNum}">R$ ${valTotalNum.toFixed(2).replace('.', ',')}</td>
+                <td style="text-align:center; font-weight:bold;">${cliente.total_pedidos || 0}</td>
+                <td style="text-align:center;">${mediaItens} unid.</td>
+                <td style="white-space:nowrap">R$ ${ticketMedio}</td>
+                <td style="white-space:nowrap; color: #64748b;">R$ ${freteMedio}</td>
+                <td style="text-align:center;">${tempoEntrega}</td>
+                <td data-valor="${valTotalNum}" style="white-space:nowrap; font-weight:bold; color: #0f172a;">R$ ${valTotalNum.toFixed(2).replace('.', ',')}</td>
             `;
             tbody.appendChild(linha);
         });
