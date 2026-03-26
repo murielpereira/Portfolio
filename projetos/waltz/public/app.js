@@ -195,6 +195,7 @@ function getTemplatePainel() {
                                         <th>Cidade</th>
                                         <th>UF</th>
                                         <th>Transportadora</th>
+                                        <th>Tempo</th>
                                         <th>Rastreio</th>
                                         <th>Status</th>
                                         <th style="text-align:center;">Feedback</th>
@@ -343,7 +344,7 @@ async function enviarFeedbackWpp(idPedido, telefone, nome, numPedido, produtosCo
         trechoProdutos = `\n\n📦 *Itens do pedido:* ${produtos}`;
     }
 
-    const mensagem = `Oii ${primeiroNome}, tudo bem? Aqui é a Bia, da Âme Acessórios Pet.\n\nEstou entrando em contato pra saber se deu tudo certo com o seu pedido #${numPedido}.${trechoProdutos}\n\nVocê gostou do produto? Serviu direitinho? Teve algum problema ou dificuldade desde o momento da compra até a entrega?😀\n\nEsperamos sempre esse prazo para saber seu feedback, pois é o tempo que seu pet já usou e se adaptou com as nossas peças, e queremos sua opinião sincera, para que possamos sempre melhorar 🥰\n\nFico no aguardo da sua resposta.\n☺️☺️`;
+    const mensagem = `Oii ${primeiroNome}, tudo bem? Aqui é a Gabi, da Âme Acessórios Pet.\n\nEstou entrando em contato pra saber se deu tudo certo com o seu pedido #${numPedido}.${trechoProdutos}\n\nVocê gostou do produto? Serviu direitinho? Teve algum problema ou dificuldade desde o momento da compra até a entrega?😀\n\nEsperamos sempre esse prazo para saber seu feedback, pois é o tempo que seu pet já usou e se adaptou com as nossas peças, e queremos sua opinião sincera, para que possamos sempre melhorar 🥰\n\nFico no aguardo da sua resposta.\n☺️☺️`;
     
     // 3. Abre a aba do WhatsApp Web para você dar o clique final
     const linkZap = `https://wa.me/55${numeroApenasDigitos}?text=${encodeURIComponent(mensagem)}`;
@@ -414,10 +415,25 @@ function renderizarPaginaNuvem() {
             
             const cpfFormatado = formatarDocumento(p.cpf_cliente || '-');
             
+            // LÓGICA DO TEMPO DE ENTREGA
+            let tempoTexto = '-';
+            // Só calculamos se o pedido tiver sido enviado e entregue
+            if (p.data_envio && p.data_entrega) {
+                const dataEnvio = new Date(p.data_envio);
+                const dataEntrega = new Date(p.data_entrega);
+                
+                // Calcula a diferença em milissegundos
+                const diffMilissegundos = Math.abs(dataEntrega - dataEnvio);
+                
+                // Converte milissegundos para dias
+                const diffDias = Math.ceil(diffMilissegundos / (1000 * 60 * 60 * 24));
+                tempoTexto = `${diffDias} d`;
+            }
+
             let acaoFeedback = `<span class="selo status-wpp-pendente">Aguardando</span>`;
             if (p.status_feedback === 'Enviado') {
                 acaoFeedback = `<span class="selo status-wpp-enviado" style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe;">Enviado</span>`;
-            } else if (p.status_nuvemshop === 'Entregue') {
+            } else if (p.status_nuvemshop === 'Entregue' || p.status_nuvemshop === 'Arquivado') {
                 const produtosSeguros = encodeURIComponent(p.produtos || ''); 
                 acaoFeedback = `<button onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '${produtosSeguros}')" style="background: #25d366; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 5px; margin: 0 auto;">Enviar WPP</button>`;
             }
@@ -431,6 +447,7 @@ function renderizarPaginaNuvem() {
                 <td>${p.cidade || '-'}</td>
                 <td>${p.estado || '-'}</td>
                 <td>${p.transportadora || '-'}</td>
+                <td style="font-weight:bold; color:#0f172a;">${tempoTexto}</td> <!-- NOVA CÉLULA AQUI -->
                 <td>${p.rastreio || '-'}</td>
                 <td>${p.status_nuvemshop || '-'}</td>
                 <td style="text-align:center;">${acaoFeedback}</td>

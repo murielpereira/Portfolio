@@ -220,6 +220,7 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
     console.log("🤖 Iniciando verificação automática de rastreios (Cron Job da Madrugada)...");
     
     try {
+        // Puxa os pedidos que estão em trânsito
         const { rows: pedidosPendentes } = await sql`
             SELECT id_pedido, numero_pedido, rastreio 
             FROM pedidos_nuvemshop
@@ -238,6 +239,7 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
 
         for (const pedido of pedidosPendentes) {
             try {
+                // Pergunta à SmartEnvios
                 const respostaSmart = await fetch(URL_API, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Accept": "application/json", "token": TOKEN_SMART },
@@ -252,8 +254,10 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
                         const eventos = resultado.trackings.sort((a, b) => new Date(b.date) - new Date(a.date));
                         const statusAtual = eventos[0].code.tracking_type;
 
+                        // SE FOI ENTREGUE FISICAMENTE...
                         if (statusAtual === 'DELIVERED') {
                             
+                            // 1. A MÁGICA: Arquiva o pedido na Nuvemshop para encerrar o ciclo
                             const respostaNuvem = await fetch(`https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${pedido.id_pedido}`, {
                                 method: "PUT",
                                 headers: { 
@@ -261,26 +265,33 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
                                     'Content-Type': 'application/json',
                                     'User-Agent': 'Waltz'
                                 },
-                                body: JSON.stringify({ shipping_status: "delivered" })
+                                body: JSON.stringify({ status: "closed" })
                             });
 
                             if (!respostaNuvem.ok) {
-                                console.error(`⚠️ Nuvemshop recusou pedido #${pedido.numero_pedido}.`);
+                                console.error(`⚠️ Nuvemshop recusou o arquivamento do pedido #${pedido.numero_pedido}.`);
                             } else {
-                                console.log(`📡 Solicitação enviada à Nuvemshop (Pedido #${pedido.numero_pedido}).`);
+                                // 2. Atualiza o banco do Waltz (Seta como Arquivado e preenche a data de entrega pro BI)
+                                await sql`
+                                    UPDATE pedidos_nuvemshop 
+                                    SET status_nuvemshop = 'Arquivado', data_entrega = NOW()
+                                    WHERE id_pedido = ${pedido.id_pedido};
+                                `;
+                                console.log(`📡 Sucesso! Pedido #${pedido.numero_pedido} entregue na transportadora e Arquivado na Nuvemshop.`);
                                 atualizados++;
                             }
-                            // ❌ Banco de dados local intocado! O Webhook assume daqui.
                         }
                     }
                 }
             } catch (erroLoop) {
                 console.error(`⚠️ Falha ao verificar rastreio do pedido #${pedido.numero_pedido}:`, erroLoop.message);
             }
-            await delay(1000);
+            
+            // Pausa de segurança de 1 segundo para não sobrecarregar as APIs
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        res.json({ sucesso: true, mensagem: `Processo concluído. ${atualizados} pedidos notificados à Nuvemshop.` });
+        res.json({ sucesso: true, mensagem: `Processo concluído. ${atualizados} pedidos entregues e arquivados.` });
 
     } catch (erro) {
         console.error("❌ Erro fatal no Robô de Rastreamento:", erro.message);
