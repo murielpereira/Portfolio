@@ -68,6 +68,7 @@ app.get('/api/pedidos', async (req, res) => {
     try {
         const { rows: pedidos } = await sql`
             SELECT * FROM pedidos_nuvemshop 
+            WHERE status_nuvemshop != 'Cancelado'
             ORDER BY data_criacao DESC;
         `;
         res.json(pedidos);
@@ -97,39 +98,46 @@ app.post('/api/pedidos/marcar-feedback', async (req, res) => {
     }
 });
 
+// Função Inteligente: Tenta buscar os dados até 3 vezes se a internet "piscar"
+async function fetchComRetry(url, options, tentativas = 3) {
+    for (let i = 0; i < tentativas; i++) {
+        try {
+            const res = await fetch(url, options);
+            if (res.ok) return res;
+            console.warn(`⚠️ Tentativa ${i+1} de comunicação com a Nuvemshop não retornou OK. Status: ${res.status}`);
+        } catch (e) {
+            console.warn(`⚠️ Tentativa ${i+1} falhou com erro de rede: ${e.message}`);
+        }
+        if (i < tentativas - 1) await delay(2000); // Espera 2 segundos antes de tentar de novo
+    }
+    throw new Error("Falha no fetch após 3 tentativas.");
+}
+
 // ==========================================
-// WEBHOOK: NUVEMSHOP (Busca Inteligente do Pedido Completo)
+// WEBHOOK: NUVEMSHOP (Busca Inteligente, Filtro e Retry)
 // ==========================================
 app.post('/api/webhook/nuvemshop', async (req, res) => {
-    // 1. A Nuvemshop exige que a gente responda "OK" imediatamente, ou ela acha que estamos fora do ar
     res.status(200).send('Recebido'); 
 
     const payload = req.body;
-
-    // Se o aviso não tiver o ID principal, nós ignoramos
     if (!payload || !payload.id) return;
 
     const idPedidoNuvem = payload.id;
     const evento = payload.event || req.headers['x-linked-store-event'] || 'Atualização';
 
-    console.log(`\n🔔 NUVEMSHOP WEBHOOK: Aviso recebido! Evento [${evento}] para o ID ${idPedidoNuvem}. Buscando detalhes na Nuvemshop...`);
+    console.log(`\n🔔 NUVEMSHOP WEBHOOK: Evento [${evento}] para o ID ${idPedidoNuvem}. Buscando detalhes...`);
 
     try {
-        // 2. Usamos o ID recebido para ir na API buscar o pedido com todos os dados (Cliente, Produtos, etc)
         const STORE_ID = process.env.NUVEMSHOP_STORE_ID;
         const ACCESS_TOKEN = process.env.NUVEMSHOP_TOKEN;
 
-        const resposta = await fetch(`https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${idPedidoNuvem}`, {
+        // USA O NOVO SISTEMA BLINDADO AQUI
+        const resposta = await fetchComRetry(`https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${idPedidoNuvem}`, {
             headers: { 'Authentication': `bearer ${ACCESS_TOKEN}`, 'User-Agent': 'Waltz' }
         });
 
-        if (!resposta.ok) {
-            throw new Error(`A API da Nuvemshop recusou a entrega dos detalhes. Status: ${resposta.status}`);
-        }
-
         const dadosPedido = await resposta.json();
 
-        // 3. Agora sim! Temos os dados reais em mãos. Vamos extrair tudo:
         const id_pedido = dadosPedido.id.toString();
         const numero_pedido = dadosPedido.number.toString();
         const data_criacao = new Date(dadosPedido.created_at);
@@ -141,24 +149,35 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
         const cidade = dadosPedido.shipping_address ? dadosPedido.shipping_address.city : '';
         const estado = dadosPedido.shipping_address ? dadosPedido.shipping_address.province : '';
         
-        // Limpa o nome da transportadora removendo "via SmartEnvios"
         let transportadora = dadosPedido.shipping_option || '';
         transportadora = transportadora.replace(/via SmartEnvios/gi, '').trim();
-        
         const rastreio = dadosPedido.shipping_tracking_number || '';
         
-        // Status simplificado
+        // ---------------------------------------------------------
+        // A NOVA REGRA DE STATUS (Lendo todas as "gavetas")
+        // ---------------------------------------------------------
         let status = 'Aberto';
-        if (dadosPedido.status === 'closed') status = 'Arquivado';
-        if (dadosPedido.status === 'canceled') status = 'Cancelado';
+        const statusPrincipal = (dadosPedido.status || '').toLowerCase();
+        const statusPagamento = (dadosPedido.payment_status || '').toLowerCase();
+        const statusEnvio = (dadosPedido.shipping_status || '').toLowerCase(); // NOVA GAVETA
 
-        // Extrai a lista de produtos formatada (ex: 2x Coleira Azul, 1x Guia)
+        if (statusPrincipal === 'closed') status = 'Arquivado';
+        if (statusEnvio === 'delivered') status = 'Entregue'; // Se estiver entregue lá, atualiza aqui!
+        
+        // Regra de cancelamento (é a mais forte, por isso fica no final)
+        if (
+            statusPrincipal === 'canceled' || statusPrincipal === 'cancelled' ||
+            statusPagamento === 'canceled' || statusPagamento === 'voided' || statusPagamento === 'abandoned'
+        ) {
+            status = 'Cancelado';
+        }
+        // ---------------------------------------------------------
+
         let listaProdutos = '';
         if (dadosPedido.products && Array.isArray(dadosPedido.products)) {
             listaProdutos = dadosPedido.products.map(item => `${item.quantity}x ${item.name}`).join(', ');
         }
 
-        // 4. Salva no nosso Banco de Dados
         await sql`
             INSERT INTO pedidos_nuvemshop (
                 id_pedido, numero_pedido, data_criacao, nome_cliente, cpf_cliente, telefone,
@@ -180,9 +199,9 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
                 data_envio = EXCLUDED.data_envio,
                 produtos = EXCLUDED.produtos;
         `;
-        console.log(`✅ SUCESSO! Pedido #${numero_pedido} capturado e salvo via Webhook!`);
+        console.log(`✅ SUCESSO! Pedido #${numero_pedido} salvo! Status: ${status}`);
     } catch (erro) {
-        console.error(`❌ Erro ao processar webhook da Nuvemshop:`, erro.message);
+        console.error(`❌ Erro definitivo ao processar webhook Nuvemshop:`, erro.message);
     }
 });
 
@@ -284,61 +303,55 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const TOKEN = process.env.TINY_TOKEN;
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
 
-    if (!cpfLimpo) return; // Se não houver CPF, não fazemos a pesquisa
+    if (!cpfLimpo) return;
 
     try {
-        // 1. O "Respiro" de 3 Segundos
-        // O Webhook é tão rápido que o Tiny ainda pode não ter indexado o pedido na pesquisa.
-        // Esperamos 3 segundos para garantir que o banco deles está pronto.
         console.log(`⏳ Aguardando 3 segundos para o Tiny processar o pedido internamente...`);
         await delay(3000);
 
         const urlBusca = `https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`;
         const respostaBusca = await fetch(urlBusca);
-        const textoResposta = await respostaBusca.text(); // Lemos a resposta como texto bruto primeiro
+        const textoResposta = await respostaBusca.text();
         
+        let dadosBusca;
+        
+        // 1. Bloco Isolado: Tenta apenas converter o JSON
         try {
-            // 2. Tentamos converter o texto para JSON
-            const dadosBusca = JSON.parse(textoResposta);
+            dadosBusca = JSON.parse(textoResposta);
+        } catch (parseErro) {
+            console.error(`⚠️ O Tiny não devolveu JSON. Resposta:`, textoResposta.substring(0, 300));
+            return; // Para a execução aqui se não for JSON
+        }
 
-            // 3. Verificamos se o Tiny retornou "OK"
-            if (dadosBusca.retorno && dadosBusca.retorno.status === 'OK' && dadosBusca.retorno.pedidos) {
-                const totalPedidos = dadosBusca.retorno.pedidos.length;
-                const valorTotalGasto = dadosBusca.retorno.pedidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
-
-                const infoCliente = dadosBusca.retorno.pedidos[0].pedido.cliente;
-                const nome = infoCliente.nome || 'Cliente Importado';
-                const cidade = infoCliente.cidade || '-';
-                const uf = infoCliente.uf || '-';
-                const telefone = infoCliente.fone || infoCliente.celular || '-';
-
-                // 4. Salva ou atualiza os dados no nosso banco
-                await sql`
-                    INSERT INTO clientes (cpf, nome, cidade, estado, telefone, total_pedidos, valor_total)
-                    VALUES (${cpfLimpo}, ${nome}, ${cidade}, ${uf}, ${telefone}, ${totalPedidos}, ${valorTotalGasto})
-                    ON CONFLICT (cpf) DO UPDATE SET 
-                        nome = EXCLUDED.nome,
-                        cidade = EXCLUDED.cidade,
-                        estado = EXCLUDED.estado,
-                        telefone = EXCLUDED.telefone,
-                        total_pedidos = EXCLUDED.total_pedidos,
-                        valor_total = EXCLUDED.valor_total;
-                `;
-                console.log(`✅ Cliente CPF ${cpfLimpo} processado via Webhook Tiny! Total de Pedidos: ${totalPedidos}`);
+        // 2. Se chegou aqui, é um JSON válido. Vamos processar com segurança!
+        if (dadosBusca.retorno && dadosBusca.retorno.status === 'OK' && dadosBusca.retorno.pedidos) {
             
-            } else if (dadosBusca.retorno && dadosBusca.retorno.status === 'Erro') {
-                // Se o Tiny enviou um JSON de Erro, mostramos o motivo
-                console.log(`⚠️ O Tiny retornou um aviso estruturado para o CPF ${cpfLimpo}:`, dadosBusca.retorno.erros);
-            }
+            // Calcula o Lifetime Value (LTV)
+            const totalPedidos = dadosBusca.retorno.pedidos.length;
+            const valorTotalGasto = dadosBusca.retorno.pedidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
 
-        } catch (jsonErro) {
-            // 5. O ESPELHO: Se não for JSON, imprimimos o que o Tiny realmente mandou
-            console.error(`⚠️ O Tiny não devolveu JSON para o CPF ${cpfLimpo}. Resposta bruta da API:`);
-            console.error(textoResposta.substring(0, 300)); // Mostra os primeiros 300 caracteres para diagnosticarmos
+            // Extração Correta e Segura: O nome está direto dentro de "pedido"
+            const primeiroPedido = dadosBusca.retorno.pedidos[0].pedido;
+            const nomeCliente = primeiroPedido.nome || 'Cliente Importado';
+
+            // 3. Atualiza o banco de forma cirúrgica (Não apaga o endereço que já existe)
+            await sql`
+                INSERT INTO clientes (cpf, nome, cidade, estado, telefone, total_pedidos, valor_total)
+                VALUES (${cpfLimpo}, ${nomeCliente}, '-', '-', '-', ${totalPedidos}, ${valorTotalGasto})
+                ON CONFLICT (cpf) DO UPDATE SET 
+                    nome = EXCLUDED.nome,
+                    total_pedidos = EXCLUDED.total_pedidos,
+                    valor_total = EXCLUDED.valor_total;
+            `;
+            
+            console.log(`✅ Cliente CPF ${cpfLimpo} atualizado via Webhook! Pedidos totais: ${totalPedidos} | Valor: R$ ${valorTotalGasto}`);
+        } else if (dadosBusca.retorno && dadosBusca.retorno.status === 'Erro') {
+            console.log(`⚠️ O Tiny retornou um aviso estruturado:`, dadosBusca.retorno.erros);
         }
 
     } catch (erro) {
-        console.error("❌ Falha de conexão na função do Webhook Tiny:", erro.message);
+        // Agora, se der qualquer outro erro na nossa lógica de leitura, ele cai aqui, apontando o motivo real!
+        console.error("❌ Erro ao extrair dados na função do Webhook Tiny:", erro.message);
     }
 }
 

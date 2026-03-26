@@ -320,7 +320,11 @@ async function carregarPedidosNuvemDB() {
     }
 }
 
+// ==========================================
+// FUNÇÃO: ENVIAR FEEDBACK VIA WHATSAPP (Corrigida)
+// ==========================================
 async function enviarFeedbackWpp(idPedido, telefone, nome, numPedido, produtosCodificados) {
+    // 1. Validação do telefone
     if (!telefone || telefone === 'undefined' || telefone.trim() === '') {
         alert("⚠️ Este pedido não possui telefone cadastrado no banco de dados.");
         return;
@@ -330,6 +334,7 @@ async function enviarFeedbackWpp(idPedido, telefone, nome, numPedido, produtosCo
     const primeiroNome = nome.split(' ')[0]; 
     const produtos = decodeURIComponent(produtosCodificados); 
     
+    // 2. Montagem dos produtos e da mensagem
     let trechoProdutos = '';
     if (produtos && produtos.trim() !== '' && produtos !== 'undefined') {
         trechoProdutos = `\n\n📦 *Itens do pedido:* ${produtos}`;
@@ -337,16 +342,26 @@ async function enviarFeedbackWpp(idPedido, telefone, nome, numPedido, produtosCo
 
     const mensagem = `Oii ${primeiroNome}, tudo bem? Aqui é a Bia, da Âme Acessórios Pet.\n\nEstou entrando em contato pra saber se deu tudo certo com o seu pedido #${numPedido}.${trechoProdutos}\n\nVocê gostou do produto? Serviu direitinho? Teve algum problema ou dificuldade desde o momento da compra até a entrega?😀\n\nEsperamos sempre esse prazo para saber seu feedback, pois é o tempo que seu pet já usou e se adaptou com as nossas peças, e queremos sua opinião sincera, para que possamos sempre melhorar 🥰\n\nFico no aguardo da sua resposta.\n☺️☺️`;
     
+    // 3. Abre a aba do WhatsApp Web para você dar o clique final
     const linkZap = `https://wa.me/55${numeroApenasDigitos}?text=${encodeURIComponent(mensagem)}`;
     window.open(linkZap, '_blank');
 
+    // 4. Atualiza o banco de dados de forma silenciosa
     try {
         await fetch('/api/pedidos/marcar-feedback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id_pedido: idPedido })
         });
-        await carregarPedidosNuvemDB(); 
+        
+        // CORREÇÃO DA PAGINAÇÃO: 
+        // Em vez de recarregar tudo, procuramos o pedido na lista atual e atualizamos apenas ele!
+        const pedidoIndex = todosOsPedidosNuvem.findIndex(p => p.id_pedido === idPedido);
+        if (pedidoIndex !== -1) {
+            todosOsPedidosNuvem[pedidoIndex].status_feedback = 'Enviado';
+            renderizarPaginaNuvem(); // Redesenha a tabela mantendo você na mesma página
+        }
+        
     } catch (erro) {
         console.error("Falha ao marcar como enviado", erro);
     }
