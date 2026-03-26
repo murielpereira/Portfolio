@@ -224,15 +224,11 @@ function getTemplatePainel() {
                         <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                             <div class="filtros-area" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-weight: bold; color: #475569;">Buscar CEP:</label>
-                                    <input type="text" id="busca-cep-analise" class="input-padrao" placeholder="Ex: 01000-000" onkeyup="renderizarTabelaCEPs()" style="width: 150px; padding: 8px;">
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-weight: bold; color: #475569;">Estado/UF:</label>
-                                    <input type="text" id="busca-uf-analise" class="input-padrao" placeholder="Ex: SP, Paraná..." onkeyup="renderizarTabelaCEPs()" style="width: 150px; padding: 8px;">
+                                    <label style="font-weight: bold; color: #475569;">Buscar Região (CEP):</label>
+                                    <input type="text" id="busca-cep-analise" class="input-padrao" placeholder="Ex: 01000..." onkeyup="renderizarTabelaCEPs()" style="width: 180px; padding: 8px;">
                                 </div>
                                 <span style="font-size: 12px; color: #64748b; margin-left: 10px;">
-                                    *Apenas pedidos já entregues são contabilizados.
+                                    *Apenas pedidos já entregues são contabilizados. Digite um CEP para detalhar.
                                 </span>
                             </div>
                         </div>
@@ -721,16 +717,14 @@ function renderizarTabelaCEPs() {
     const tbody = document.getElementById('corpo-tabela-ceps');
     if (!tbody) return;
 
-    // 1. Pega o que o usuário digitou na tela e limpa a formatação
+    // 1. Pega o CEP digitado
     const filtroCep = (document.getElementById("busca-cep-analise")?.value || "").replace(/\D/g, '');
-    const filtroUF = (document.getElementById("busca-uf-analise")?.value || "").toLowerCase().trim();
 
-    // 2. Cria uma "caixa" (Objeto) para agrupar os dados
+    // 2. Cria a nossa "caixa" de agrupamento
     let analiseAgrupada = {};
 
-    // 3. Varre todos os pedidos da base de dados
+    // 3. Varre os pedidos e faz a matemática
     todosOsPedidosNuvem.forEach(p => {
-        // Só fazemos a conta se o pedido tiver data de envio e data de entrega
         if (!p.data_envio || !p.data_entrega) return;
         
         const status = (p.status_nuvemshop || '').toUpperCase();
@@ -739,38 +733,47 @@ function renderizarTabelaCEPs() {
         const cepOriginal = p.cep || '';
         const cepLimpo = cepOriginal.replace(/\D/g, '');
         const ufOriginal = p.estado || 'Não Informado';
-        const ufLimpo = ufOriginal.toLowerCase();
 
-        // Aplica os filtros da barra de pesquisa em tempo real
+        // Se o usuário digitou algo e este pedido não bate, ignoramos
         if (filtroCep && !cepLimpo.includes(filtroCep)) return;
-        if (filtroUF && !ufLimpo.includes(filtroUF)) return;
 
-        // Calcula a quantidade de dias físicos que a entrega levou
         const dataEnvio = new Date(p.data_envio);
         const dataEntrega = new Date(p.data_entrega);
         const diffDias = Math.ceil(Math.abs(dataEntrega - dataEnvio) / (1000 * 60 * 60 * 24));
 
-        // Cria uma chave única para agrupar (Ex: "SP-01000")
-        // Agrupamos pelos primeiros 5 dígitos do CEP (região) para a média fazer mais sentido
-        const cepBase = cepLimpo.length >= 5 ? cepLimpo.substring(0, 5) + '-***' : cepLimpo;
-        const chaveGrupo = `${ufOriginal}|${cepBase}`;
+        // ----------------------------------------------------
+        // A MÁGICA DO AGRUPAMENTO DINÂMICO ACONTECE AQUI
+        // ----------------------------------------------------
+        let chaveGrupo;
+        let textoCepExibicao;
 
-        // Se o grupo ainda não existir, cria-o
+        if (filtroCep === "") {
+            // Cenário A: Sem pesquisa. Agrupa TUDO pelo Estado.
+            chaveGrupo = ufOriginal;
+            textoCepExibicao = 'Geral (Todo o Estado)';
+        } else {
+            // Cenário B: Com pesquisa. Agrupa pelo Estado + 5 primeiros dígitos do CEP.
+            const cepBase = cepLimpo.length >= 5 ? cepLimpo.substring(0, 5) + '-***' : cepLimpo;
+            chaveGrupo = `${ufOriginal}|${cepBase}`;
+            textoCepExibicao = cepBase;
+        }
+
+        // Se a gaveta desse grupo não existir, criamos agora
         if (!analiseAgrupada[chaveGrupo]) {
             analiseAgrupada[chaveGrupo] = {
                 estado: ufOriginal,
-                cep: cepBase,
+                cep: textoCepExibicao,
                 somaDias: 0,
                 quantidadePedidos: 0
             };
         }
 
-        // Adiciona a matemática a este grupo
+        // Somamos os dados na gaveta correta
         analiseAgrupada[chaveGrupo].somaDias += diffDias;
         analiseAgrupada[chaveGrupo].quantidadePedidos += 1;
     });
 
-    // 4. Transforma a "caixa" numa lista (Array) e calcula a média final
+    // 4. Transforma em lista e calcula a média
     let resultados = Object.values(analiseAgrupada).map(item => {
         return {
             estado: item.estado,
@@ -780,14 +783,14 @@ function renderizarTabelaCEPs() {
         };
     });
 
-    // 5. Ordena a lista para mostrar primeiro os locais com maior volume de pedidos
-    resultados.sort((a, b) => b.quantidade - a.quantidade);
+    // 5. Ordenação Alfabética Exata pelo nome do Estado (A a Z)
+    resultados.sort((a, b) => a.estado.localeCompare(b.estado));
 
-    // 6. Desenha a tabela na tela
+    // 6. Desenha a tabela
     tbody.innerHTML = '';
     
     if (resultados.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico de entrega encontrado para esta região.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico encontrado.</td></tr>';
         return;
     }
 
@@ -795,7 +798,7 @@ function renderizarTabelaCEPs() {
         const linha = document.createElement('tr');
         linha.innerHTML = `
             <td>${r.estado}</td>
-            <td style="font-family: monospace; font-size: 14px;">${r.cep || 'Sem CEP'}</td>
+            <td style="font-family: monospace; font-size: 14px; color: #64748b;">${r.cep}</td>
             <td style="font-weight: bold; color: #2563eb; font-size: 15px;">${r.mediaDias} dias</td>
             <td style="color: #475569;">${r.quantidade} entregas mapeadas</td>
         `;
