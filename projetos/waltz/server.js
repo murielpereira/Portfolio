@@ -368,13 +368,13 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
 }
 
 // ==========================================
-// ROTA: RELATÓRIO DE CLIENTES (BI - CRUZAMENTO DE DADOS)
+// ROTA: RELATÓRIO DE CLIENTES (BI - CRUZAMENTO DE DADOS CORRIGIDO)
 // ==========================================
 app.get('/api/relatorios/clientes', async (req, res) => {
     if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
 
     try {
-        // 1. A Mágica do SQL Relacional (JOIN) e Agrupamento (GROUP BY)
+        // 1. Puxamos a Fonte da Verdade do Tiny e cruzamos com a Nuvemshop apenas para o tempo de entrega
         const { rows: clientesBI } = await sql`
             SELECT 
                 c.cpf, 
@@ -382,54 +382,36 @@ app.get('/api/relatorios/clientes', async (req, res) => {
                 c.telefone, 
                 c.cidade, 
                 c.estado,
-                COUNT(p.id_pedido) AS total_pedidos,
-                COALESCE(SUM(p.valor_total), 0) AS valor_total,
-                COALESCE(AVG(p.valor_total), 0) AS ticket_medio,
-                COALESCE(AVG(p.valor_frete), 0) AS frete_medio,
-                AVG(EXTRACT(EPOCH FROM (p.data_entrega - p.data_criacao)) / 86400) AS tempo_medio_entrega_dias,
-                STRING_AGG(p.produtos, ' || ') AS todos_produtos
+                COALESCE(c.total_pedidos, 0) AS total_pedidos,
+                COALESCE(c.valor_total, 0) AS valor_total,
+                AVG(EXTRACT(EPOCH FROM (p.data_entrega - p.data_envio)) / 86400) AS tempo_medio_entrega_dias
             FROM clientes c
             LEFT JOIN pedidos_nuvemshop p 
-                ON c.cpf = p.cpf_cliente AND p.status_nuvemshop != 'Cancelado'
-            GROUP BY c.cpf, c.nome, c.telefone, c.cidade, c.estado
-            ORDER BY valor_total DESC;
+                ON c.cpf = p.cpf_cliente 
+                AND p.data_entrega IS NOT NULL 
+                AND p.data_envio IS NOT NULL
+            GROUP BY c.cpf, c.nome, c.telefone, c.cidade, c.estado, c.total_pedidos, c.valor_total
+            ORDER BY c.valor_total DESC;
         `;
 
-        // 2. Processamento em JavaScript para a Quantidade de Produtos
+        // 2. Processamento em JavaScript (Calculando o Ticket Médio com segurança)
         const clientesProcessados = clientesBI.map(cliente => {
-            let totalItensComprados = 0;
+            const pedidos = parseInt(cliente.total_pedidos) || 0;
+            const valor = parseFloat(cliente.valor_total) || 0;
             
-            // Lendo o texto de produtos (ex: "2x Guia || 1x Coleira")
-            if (cliente.todos_produtos) {
-                // Separa o texto toda vez que achar uma vírgula ou "||"
-                const partes = cliente.todos_produtos.split(/[,||]+/); 
-                
-                partes.forEach(parte => {
-                    const textoLimpo = parte.trim();
-                    // Regex: Procura qualquer número (\d+) que esteja colado num "x"
-                    const match = textoLimpo.match(/^(\d+)x/); 
-                    if (match) {
-                        totalItensComprados += parseInt(match[1], 10);
-                    }
-                });
-            }
+            // Evita erro de divisão por zero caso o cliente tenha 0 pedidos
+            const ticket = pedidos > 0 ? (valor / pedidos) : 0;
 
-            // Calcula a média de produtos por compra
-            const mediaProdutos = cliente.total_pedidos > 0 ? (totalItensComprados / cliente.total_pedidos).toFixed(1) : 0;
-
-            // 3. Monta o "Pacote Final" para enviar ao Front-end
             return {
                 cpf: cliente.cpf,
                 nome: cliente.nome,
                 telefone: cliente.telefone,
                 cidade: cliente.cidade,
                 estado: cliente.estado,
-                total_pedidos: parseInt(cliente.total_pedidos),
-                valor_total: parseFloat(cliente.valor_total),
-                ticket_medio: parseFloat(cliente.ticket_medio),
-                frete_medio: parseFloat(cliente.frete_medio),
-                tempo_medio_entrega_dias: Math.round(cliente.tempo_medio_entrega_dias || 0), // Arredonda para dias inteiros
-                media_produtos_por_compra: parseFloat(mediaProdutos)
+                total_pedidos: pedidos,
+                valor_total: valor,
+                ticket_medio: ticket,
+                tempo_medio_entrega_dias: Math.round(cliente.tempo_medio_entrega_dias || 0)
             };
         });
 
