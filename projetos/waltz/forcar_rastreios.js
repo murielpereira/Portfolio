@@ -24,7 +24,7 @@ async function forcarLeituraRastreios() {
         let entreguesHoje = 0;
 
         for (const pedido of pedidosPendentes) {
-            console.log(`Consultando pacote do pedido #${pedido.numero_pedido} (Rastreio: ${pedido.rastreio})...`);
+            console.log(`\nConsultando pedido #${pedido.numero_pedido} (Rastreio: ${pedido.rastreio})...`);
             
             try {
                 const respostaSmart = await fetch("https://api.smartenvios.com/v1/freight-order/tracking", {
@@ -40,10 +40,12 @@ async function forcarLeituraRastreios() {
                     if (resultado && resultado.trackings && resultado.trackings.length > 0) {
                         const eventos = resultado.trackings.sort((a, b) => new Date(b.date) - new Date(a.date));
                         const statusAtual = eventos[0].code.tracking_type;
+                        
+                        // O NOSSO ESPIÃO: Mostra o status real que veio da transportadora!
+                        console.log(`🕵️ Status atual na SmartEnvios: [${statusAtual}]`);
 
                         if (statusAtual === 'DELIVERED') {
                             
-                            // Avisa a Nuvemshop para colocar o selo de "Entregue"
                             const respostaNuvem = await fetch(`https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${pedido.id_pedido}`, {
                                 method: "PUT",
                                 headers: { 
@@ -54,17 +56,16 @@ async function forcarLeituraRastreios() {
                                 body: JSON.stringify({ shipping_status: "delivered" })
                             });
 
-                            // DETECTOR DE ERROS: Lê a resposta da Nuvemshop para saber se ela aceitou!
                             if (!respostaNuvem.ok) {
                                 const erroTexto = await respostaNuvem.text();
-                                console.error(`⚠️ A Nuvemshop RECUSOU a atualização do pedido #${pedido.numero_pedido}. Motivo:`, erroTexto);
+                                console.error(`⚠️ Nuvemshop RECUSOU a atualização. Motivo:`, erroTexto);
                             } else {
-                                console.log(`📡 Comando enviado para Nuvemshop (Pedido #${pedido.numero_pedido}). Aguardando Webhook atualizar o Waltz...`);
+                                console.log(`📡 Comando enviado para Nuvemshop (Pedido #${pedido.numero_pedido}).`);
                                 entreguesHoje++;
                             }
-                            
-                            // ❌ REMOVEMOS A ATUALIZAÇÃO DO BANCO LOCAL AQUI. O WEBHOOK FARÁ ISSO!
                         }
+                    } else {
+                        console.log(`⚠️ Pacote não tem histórico de movimentação ainda.`);
                     }
                 }
             } catch (erroLoop) {

@@ -75,13 +75,13 @@ function getTemplatePainel() {
                 <li>
                     <div id="nav-tiny" class="nav-link" onclick="mostrarSubPaginaDash('tiny')">
                         <span class="material-symbols-outlined">analytics</span>
-                        Base de Clientes Tiny
+                        Clientes
                     </div>
                 </li>
                 <li>
                     <div id="nav-nuvem" class="nav-link" onclick="mostrarSubPaginaDash('nuvem')">
                         <span class="material-symbols-outlined">shopping_cart</span>
-                        Pedidos Nuvemshop
+                        Pedidos
                     </div>
                 </li>
             </ul>
@@ -289,10 +289,10 @@ async function mostrarSubPaginaDash(idAlvo) {
     if (menuAlvo) menuAlvo.classList.add('active');
 
     if (idAlvo === 'tiny') {
-        document.getElementById('dash-page-title').innerText = "Base de Clientes Tiny";
+        document.getElementById('dash-page-title').innerText = "Clientes";
         await carregarClientesTinyDB();
     } else if (idAlvo === 'nuvem') {
-        document.getElementById('dash-page-title').innerText = "Pedidos Nuvemshop";
+        document.getElementById('dash-page-title').innerText = "Pedidos";
         await carregarPedidosNuvemDB();
     }
 }
