@@ -151,10 +151,17 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
         const cidade = dadosPedido.shipping_address ? dadosPedido.shipping_address.city : '';
         const estado = dadosPedido.shipping_address ? dadosPedido.shipping_address.province : '';
         
+        // 👇 AQUI ESTÁ A NOSSA NOVA VARIÁVEL: O CEP
+        const cep_cliente = dadosPedido.shipping_address && dadosPedido.shipping_address.zipcode ? dadosPedido.shipping_address.zipcode : '';
+        
         let transportadora = dadosPedido.shipping_option || '';
         transportadora = transportadora.replace(/via SmartEnvios/gi, '').trim();
         const rastreio = dadosPedido.shipping_tracking_number || '';
         
+        // Variáveis Financeiras e de Entrega (As nossas variáveis de BI)
+        const valor_total = parseFloat(dadosPedido.total || 0);
+        const valor_frete = parseFloat(dadosPedido.shipping_cost_owner || dadosPedido.shipping_cost_customer || 0);
+
         // Regras de Status
         let status = 'Aberto';
         const statusPrincipal = (dadosPedido.status || '').toLowerCase();
@@ -171,20 +178,28 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
             status = 'Cancelado';
         }
 
+        // Regra do tempo de entrega pro BI (Marca o relógio quando for entregue)
+        let data_entrega = null;
+        if (status === 'Entregue' || status === 'Arquivado') { 
+            data_entrega = new Date();
+        }
+
         let listaProdutos = '';
         if (dadosPedido.products && Array.isArray(dadosPedido.products)) {
             listaProdutos = dadosPedido.products.map(item => `${item.quantity}x ${item.name}`).join(', ');
         }
 
-        // Salva no Banco de Dados Postgres
+        // Salva no Banco de Dados Postgres (COM CEP E VARIÁVEIS DE BI)
         await sql`
             INSERT INTO pedidos_nuvemshop (
                 id_pedido, numero_pedido, data_criacao, nome_cliente, cpf_cliente, telefone,
-                cidade, estado, transportadora, rastreio, status_nuvemshop, data_envio, produtos
+                cidade, estado, transportadora, rastreio, status_nuvemshop, data_envio, produtos,
+                valor_total, valor_frete, data_entrega, cep
             )
             VALUES (
                 ${id_pedido}, ${numero_pedido}, ${data_criacao}, ${cliente}, ${cpf}, ${telefone},
-                ${cidade}, ${estado}, ${transportadora}, ${rastreio}, ${status}, ${data_envio}, ${listaProdutos}
+                ${cidade}, ${estado}, ${transportadora}, ${rastreio}, ${status}, ${data_envio}, ${listaProdutos},
+                ${valor_total}, ${valor_frete}, ${data_entrega}, ${cep_cliente}
             )
             ON CONFLICT (id_pedido) DO UPDATE SET 
                 nome_cliente = EXCLUDED.nome_cliente,
@@ -196,7 +211,11 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
                 rastreio = EXCLUDED.rastreio,
                 status_nuvemshop = EXCLUDED.status_nuvemshop,
                 data_envio = EXCLUDED.data_envio,
-                produtos = EXCLUDED.produtos;
+                produtos = EXCLUDED.produtos,
+                valor_total = EXCLUDED.valor_total,
+                valor_frete = EXCLUDED.valor_frete,
+                cep = CASE WHEN EXCLUDED.cep != '' THEN EXCLUDED.cep ELSE pedidos_nuvemshop.cep END,
+                data_entrega = CASE WHEN (EXCLUDED.status_nuvemshop = 'Entregue' OR EXCLUDED.status_nuvemshop = 'Arquivado') AND pedidos_nuvemshop.data_entrega IS NULL THEN EXCLUDED.data_entrega ELSE pedidos_nuvemshop.data_entrega END;
         `;
         
         console.log(`✅ SUCESSO! Pedido #${numero_pedido} salvo! Status: ${status}`);
