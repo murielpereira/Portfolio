@@ -62,7 +62,7 @@ function getTemplateLogin() {
         <div class="glass-card">
             <div style="text-align: center; margin-bottom: 30px;">
                 <!-- Correção do caminho da Logo -->
-                <img src="./images/logo.png" alt="Waltz" style="height: 50px; margin-bottom: 15px; border-radius: 8px; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3));">
+                <img src="./logo.png" alt="Waltz" style="height: 50px; margin-bottom: 15px; border-radius: 8px; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3));">
                 <p style="color: #e2e8f0; font-size: 14px; margin: 0;">Acesse sua conta para continuar</p>
             </div>
             <form id="form-login">
@@ -90,7 +90,7 @@ function getTemplatePainel() {
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <!-- Correção do caminho da Logo. A imagem não tem mais invert para o fundo limpo. -->
-                <img src="./images/logo.png" alt="Waltz" style="border-radius:4px; max-height: 40px;"> 
+                <img src="./logo.png" alt="Waltz" style="border-radius:4px; max-height: 40px;"> 
                 <div class="btn-toggle-menu" onclick="toggleSidebar()"><i data-lucide="chevron-left"></i></div>
             </div>
             <ul class="nav-links">
