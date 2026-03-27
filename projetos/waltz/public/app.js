@@ -99,6 +99,8 @@ function getTemplatePainel() {
             </div>
         </aside>
 
+        <script src="https://www.gstatic.com/charts/loader.js"></script>
+
         <main class="main-content">
             <header class="topbar">
                 <h1 id="dash-page-title">Painel de Automação</h1>
@@ -713,68 +715,138 @@ function resetarEPaginacao() { paginaAtualRelatorio = 1; renderizarPaginaRelator
 // MÓDULO 6: INTELIGÊNCIA LOGÍSTICA (Análise de CEPs)
 // ============================================================================
 
+// Função: Transforma "São Paulo" ou "SP" em "BR-SP" para o mapa
+function mapEstadoParaISO(estado) {
+    if (!estado) return null;
+    const uf = estado.trim().toUpperCase();
+    const map = {
+        'AC': 'BR-AC', 'ACRE': 'BR-AC',
+        'AL': 'BR-AL', 'ALAGOAS': 'BR-AL',
+        'AP': 'BR-AP', 'AMAPÁ': 'BR-AP', 'AMAPA': 'BR-AP',
+        'AM': 'BR-AM', 'AMAZONAS': 'BR-AM',
+        'BA': 'BR-BA', 'BAHIA': 'BR-BA',
+        'CE': 'BR-CE', 'CEARÁ': 'BR-CE', 'CEARA': 'BR-CE',
+        'DF': 'BR-DF', 'DISTRITO FEDERAL': 'BR-DF', 'BRASÍLIA': 'BR-DF',
+        'ES': 'BR-ES', 'ESPÍRITO SANTO': 'BR-ES', 'ESPIRITO SANTO': 'BR-ES',
+        'GO': 'BR-GO', 'GOIÁS': 'BR-GO', 'GOIAS': 'BR-GO',
+        'MA': 'BR-MA', 'MARANHÃO': 'BR-MA', 'MARANHAO': 'BR-MA',
+        'MT': 'BR-MT', 'MATO GROSSO': 'BR-MT',
+        'MS': 'BR-MS', 'MATO GROSSO DO SUL': 'BR-MS',
+        'MG': 'BR-MG', 'MINAS GERAIS': 'BR-MG',
+        'PA': 'BR-PA', 'PARÁ': 'BR-PA', 'PARA': 'BR-PA',
+        'PB': 'BR-PB', 'PARAÍBA': 'BR-PB', 'PARAIBA': 'BR-PB',
+        'PR': 'BR-PR', 'PARANÁ': 'BR-PR', 'PARANA': 'BR-PR',
+        'PE': 'BR-PE', 'PERNAMBUCO': 'BR-PE',
+        'PI': 'BR-PI', 'PIAUÍ': 'BR-PI', 'PIAUI': 'BR-PI',
+        'RJ': 'BR-RJ', 'RIO DE JANEIRO': 'BR-RJ',
+        'RN': 'BR-RN', 'RIO GRANDE DO NORTE': 'BR-RN',
+        'RS': 'BR-RS', 'RIO GRANDE DO SUL': 'BR-RS',
+        'RO': 'BR-RO', 'RONDÔNIA': 'BR-RO', 'RONDONIA': 'BR-RO',
+        'RR': 'BR-RR', 'RORAIMA': 'BR-RR',
+        'SC': 'BR-SC', 'SANTA CATARINA': 'BR-SC',
+        'SP': 'BR-SP', 'SÃO PAULO': 'BR-SP', 'SAO PAULO': 'BR-SP',
+        'SE': 'BR-SE', 'SERGIPE': 'BR-SE',
+        'TO': 'BR-TO', 'TOCANTINS': 'BR-TO'
+    };
+    return map[uf] || null; // Retorna null se for internacional ou inválido
+}
+
+// Substitua renderizarTabelaCEPs() por esta versão avançada
 function renderizarTabelaCEPs() {
     const tbody = document.getElementById('corpo-tabela-ceps');
-    if (!tbody) return;
+    const divMapaCard = document.getElementById('mapa_brasil_card');
+    const divMapaCanvas = document.getElementById('mapa_brasil_div');
+    if (!tbody || !divMapaCanvas) return;
 
     // 1. Pega o CEP digitado
     const filtroCep = (document.getElementById("busca-cep-analise")?.value || "").replace(/\D/g, '');
 
-    // 2. Cria a nossa "caixa" de agrupamento
-    let analiseAgrupada = {};
+    // 2. Cria as caixas de agrupamento (Uma para o Mapa e uma para a Tabela)
+    let analiseAgrupadaTabela = {};
+    let analiseAgrupadaMapaBR = {}; // GAVETA EXCLUSIVA DO MAPA BRASIL
 
-    // 3. Varre os pedidos e faz a matemática
+    // 3. Varre os pedidos e faz a matemática (Motor Analítico)
     todosOsPedidosNuvem.forEach(p => {
         if (!p.data_envio || !p.data_entrega) return;
         
         const status = (p.status_nuvemshop || '').toUpperCase();
         if (status !== 'ENTREGUE' && status !== 'ARQUIVADO') return;
 
+        const ufOriginal = p.estado || 'Não Informado';
         const cepOriginal = p.cep || '';
         const cepLimpo = cepOriginal.replace(/\D/g, '');
-        const ufOriginal = p.estado || 'Não Informado';
 
-        // Se o usuário digitou algo e este pedido não bate, ignoramos
+        // Aplica o filtro da barra de pesquisa
         if (filtroCep && !cepLimpo.includes(filtroCep)) return;
 
         const dataEnvio = new Date(p.data_envio);
         const dataEntrega = new Date(p.data_entrega);
         const diffDias = Math.ceil(Math.abs(dataEntrega - dataEnvio) / (1000 * 60 * 60 * 24));
 
-        // ----------------------------------------------------
-        // A MÁGICA DO AGRUPAMENTO DINÂMICO ACONTECE AQUI
-        // ----------------------------------------------------
-        let chaveGrupo;
+        // Determina a chave de agrupamento da TABELA (Dinâmico)
+        let chaveGrupoTabela;
         let textoCepExibicao;
-
         if (filtroCep === "") {
-            // Cenário A: Sem pesquisa. Agrupa TUDO pelo Estado.
-            chaveGrupo = ufOriginal;
+            chaveGrupoTabela = ufOriginal;
             textoCepExibicao = 'Geral (Todo o Estado)';
         } else {
-            // Cenário B: Com pesquisa. Agrupa pelo Estado + 5 primeiros dígitos do CEP.
             const cepBase = cepLimpo.length >= 5 ? cepLimpo.substring(0, 5) + '-***' : cepLimpo;
-            chaveGrupo = `${ufOriginal}|${cepBase}`;
+            chaveGrupoTabela = `${ufOriginal}|${cepBase}`;
             textoCepExibicao = cepBase;
         }
 
-        // Se a gaveta desse grupo não existir, criamos agora
-        if (!analiseAgrupada[chaveGrupo]) {
-            analiseAgrupada[chaveGrupo] = {
-                estado: ufOriginal,
-                cep: textoCepExibicao,
-                somaDias: 0,
-                quantidadePedidos: 0
-            };
+        // --- MATEMÁTICA DA TABELA (Mostra TUDO, incluindo Internacional) ---
+        if (!analiseAgrupadaTabela[chaveGrupoTabela]) {
+            analiseAgrupadaTabela[chaveGrupoTabela] = { estado: ufOriginal, cep: textoCepExibicao, somaDias: 0, quantidadePedidos: 0 };
         }
+        analiseAgrupadaTabela[chaveGrupoTabela].somaDias += diffDias;
+        analiseAgrupadaTabela[chaveGrupoTabela].quantidadePedidos += 1;
 
-        // Somamos os dados na gaveta correta
-        analiseAgrupada[chaveGrupo].somaDias += diffDias;
-        analiseAgrupada[chaveGrupo].quantidadePedidos += 1;
+        // --- 🛡️ MATEMÁTICA DO MAPA (Segurança de Fronteira) ---
+        // Só entra no mapa se o estado for brasileiro e tiver CEP válido
+        const isoCode = mapEstadoParaISO(ufOriginal);
+        if (isoCode && cepLimpo) { 
+            // O Mapa sempre agrupa pelo Estado Inteiro (BR-ISO) para tirar a média de cor
+            if (!analiseAgrupadaMapaBR[isoCode]) {
+                analiseAgrupadaMapaBR[isoCode] = { somaDias: 0, quantidadePedidos: 0 };
+            }
+            analiseAgrupadaMapaBR[isoCode].somaDias += diffDias;
+            analiseAgrupadaMapaBR[isoCode].quantidadePedidos += 1;
+        }
     });
 
-    // 4. Transforma em lista e calcula a média
-    let resultados = Object.values(analiseAgrupada).map(item => {
+    // 4. PREPARAÇÃO DO MAPA (Desenha se tiver dados)
+    if (google && google.visualization && filtroCep === "" && Object.keys(analiseAgrupadaMapaBR).length > 0) {
+        
+        // Formata os dados no padrão do Google: [ ["Região", "Média Dias"], [...] ]
+        let dadosMapa = [ ["Region", "Média de Dias", "Quantidade"] ];
+        Object.entries(analiseAgrupadaMapaBR).forEach(([iso, dados]) => {
+            const media = Math.round(dados.somaDias / dados.quantidadePedidos);
+            dadosMapa.push([ iso, media, dados.quantidadePedidos ]);
+        });
+
+        const dataTable = google.visualization.arrayToDataTable(dadosMapa);
+        
+        const options = {
+            region: 'BR', // Foco no Brasil
+            resolution: 'provinces', // Divisão por estados
+            colorAxis: { colors: ['#a7f3d0', '#fef08a', '#fca5a5'] }, // Gradiente Verde -> Amarelo -> Vermelho
+            backgroundColor: '#f8fafc',
+            datalessRegionColor: '#f1f5f9',
+            legend: { textStyle: { color: '#475569', fontSize: 11 } }
+        };
+
+        const chart = new google.visualization.GeoChart(divMapaCanvas);
+        chart.draw(dataTable, options);
+        if (divMapaCard) divMapaCard.style.display = 'block'; // Mostra o card do mapa
+
+    } else {
+        // Se houver pesquisa ou não houver dados, esconde o mapa para não travar
+        if (divMapaCard) divMapaCard.style.display = 'none';
+    }
+
+    // 5. PREPARAÇÃO DA TABELA (A velha e boa matemática dinamica)
+    let resultadosTabela = Object.values(analiseAgrupadaTabela).map(item => {
         return {
             estado: item.estado,
             cep: item.cep,
@@ -783,18 +855,17 @@ function renderizarTabelaCEPs() {
         };
     });
 
-    // 5. Ordenação Alfabética Exata pelo nome do Estado (A a Z)
-    resultados.sort((a, b) => a.estado.localeCompare(b.estado));
+    // Ordenação Alfabética de Estado (Inclui os internacionais)
+    resultadosTabela.sort((a, b) => a.estado.localeCompare(b.estado));
 
     // 6. Desenha a tabela
     tbody.innerHTML = '';
-    
-    if (resultados.length === 0) {
+    if (resultadosTabela.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico encontrado.</td></tr>';
         return;
     }
 
-    resultados.forEach(r => {
+    resultadosTabela.forEach(r => {
         const linha = document.createElement('tr');
         linha.innerHTML = `
             <td>${r.estado}</td>
