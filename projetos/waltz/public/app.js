@@ -108,10 +108,10 @@ function toggleSenha() {
 
 function getTemplateLogin() {
     return `
-    <div style="background-color: #111827; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif;">
+    <div style="background-color: #0f172a; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif;">
         <div style="background: white; border-radius: 12px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
             <div style="text-align: center; margin-bottom: 30px;">
-                <img src="../images/logo.png" alt="Waltz" style="height: 45px; margin-bottom: 15px; border-radius: 4px;">
+                <img src="/components/images/logo.png" alt="Waltz" style="height: 45px; margin-bottom: 15px; border-radius: 4px;">
                 <p style="color: #64748b; font-size: 14px; margin: 0;">Acesse sua conta para continuar</p>
             </div>
             <form id="form-login">
@@ -143,7 +143,7 @@ function getTemplatePainel() {
         <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="../images/logo.jpg" alt="Waltz" style="border-radius:4px; filter: brightness(0) invert(1);"> 
+                <img src="/components/images/logo.png" alt="Waltz" style="border-radius:4px; max-height: 40px; filter: brightness(0) invert(1);"> 
                 <div class="btn-toggle-menu" onclick="toggleSidebar()"><i data-lucide="chevron-left"></i></div>
             </div>
             
@@ -609,11 +609,12 @@ async function carregarClientesTinyDB() {
 }
 
 function classificarClienteVisual(totalPedidos, valorTotal) {
-    // Usando as novas classes CSS da badge
-    if (totalPedidos === 0) return '<span class="badge badge-aberto">Sem Compras</span>';
-    if (totalPedidos === 1) return '<span class="badge badge-aguardando">1ª Compra</span>';
+    if (totalPedidos === 0) return '<span class="badge badge-semcompra">SEM COMPRAS</span>';
+    if (totalPedidos === 1) return '<span class="badge badge-primeiracompra">1ª COMPRA</span>';
     if (valorTotal > 6000) return '<span class="badge badge-diamante">DIAMANTE</span>';
-    return `<span class="badge badge-aberto">${valorTotal > 3000 ? 'OURO' : 'PRATA'}</span>`;
+    if (valorTotal > 3000) return '<span class="badge badge-ouro">OURO</span>';
+    if (valorTotal > 1000) return '<span class="badge badge-prata">PRATA</span>';
+    return '<span class="badge badge-bronze">BRONZE</span>';
 }
 
 function ordenarTabela(colIndex) {

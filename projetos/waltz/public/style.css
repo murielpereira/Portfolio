@@ -61,7 +61,7 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 /* Filtros do Topo alinhados com o Título */
 .table-top-actions { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
 .search-bar { position: relative; width: 300px; display: flex; align-items: center;}
-.search-bar i { position: absolute; left: 12px; color: var(--text-muted); width: 18px; height: 18px; pointer-events: none;}
+.search-bar svg { position: absolute; left: 12px; color: var(--text-muted); width: 18px; height: 18px; pointer-events: none;}
 .search-bar input { width: 100%; padding: 12px 12px 12px 40px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; outline: none; transition: border 0.2s; }
 .search-bar input:focus { border-color: var(--primary); }
 
@@ -86,8 +86,18 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 /* ==========================================================================
    BADGES E BOTÕES
    ========================================================================== */
+   
 .badge { padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; border: 1px solid transparent; text-align: center;}
-.badge-diamante { background-color: var(--badge-yellow-bg); color: var(--badge-yellow-text); border-color: #fde68a; }
+
+/* Cores dos Grupos de Clientes */
+.badge-diamante { background-color: #fef3c7; color: #d97706; border-color: #fde68a; } /* Amarelo Escuro */
+.badge-ouro { background-color: #fef08a; color: #a16207; border-color: #fde047; } /* Dourado Vivo */
+.badge-prata { background-color: #f1f5f9; color: #475569; border-color: #cbd5e1; } /* Cinza Prata */
+.badge-bronze { background-color: #ffedd5; color: #c2410c; border-color: #fed7aa; } /* Laranja/Bronze */
+.badge-primeiracompra { background-color: #e0e7ff; color: #4338ca; border-color: #c7d2fe; } /* Azul */
+.badge-semcompra { background-color: #f3f4f6; color: #9ca3af; border-color: #e5e7eb; } /* Cinza Claro */
+
+/* Cores de Status Nuvemshop */
 .badge-aberto { background-color: var(--badge-gray-bg); color: var(--badge-gray-text); border-color: var(--border-color); }
 .badge-aguardando { background-color: white; color: var(--badge-yellow-text); border-color: #fde68a; }
 
