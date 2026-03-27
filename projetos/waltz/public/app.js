@@ -222,6 +222,14 @@ function getTemplatePainel() {
                 <!-- ABA CEPs E REGIÕES (Média de Entregas)     -->
                 <!-- ========================================== -->
                 <div id="sub-cep" class="sub-pagina" style="display: none;">
+                    
+                    <!-- CARD DO MAPA -->
+                    <section id="mapa_brasil_card" class="card" style="display:none; padding: 20px; margin-bottom: 20px;">
+                        <h2 style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 10px;">Visualização Geográfica (Heatmap de Entrega)</h2>
+                        <div id="mapa_brasil_div" style="width: 100%; height: 350px; background: #f8fafc; border-radius: 8px;"></div>
+                    </section>
+
+                    <!-- CARD DA TABELA DE ANÁLISE -->
                     <section class="card">
                         <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                             <div class="filtros-area" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
@@ -754,16 +762,20 @@ function mapEstadoParaISO(estado) {
 // Substitua renderizarTabelaCEPs() por esta versão avançada
 function renderizarTabelaCEPs() {
     const tbody = document.getElementById('corpo-tabela-ceps');
+    
+    // A trava de segurança agora só aborta se a TABELA não existir.
+    // O Mapa tornou-se opcional para não travar o sistema inteiro!
+    if (!tbody) return; 
+
     const divMapaCard = document.getElementById('mapa_brasil_card');
     const divMapaCanvas = document.getElementById('mapa_brasil_div');
-    if (!tbody || !divMapaCanvas) return;
 
     // 1. Pega o CEP digitado
     const filtroCep = (document.getElementById("busca-cep-analise")?.value || "").replace(/\D/g, '');
 
-    // 2. Cria as caixas de agrupamento (Uma para o Mapa e uma para a Tabela)
+    // 2. Cria as caixas de agrupamento
     let analiseAgrupadaTabela = {};
-    let analiseAgrupadaMapaBR = {}; // GAVETA EXCLUSIVA DO MAPA BRASIL
+    let analiseAgrupadaMapaBR = {}; 
 
     // 3. Varre os pedidos e faz a matemática (Motor Analítico)
     todosOsPedidosNuvem.forEach(p => {
@@ -776,14 +788,12 @@ function renderizarTabelaCEPs() {
         const cepOriginal = p.cep || '';
         const cepLimpo = cepOriginal.replace(/\D/g, '');
 
-        // Aplica o filtro da barra de pesquisa
         if (filtroCep && !cepLimpo.includes(filtroCep)) return;
 
         const dataEnvio = new Date(p.data_envio);
         const dataEntrega = new Date(p.data_entrega);
         const diffDias = Math.ceil(Math.abs(dataEntrega - dataEnvio) / (1000 * 60 * 60 * 24));
 
-        // Determina a chave de agrupamento da TABELA (Dinâmico)
         let chaveGrupoTabela;
         let textoCepExibicao;
         if (filtroCep === "") {
@@ -795,18 +805,16 @@ function renderizarTabelaCEPs() {
             textoCepExibicao = cepBase;
         }
 
-        // --- MATEMÁTICA DA TABELA (Mostra TUDO, incluindo Internacional) ---
+        // Matemática da Tabela
         if (!analiseAgrupadaTabela[chaveGrupoTabela]) {
             analiseAgrupadaTabela[chaveGrupoTabela] = { estado: ufOriginal, cep: textoCepExibicao, somaDias: 0, quantidadePedidos: 0 };
         }
         analiseAgrupadaTabela[chaveGrupoTabela].somaDias += diffDias;
         analiseAgrupadaTabela[chaveGrupoTabela].quantidadePedidos += 1;
 
-        // --- 🛡️ MATEMÁTICA DO MAPA (Segurança de Fronteira) ---
-        // Só entra no mapa se o estado for brasileiro e tiver CEP válido
+        // Matemática do Mapa
         const isoCode = mapEstadoParaISO(ufOriginal);
         if (isoCode && cepLimpo) { 
-            // O Mapa sempre agrupa pelo Estado Inteiro (BR-ISO) para tirar a média de cor
             if (!analiseAgrupadaMapaBR[isoCode]) {
                 analiseAgrupadaMapaBR[isoCode] = { somaDias: 0, quantidadePedidos: 0 };
             }
@@ -815,10 +823,10 @@ function renderizarTabelaCEPs() {
         }
     });
 
-    // 4. PREPARAÇÃO DO MAPA (Desenha se tiver dados)
-    if (google && google.visualization && filtroCep === "" && Object.keys(analiseAgrupadaMapaBR).length > 0) {
+    // 4. PREPARAÇÃO DO MAPA (Blindado contra falhas)
+    // O typeof evita erros fatais caso a internet bloqueie o script do Google
+    if (divMapaCanvas && typeof google !== 'undefined' && google.visualization && filtroCep === "" && Object.keys(analiseAgrupadaMapaBR).length > 0) {
         
-        // Formata os dados no padrão do Google: [ ["Região", "Média Dias"], [...] ]
         let dadosMapa = [ ["Region", "Média de Dias", "Quantidade"] ];
         Object.entries(analiseAgrupadaMapaBR).forEach(([iso, dados]) => {
             const media = Math.round(dados.somaDias / dados.quantidadePedidos);
@@ -828,9 +836,9 @@ function renderizarTabelaCEPs() {
         const dataTable = google.visualization.arrayToDataTable(dadosMapa);
         
         const options = {
-            region: 'BR', // Foco no Brasil
-            resolution: 'provinces', // Divisão por estados
-            colorAxis: { colors: ['#a7f3d0', '#fef08a', '#fca5a5'] }, // Gradiente Verde -> Amarelo -> Vermelho
+            region: 'BR', 
+            resolution: 'provinces', 
+            colorAxis: { colors: ['#a7f3d0', '#fef08a', '#fca5a5'] }, 
             backgroundColor: '#f8fafc',
             datalessRegionColor: '#f1f5f9',
             legend: { textStyle: { color: '#475569', fontSize: 11 } }
@@ -838,14 +846,13 @@ function renderizarTabelaCEPs() {
 
         const chart = new google.visualization.GeoChart(divMapaCanvas);
         chart.draw(dataTable, options);
-        if (divMapaCard) divMapaCard.style.display = 'block'; // Mostra o card do mapa
+        if (divMapaCard) divMapaCard.style.display = 'block'; 
 
     } else {
-        // Se houver pesquisa ou não houver dados, esconde o mapa para não travar
         if (divMapaCard) divMapaCard.style.display = 'none';
     }
 
-    // 5. PREPARAÇÃO DA TABELA (A velha e boa matemática dinamica)
+    // 5. PREPARAÇÃO DA TABELA
     let resultadosTabela = Object.values(analiseAgrupadaTabela).map(item => {
         return {
             estado: item.estado,
@@ -855,7 +862,6 @@ function renderizarTabelaCEPs() {
         };
     });
 
-    // Ordenação Alfabética de Estado (Inclui os internacionais)
     resultadosTabela.sort((a, b) => a.estado.localeCompare(b.estado));
 
     // 6. Desenha a tabela
