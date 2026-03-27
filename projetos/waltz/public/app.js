@@ -1,4 +1,39 @@
 // ============================================================================
+// INICIALIZAÇÃO SPA E UTILITÁRIOS GERAIS
+// ============================================================================
+
+// 🚦 Flag global para saber se o motor de mapas do Google está pronto 🚦
+let isGoogleChartsReady = false;
+
+// Função para carregar a biblioteca do Google Charts de forma segura
+function inicializarGoogleCharts() {
+    // 1. Verifica se a tag <script> está presente no HTML (inserida no Módulo 2)
+    if (typeof google === 'undefined') {
+        console.error('❌ Google Charts library (<script>) não foi carregada no template HTML.');
+        return;
+    }
+    
+    try {
+        // 2. Tenta carregar o pacote e define o callback de sucesso
+        google.charts.load('current', { 'packages': ['geochart'], 'language': 'pt-br' });
+        
+        google.charts.setOnLoadCallback(() => {
+            console.log('✅ Google GeoChart carregado e pronto para uso.');
+            isGoogleChartsReady = true;
+            
+            // Se já estivermos visualizando a aba de CEP, desenha o mapa agora!
+            const abaCep = document.getElementById('sub-cep');
+            if (abaCep && abaCep.style.display === 'block') {
+                renderizarTabelaCEPs();
+            }
+        });
+    } catch (e) { console.error('❌ Falha ao inicializar Google ChartsLoader', e); }
+}
+
+// Chame a inicialização assim que o script carregar
+inicializarGoogleCharts();
+
+// ============================================================================
 // MÓDULO 1: UTILITÁRIOS E FORMATAÇÕES GERAIS
 // ============================================================================
 
@@ -759,61 +794,132 @@ function mapEstadoParaISO(estado) {
     return map[uf] || null; // Retorna null se for internacional ou inválido
 }
 
+// --- 🛡️ FUNÇÕES DE SEGURANÇA E PADRONIZAÇÃO DE DADOS 🛡️ ---
+
+// Função 1: Normaliza os estados bagunçados (BAHIA -> Bahia, SP -> São Paulo) para agrupamento e exibição Title Case
+function normalizarNomeEstado(estadoRaw) {
+    if (!estadoRaw || estadoRaw.trim() === '') return 'Internacional/Outros';
+    const input = estadoRaw.trim().toUpperCase(); // Transforma tudo em maiúsculas para comparar
+
+    // Mapeamento de normalização (Normaliza todas as variações para a forma Title Case)
+    const mapNormalizacao = {
+        'ACRE': 'Acre', 'AC': 'Acre',
+        'ALAGOAS': 'Alagoas', 'AL': 'Alagoas',
+        'AMAPÁ': 'Amapá', 'AMAPA': 'Amapá', 'AP': 'Amapá',
+        'AMAZONAS': 'Amazonas', 'AM': 'Amazonas',
+        'BAHIA': 'Bahia', 'BA': 'Bahia', // 👈 Corrige BAHIA vs Bahia
+        'CEARÁ': 'Ceará', 'CEARA': 'Ceará', 'CE': 'Ceará',
+        'DISTRITO FEDERAL': 'Distrito Federal', 'BRASÍLIA': 'Distrito Federal', 'BRASILIA': 'Distrito Federal', 'DF': 'Distrito Federal',
+        'ESPÍRITO SANTO': 'Espírito Santo', 'ESPIRITO SANTO': 'Espírito Santo', 'ES': 'Espírito Santo',
+        'GOIÁS': 'Goiás', 'GOIAS': 'Goiás', 'GO': 'Goiás',
+        'MARANHÃO': 'Maranhão', 'MARANHAO': 'Maranhão', 'MA': 'Maranhão',
+        'MATO GROSSO': 'Mato Grosso', 'MT': 'Mato Grosso',
+        'MATO GROSSO DO SUL': 'Mato Grosso do Sul', 'MS': 'Mato Grosso do Sul',
+        'MINAS GERAIS': 'Minas Gerais', 'MG': 'Minas Gerais',
+        'PARÁ': 'Pará', 'PARA': 'Pará', 'PA': 'Pará',
+        'PARAÍBA': 'Paraíba', 'PARAIBA': 'Paraíba', 'PB': 'Paraíba',
+        'PARANÁ': 'Paraná', 'PARANA': 'Paraná', 'PR': 'Paraná',
+        'PERNAMBUCO': 'Pernambuco', 'PE': 'Pernambuco',
+        'PIAUÍ': 'Piauí', 'PIAUI': 'Piauí', 'PI': 'Piauí',
+        'RIO DE JANEIRO': 'Rio de Janeiro', 'RJ': 'Rio de Janeiro',
+        'RIO GRANDE DO NORTE': 'Rio Grande do Norte', 'RN': 'Rio Grande do Norte', // 👈 Corrige RIO GRANDE DO NORTE vs Rio Grande do Norte
+        'RIO GRANDE DO SUL': 'Rio Grande do Sul', 'RS': 'Rio Grande do Sul',
+        'RONDÔNIA': 'Rondônia', 'RONDONIA': 'Rondônia', 'RO': 'Rondônia',
+        'RORAIMA': 'Roraima', 'RR': 'Roraima',
+        'SANTA CATARINA': 'Santa Catarina', 'SC': 'Santa Catarina', // 👈 Corrige SANTA CATARINA vs Santa Catarina
+        'SÃO PAULO': 'São Paulo', 'SAO PAULO': 'São Paulo', 'SP': 'São Paulo',
+        'SERGIPE': 'Sergipe', 'SE': 'Sergipe',
+        'TO': 'TOCANTINS', 'TOCANTINS': 'Tocantins'
+    };
+
+    // Se for um estado BR conhecido, normaliza (Title Case). Se não, mantém original (Ex: 'EUA', 'Portugal').
+    return mapNormalizacao[input] || estadoRaw; // Bahia -> Bahia, EUA -> EUA.
+}
+
+// Função 2: Transforma o nome Title Case (Bahia) no código ISO correto para o mapa BR (BR-BA)
+function mapEstadoParaISO(estadoRaw) {
+    if (!estadoRaw) return null;
+    const input = estadoRaw.trim().toUpperCase(); // Padroniza para comparar
+    const mapIso = {
+        'ACRE': 'BR-AC', 'ALAGOAS': 'BR-AL', 'AMAPÁ': 'BR-AP', 'AMAZONAS': 'BR-AM', 'BAHIA': 'BR-BA', 'CEARÁ': 'BR-CE',
+        'DISTRITO FEDERAL': 'BR-DF', 'ESPÍRITO SANTO': 'BR-ES', 'GOIÁS': 'BR-GO', 'MARANHÃO': 'BR-MA', 'MATO GROSSO': 'BR-MT',
+        'MATO GROSSO DO SUL': 'BR-MS', 'MINAS GERAIS': 'BR-MG', 'PARÁ': 'BR-PA', 'PARAÍBA': 'BR-PB', 'PARANÁ': 'BR-PR',
+        'PERNAMBUCO': 'BR-PE', 'PIAUÍ': 'BR-PI', 'RIO DE JANEIRO': 'BR-RJ', 'RIO GRANDE DO NORTE': 'BR-RN', 'RIO GRANDE DO SUL': 'BR-RS',
+        'RONDÔNIA': 'BR-RO', 'RORAIMA': 'BR-RR', 'SANTA CATARINA': 'BR-SC', 'SÃO PAULO': 'BR-SP', 'SERGIPE': 'BR-SE', 'TOCANTINS': 'BR-TO'
+    };
+    return mapIso[input] || null; // Retorna null se não for um estado brasileiro válido
+}
+
 // Substitua renderizarTabelaCEPs() por esta versão avançada
 function renderizarTabelaCEPs() {
     const tbody = document.getElementById('corpo-tabela-ceps');
-    
-    // A trava de segurança agora só aborta se a TABELA não existir.
-    // O Mapa tornou-se opcional para não travar o sistema inteiro!
-    if (!tbody) return; 
-
     const divMapaCard = document.getElementById('mapa_brasil_card');
     const divMapaCanvas = document.getElementById('mapa_brasil_div');
+    if (!tbody || !divMapaCanvas) return; // Se tabela sumiu, aborta tudo.
 
-    // 1. Pega o CEP digitado
-    const filtroCep = (document.getElementById("busca-cep-analise")?.value || "").replace(/\D/g, '');
+    // 1. Pega o CEP digitado (Filtro)
+    const filtroCepInput = document.getElementById("busca-cep-analise")?.value || "";
+    const filtroCepLimpo = filtroCepInput.replace(/\D/g, '');
 
-    // 2. Cria as caixas de agrupamento
+    // 2. Cria as caixas de agrupamento (Motor de Inteligência)
     let analiseAgrupadaTabela = {};
-    let analiseAgrupadaMapaBR = {}; 
+    let analiseAgrupadaMapaBR = {}; // GAVETA EXCLUSIVA DO MAPA BRASIL
 
-    // 3. Varre os pedidos e faz a matemática (Motor Analítico)
+    // --- FASE 1: PROCESSAMENTO DE DADOS (Roda sempre, independente do mapa) ---
     todosOsPedidosNuvem.forEach(p => {
+        // Requisitos mínimos de BI: Enviado e Entregue Físico
         if (!p.data_envio || !p.data_entrega) return;
         
         const status = (p.status_nuvemshop || '').toUpperCase();
+        // Apenas pedidos concluídos entram no BI Logístico
         if (status !== 'ENTREGUE' && status !== 'ARQUIVADO') return;
 
-        const ufOriginal = p.estado || 'Não Informado';
         const cepOriginal = p.cep || '';
         const cepLimpo = cepOriginal.replace(/\D/g, '');
+        
+        // 🛡️ SOLUÇÃO PROBLEMA DOS DUPLICADOS: Normalização de Dados (BAHIA -> Bahia) 🛡️
+        const ufRaw = p.estado || 'Não Informado';
+        const ufStandard = normalizarNomeEstado(ufRaw); // Bahia
 
-        if (filtroCep && !cepLimpo.includes(filtroCep)) return;
+        // Aplica o filtro da barra de pesquisa (em tempo real)
+        if (filtroCepLimpo && !cepLimpo.includes(filtroCepLimpo)) return;
 
+        // Calcula a matemática física (dias)
         const dataEnvio = new Date(p.data_envio);
         const dataEntrega = new Date(p.data_entrega);
         const diffDias = Math.ceil(Math.abs(dataEntrega - dataEnvio) / (1000 * 60 * 60 * 24));
 
+        // --- AGRUPAMENTO DA TABELA (Dinâmico) ---
         let chaveGrupoTabela;
         let textoCepExibicao;
-        if (filtroCep === "") {
-            chaveGrupoTabela = ufOriginal;
+
+        if (filtroCepLimpo === "") {
+            // Cenário A: Sem pesquisa. Agrupa pelo Estado Inteiro.
+            chaveGrupoTabela = ufStandard; // Uses normalized standard name (Bahia)
             textoCepExibicao = 'Geral (Todo o Estado)';
         } else {
-            const cepBase = cepLimpo.length >= 5 ? cepLimpo.substring(0, 5) + '-***' : cepLimpo;
-            chaveGrupoTabela = `${ufOriginal}|${cepBase}`;
+            // Cenário B: Com pesquisa. Agrupa pelo Estado + 5 primeiros dígitos.
+            const cepBase = cepLimpo.length >= 5 ? cepLimpo.substring(0, 5) + '-***' : (cepLimpo || 'Sem CEP');
+            chaveGrupoTabela = `${ufStandard}|${cepBase}`; // Combinação única
             textoCepExibicao = cepBase;
         }
 
-        // Matemática da Tabela
+        // Salva na gaveta da tabela (incluindo Internacionais)
         if (!analiseAgrupadaTabela[chaveGrupoTabela]) {
-            analiseAgrupadaTabela[chaveGrupoTabela] = { estado: ufOriginal, cep: textoCepExibicao, somaDias: 0, quantidadePedidos: 0 };
+            analiseAgrupadaTabela[chaveGrupoTabela] = {
+                estado: ufStandard, // Display standard name (Bahia)
+                cep: textoCepExibicao,
+                somaDias: 0,
+                quantidadePedidos: 0
+            };
         }
         analiseAgrupadaTabela[chaveGrupoTabela].somaDias += diffDias;
         analiseAgrupadaTabela[chaveGrupoTabela].quantidadePedidos += 1;
 
-        // Matemática do Mapa
-        const isoCode = mapEstadoParaISO(ufOriginal);
+        // --- 🗺️ FASE 2: AGRUPAMENTO DO MAPA (Segurança de Fronteira) 🗺️ ---
+        // O Mapa sempre agrupa pelo Estado Inteiro (BR-ISO) para tirar a média de cor do estado.
+        // mapEstadoParaISO deve usar Title Case agora (normalizado)
+        const isoCode = mapEstadoParaISO(ufStandard);
         if (isoCode && cepLimpo) { 
             if (!analiseAgrupadaMapaBR[isoCode]) {
                 analiseAgrupadaMapaBR[isoCode] = { somaDias: 0, quantidadePedidos: 0 };
@@ -823,36 +929,50 @@ function renderizarTabelaCEPs() {
         }
     });
 
-    // 4. PREPARAÇÃO DO MAPA (Blindado contra falhas)
-    // O typeof evita erros fatais caso a internet bloqueie o script do Google
-    if (divMapaCanvas && typeof google !== 'undefined' && google.visualization && filtroCep === "" && Object.keys(analiseAgrupadaMapaBR).length > 0) {
-        
-        let dadosMapa = [ ["Region", "Média de Dias", "Quantidade"] ];
-        Object.entries(analiseAgrupadaMapaBR).forEach(([iso, dados]) => {
-            const media = Math.round(dados.somaDias / dados.quantidadePedidos);
-            dadosMapa.push([ iso, media, dados.quantidadePedidos ]);
-        });
+    // --- FASE 3: DESENHAR O MAPA (Se possível e necessário) ---
+    // 🛡️ SOLUÇÃO PROBLEMA DO MAPA: Checa se o semáforo abriu! 🛡️
+    // Só desenha se NÃO houver pesquisa de CEP e se o Estado for BR.
+    if (filtroCepLimpo === "" && Object.keys(analiseAgrupadaMapaBR).length > 0) {
+        // Checa a flag global de disponibilidade e a integridade da biblioteca
+        if (divMapaCanvas && divMapaCard && isGoogleChartsReady && typeof google !== 'undefined' && google.visualization) {
+            try {
+                let dadosMapa = [ ["Region", "Média de Dias", "Quantidade"] ];
+                Object.entries(analiseAgrupadaMapaBR).forEach(([iso, dados]) => {
+                    const media = Math.round(dados.somaDias / dados.quantidadePedidos);
+                    dadosMapa.push([ iso, media, dados.quantidadePedidos ]);
+                });
 
-        const dataTable = google.visualization.arrayToDataTable(dadosMapa);
-        
-        const options = {
-            region: 'BR', 
-            resolution: 'provinces', 
-            colorAxis: { colors: ['#a7f3d0', '#fef08a', '#fca5a5'] }, 
-            backgroundColor: '#f8fafc',
-            datalessRegionColor: '#f1f5f9',
-            legend: { textStyle: { color: '#475569', fontSize: 11 } }
-        };
+                const dataTable = google.visualization.arrayToDataTable(dadosMapa);
+                
+                const options = {
+                    region: 'BR', // Foco no Brasil
+                    resolution: 'provinces', // Divisão por estados
+                    colorAxis: { colors: ['#a7f3d0', '#fef08a', '#fca5a5'] }, // Verde -> Amarelo -> Vermelho
+                    backgroundColor: '#f8fafc',
+                    datalessRegionColor: '#f1f5f9',
+                    legend: { textStyle: { color: '#475569', fontSize: 11 } }
+                };
 
-        const chart = new google.visualization.GeoChart(divMapaCanvas);
-        chart.draw(dataTable, options);
-        if (divMapaCard) divMapaCard.style.display = 'block'; 
+                const chart = new google.visualization.GeoChart(divMapaCanvas);
+                chart.draw(dataTable, options);
+                divMapaCard.style.display = 'block'; // Mostra o mapa se tudo deu certo
 
-    } else {
-        if (divMapaCard) divMapaCard.style.display = 'none';
+            } catch(mapErro) {
+                console.error('❌ Erro ao desenhar GeoChart:', mapErro);
+                divMapaCard.style.display = 'none'; // Esconde se falhar
+            }
+        } else if (divMapaCanvas && divMapaCard) {
+            // Mapa existe no HTML, mas biblioteca não está pronta OU nenhum CEP salvo ainda
+            divMapaCanvas.innerHTML = '<div style="text-align:center; padding-top:150px; color:#64748b; font-size:13px;">A carregar visualização geográfica do Brasil...<br>(Certifique-se de que os pedidos têm CEP salvo)</div>';
+            divMapaCard.style.display = 'block';
+        }
+    } else if (divMapaCard) {
+        // Pesquisa ativa ou sem dados BR, esconde o mapa para dar espaço
+        divMapaCard.style.display = 'none';
     }
 
-    // 5. PREPARAÇÃO DA TABELA
+    // --- FASE 4: DESENHAR A TABELA (Independente do mapa) ---
+    // Transforma em lista
     let resultadosTabela = Object.values(analiseAgrupadaTabela).map(item => {
         return {
             estado: item.estado,
@@ -862,19 +982,26 @@ function renderizarTabelaCEPs() {
         };
     });
 
+    // 🛡️ SOLUÇÃO PROBLEMA DO AGRUPAMENTO: Ordenação Alfabética Exata (A-Z) 🛡️
+    // 'Bahia' virá antes de 'Rio Grande do Norte' e 'Santa Catarina'.
     resultadosTabela.sort((a, b) => a.estado.localeCompare(b.estado));
 
-    // 6. Desenha a tabela
+    // Desenha a tabela
     tbody.innerHTML = '';
+    
     if (resultadosTabela.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico encontrado.</td></tr>';
+        if (filtroCepLimpo) {
+             tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico encontrado para esta região (CEP).</td></tr>';
+        } else {
+             tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico de entrega mapeado.</td></tr>';
+        }
         return;
     }
 
     resultadosTabela.forEach(r => {
         const linha = document.createElement('tr');
         linha.innerHTML = `
-            <td>${r.estado}</td>
+            <td style="font-weight:500;">${r.estado}</td> 
             <td style="font-family: monospace; font-size: 14px; color: #64748b;">${r.cep}</td>
             <td style="font-weight: bold; color: #2563eb; font-size: 15px;">${r.mediaDias} dias</td>
             <td style="color: #475569;">${r.quantidade} entregas mapeadas</td>
