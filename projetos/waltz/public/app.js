@@ -404,25 +404,19 @@ function renderizarPaginaNuvem() {
             
             const stNuvem = (p.status_nuvemshop || '').toUpperCase();
 
-            // FUNÇÃO AUXILIAR PARA RENDERIZAR A LISTA VERTICAL DE AUTOMAÇÕES
-            const getCheckItem = (isDone, text) => {
-                const color = isDone ? '#10b981' : '#94a3b8';
-                const icon = isDone
-                    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
-                    : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
-                return `<div style="display:flex; align-items:center; gap:6px; color:${color}; font-size:11px; font-weight:600; margin-bottom: 2px;">${icon} ${text}</div>`;
-            };
+            // LÓGICA DO PROGRESSO (Qual foi a última etapa enviada?)
+            let step = 0;
+            let ultimoStatusTexto = "Aguardando...";
+            
+            if (p.auto_aprovado === true) { step = 1; ultimoStatusTexto = "1. Pedido Aprovado"; }
+            if (p.auto_fabricacao === true) { step = 2; ultimoStatusTexto = "2. Em Fabricação"; }
+            if (p.auto_rastreio === true) { step = 3; ultimoStatusTexto = "3. Rastreio Enviado"; }
+            if (p.auto_entrega === true) { step = 4; ultimoStatusTexto = "4. Em Rota / Entregue"; }
+            if (p.status_feedback === 'Enviado') { step = 5; ultimoStatusTexto = "5. Feedback Concluído"; }
 
-            // Lê as colunas reais do banco (se já foram acionadas)
-            let acaoComunicacao = `
-                <div style="display:flex; flex-direction:column;">
-                    ${getCheckItem(p.auto_aprovado === true, "1. Aprovado")}
-                    ${getCheckItem(p.auto_fabricacao === true, "2. Fabricação")}
-                    ${getCheckItem(p.auto_rastreio === true, "3. Rastreio")}
-                    ${getCheckItem(p.auto_entrega === true, "4. Em Rota")}
-                    ${getCheckItem(p.status_feedback === 'Enviado', "5. Feedback")}
-                </div>
-            `;
+            // HTML da Célula de Automação (Agora super Clean)
+            let corTexto = step > 0 ? 'var(--primary)' : 'var(--text-muted)';
+            let acaoComunicacao = `<span style="font-size: 13px; font-weight: 600; color: ${corTexto};">${ultimoStatusTexto}</span>`;
             
             let statusNuvem = `<span class="badge badge-aberto">${stNuvem}</span>`;
             
@@ -439,6 +433,7 @@ function renderizarPaginaNuvem() {
         });
     }
     renderizarControlesPaginacaoNuvem(totalPaginas);
+    atualizarIcones(); 
 }
 
 function abrirDetalhesPedido(idPedido) {
@@ -456,6 +451,17 @@ function abrirDetalhesPedido(idPedido) {
     const telLimpo = (pedido.telefone || '').replace(/\D/g, '');
     const urlWpp = `https://wa.me/55${telLimpo}`;
 
+    // LÓGICA MATEMÁTICA DA BARRA DE PROGRESSO
+    let step = 0;
+    if (pedido.auto_aprovado === true) step = 1;
+    if (pedido.auto_fabricacao === true) step = 2;
+    if (pedido.auto_rastreio === true) step = 3;
+    if (pedido.auto_entrega === true) step = 4;
+    if (pedido.status_feedback === 'Enviado') step = 5;
+
+    // Calcula a porcentagem (0%, 20%, 40%, 60%, 80% ou 100%)
+    let progressPct = (step / 5) * 100;
+
     const conteudo = document.getElementById('drawer-conteudo');
     conteudo.innerHTML = `
         <div class="detail-header-card">
@@ -469,7 +475,7 @@ function abrirDetalhesPedido(idPedido) {
             </div>
         </div>
 
-        <!-- BOTÃO DE WHATSAPP RÁPIDO (CADASTRADO) -->
+        <!-- CONTATO RÁPIDO -->
         <div class="detail-group">
             <label>Contato Rápido</label>
             <a href="${urlWpp}" target="_blank" style="display:inline-flex; align-items:center; gap:8px; background:#25d366; color:white; padding:8px 15px; border-radius:8px; text-decoration:none; font-weight:600; font-size:13px; transition: background 0.2s;">
@@ -478,9 +484,23 @@ function abrirDetalhesPedido(idPedido) {
             </a>
         </div>
 
+        <!-- BARRA DE PROGRESSO DAS AUTOMAÇÕES -->
+        <div class="detail-group" style="margin-bottom: 30px;">
+            <label>Progresso das Automações WPP</label>
+            <div style="background: var(--border-color); border-radius: 999px; height: 8px; width: 100%; margin: 12px 0; overflow: hidden;">
+                <div style="background: #10b981; height: 100%; width: ${progressPct}%; border-radius: 999px; transition: width 0.5s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: var(--text-muted); text-align: center; text-transform: uppercase;">
+                <span style="color: ${step >= 1 ? '#10b981' : ''}; width: 20%;">Aprovado</span>
+                <span style="color: ${step >= 2 ? '#10b981' : ''}; width: 20%;">Fabrico</span>
+                <span style="color: ${step >= 3 ? '#10b981' : ''}; width: 20%;">Rastreio</span>
+                <span style="color: ${step >= 4 ? '#10b981' : ''}; width: 20%;">Rota</span>
+                <span style="color: ${step >= 5 ? '#10b981' : ''}; width: 20%;">Feedback</span>
+            </div>
+        </div>
+
         <div class="detail-group"><label>Documento (CPF/CNPJ)</label><p>${formatarDocumento(pedido.cpf_cliente || '-')}</p></div>
         
-        <!-- ENDEREÇO COMPLETO EXIBIDO -->
         <div class="detail-group">
             <label>Endereço de Entrega</label>
             <p>${pedido.endereco_completo || 'Endereço não capturado'}</p>
