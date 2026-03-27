@@ -32,7 +32,7 @@ function inicializarGoogleCharts() {
     scriptGoogle.onload = () => {
         try {
             // Agora sim é seguro carregar o pacote do mapa
-            google.charts.load('current', { 'packages': ['geochart'], 'language': 'pt-br' });
+            google.charts.load('current', { 'packages': ['geochart', 'corechart'], 'language': 'pt-br' });
             
             google.charts.setOnLoadCallback(() => {
                 console.log('✅ Google GeoChart carregado e pronto para uso.');
@@ -111,7 +111,7 @@ function getTemplateLogin() {
     <div style="background-color: #0f172a; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif;">
         <div style="background: white; border-radius: 12px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
             <div style="text-align: center; margin-bottom: 30px;">
-                <img src="/components/images/logo.png" alt="Waltz" style="height: 45px; margin-bottom: 15px; border-radius: 4px;">
+                <img src="./images/logo.png"" alt="Waltz" style="height: 45px; margin-bottom: 15px; border-radius: 4px;">
                 <p style="color: #64748b; font-size: 14px; margin: 0;">Acesse sua conta para continuar</p>
             </div>
             <form id="form-login">
@@ -143,7 +143,7 @@ function getTemplatePainel() {
         <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="/components/images/logo.png" alt="Waltz" style="border-radius:4px; max-height: 40px; filter: brightness(0) invert(1);"> 
+                <img src="./images/logo.png"" alt="Waltz" style="border-radius:4px; max-height: 40px; filter: brightness(0) invert(1);"> 
                 <div class="btn-toggle-menu" onclick="toggleSidebar()"><i data-lucide="chevron-left"></i></div>
             </div>
             
@@ -185,7 +185,11 @@ function getTemplatePainel() {
                         <div class="kpi-card"><div class="kpi-icon" style="background:#fffbeb; color:#f59e0b;"><i data-lucide="truck"></i></div><div class="kpi-info"><h3>Entregas Pendentes</h3><div class="value">342</div><div class="trend negative"><i data-lucide="trending-down" style="width:12px;"></i> -5%</div></div></div>
                         <div class="kpi-card"><div class="kpi-icon" style="background:#fef2f2; color:#ef4444;"><i data-lucide="mail"></i></div><div class="kpi-info"><h3>E-mails Enviados</h3><div class="value">1.204</div><div class="trend positive"><i data-lucide="trending-up" style="width:12px;"></i> +23%</div></div></div>
                     </div>
-                    <div class="charts-grid"><div class="chart-card">Gráfico de vendas — em breve</div><div class="chart-card">Desempenho logístico — em breve</div></div>
+                    <div class="charts-grid">
+                        <!-- Adicionamos um ID e removemos o texto "em breve" -->
+                        <div class="chart-card" id="grafico-clientes-div" style="padding: 20px; align-items: center;">Carregando gráfico...</div>
+                        <div class="chart-card">Desempenho logístico — em breve</div>
+                    </div>
                 </div>
 
                 <!-- ABA TINY (CLIENTES) RESTAURADA -->
@@ -226,18 +230,12 @@ function getTemplatePainel() {
                                         <th>Data/Hora <span class="sort-icon">↑↓</span></th>
                                         <th>Pedido <span class="sort-icon">↑↓</span></th>
                                         <th>Cliente <span class="sort-icon">↑↓</span></th>
-                                        <th>CPF <span class="sort-icon">↑↓</span></th>
-                                        <th>Cidade <span class="sort-icon">↑↓</span></th>
-                                        <th>UF <span class="sort-icon">↑↓</span></th>
-                                        <th>Transportadora <span class="sort-icon">↑↓</span></th>
-                                        <th>Tempo <span class="sort-icon">↑↓</span></th>
-                                        <th>Rastreio <span class="sort-icon">↑↓</span></th>
                                         <th>Status <span class="sort-icon">↑↓</span></th>
-                                        <th>Feedback <span class="sort-icon">↑↓</span></th>
+                                        <th>Comunicações <span class="sort-icon">↑↓</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="corpo-tabela-nuvem">
-                                    <tr><td colspan="11" style="text-align: center; padding: 30px;">Carregando...</td></tr>
+                                    <tr><td colspan="5" style="text-align: center; padding: 30px;">Carregando...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -265,6 +263,21 @@ function getTemplatePainel() {
                 </div>
 
             </div>
+
+            <!-- ========================================== -->
+            <!-- PAINEL LATERAL DE DETALHES (DRAWER)        -->
+            <!-- ========================================== -->
+            <div class="drawer-overlay" id="drawer-overlay" onclick="fecharDetalhesPedido()"></div>
+            <div class="drawer-panel" id="drawer-pedido">
+                <div class="drawer-header">
+                    <h2 id="drawer-titulo">Detalhes do Pedido</h2>
+                    <button class="btn-close-drawer" onclick="fecharDetalhesPedido()"><i data-lucide="x"></i></button>
+                </div>
+                <div class="drawer-body" id="drawer-conteudo">
+                    <!-- O conteúdo será injetado pelo JavaScript aqui -->
+                </div>
+            </div>
+
         </main>
     </div>`;
 }
@@ -357,18 +370,27 @@ async function mostrarSubPaginaDash(idAlvo) {
     if (idAlvo === 'dash') {
         document.getElementById('dash-page-title').innerText = "Dashboard";
         document.getElementById('dash-page-subtitle').innerText = "Visão geral do seu e-commerce";
+        
+        // Se a base de clientes ainda estiver vazia, vai buscar ao servidor antes de desenhar o gráfico
+        if (todaABaseDeClientes.length === 0) {
+            await carregarClientesTinyDB();
+        }
+        renderizarGraficoClientes(); // Desenha o gráfico de pizza!
+
     } else if (idAlvo === 'tiny') {
         document.getElementById('dash-page-title').innerText = "Clientes";
         document.getElementById('dash-page-subtitle').innerText = "Listagem de cadastros";
-        // Injeta os filtros do Tiny no topo
+        // 1. Injeta os filtros do Tiny no topo COM A BADGE DE CONTADOR
         topActions.innerHTML = `
             <div class="search-bar"><i data-lucide="search"></i><input type="text" id="filtro-texto" placeholder="Buscar por nome ou CPF..." onkeyup="resetarEPaginacao()"></div>
             <select id="filtro-grupo" class="select-modern" onchange="resetarEPaginacao()">
                 <option value="TODOS">Todos os Grupos</option><option value="DIAMANTE">Diamante</option><option value="OURO">Ouro</option><option value="PRATA">Prata</option><option value="BRONZE">Bronze</option><option value="PRIMEIRA COMPRA">1ª Compra</option><option value="SEM COMPRAS">Sem Compras</option>
             </select>
+            <span id="contador-cadastros" class="contador-badge">0 cadastro(s)</span>
         `;
         await carregarClientesTinyDB();
-    } else if (idAlvo === 'nuvem') {
+    }
+     else if (idAlvo === 'nuvem') {
         document.getElementById('dash-page-title').innerText = "Pedidos";
         document.getElementById('dash-page-subtitle').innerText = "Listagem de vendas";
         // Injeta os filtros da Nuvemshop no topo
@@ -469,7 +491,6 @@ function renderizarPaginaNuvem() {
     const termoBusca = (document.getElementById("busca-nuvem")?.value || "").toLowerCase();
     const filtroStatus = document.getElementById("filtro-status-nuvem")?.value || "TODOS";
     
-    // Filtro Inteligente Restaurado
     let dadosFiltrados = todosOsPedidosNuvem.filter(p => {
         const numPedido = (p.numero_pedido || "").toLowerCase();
         const nomeCliente = (p.nome_cliente || "").toLowerCase();
@@ -493,7 +514,7 @@ function renderizarPaginaNuvem() {
 
     tbody.innerHTML = ''; 
     if (itensDaPagina.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px;">Nenhum pedido atende aos filtros.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Nenhum pedido atende aos filtros.</td></tr>';
     } else {
         itensDaPagina.forEach(p => {
             const dataO = new Date(p.data_criacao);
@@ -501,23 +522,10 @@ function renderizarPaginaNuvem() {
             const opcoesHora = { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute:'2-digit' };
             const dataF = dataO.toLocaleDateString('pt-BR', opcoesData) + ' ' + dataO.toLocaleTimeString('pt-BR', opcoesHora);
             
-            const cpfFormatado = formatarDocumento(p.cpf_cliente || '-');
-            
-            // Restaura o cálculo de tempo de entrega
-            let tempoTexto = '-';
-            if (p.data_envio && p.data_entrega) {
-                const dataEnvio = new Date(p.data_envio);
-                const dataEntrega = new Date(p.data_entrega);
-                const diffDias = Math.ceil(Math.abs(dataEntrega - dataEnvio) / (1000 * 60 * 60 * 24));
-                tempoTexto = `${diffDias} d`;
-            }
-
-            let acaoFeedback = `<span class="badge badge-aguardando">AGUARDANDO</span>`;
-            
+            let acaoComunicacao = `<span class="badge badge-aguardando">AGUARDANDO</span>`;
             if (p.status_feedback === 'Enviado') {
-                // Renderiza o círculo verde com o ícone SVG de check duplo
-                acaoFeedback = `
-                <div style="background: #10b981; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;" title="Enviado">
+                acaoComunicacao = `
+                <div style="background: #10b981; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;" title="Enviado">
                     <svg stroke="#ffffff" width="16" height="16" stroke-width="2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M1.5 12.5L5.57574 16.5757C5.81005 16.8101 6.18995 16.8101 6.42426 16.5757L9 14" stroke="#ffffff" stroke-linecap="round"/>
                         <path d="M16 7L12 11" stroke="#ffffff" stroke-linecap="round"/>
@@ -526,30 +534,100 @@ function renderizarPaginaNuvem() {
                 </div>`;
             } else if (p.status_nuvemshop === 'Entregue' || p.status_nuvemshop === 'Arquivado') {
                 const produtosSeguros = encodeURIComponent(p.produtos || ''); 
-                acaoFeedback = `<span class="badge badge-diamante" style="cursor:pointer;" onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '${produtosSeguros}')">ENVIAR</span>`;
+                // Adicionamos event.stopPropagation() para não abrir a gaveta ao clicar neste botão
+                acaoComunicacao = `<span class="badge badge-diamante" style="cursor:pointer;" onclick="event.stopPropagation(); enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '${produtosSeguros}')">ENVIAR</span>`;
             }
             
             let statusNuvem = `<span class="badge badge-aberto">${(p.status_nuvemshop || 'Aberto').toUpperCase()}</span>`;
             
             const linha = document.createElement('tr');
+            // Torna a linha clicável para abrir os detalhes
+            linha.onclick = () => abrirDetalhesPedido(p.id_pedido);
             linha.innerHTML = `
                 <td style="white-space:nowrap; color: var(--text-muted);">${dataF.split(' ')[0]} <br><span style="font-size:11px">${dataF.split(' ')[1]}</span></td>
                 <td style="font-weight:600; color:var(--primary);">#${p.numero_pedido}</td>
-                <td>${p.nome_cliente || '-'}</td>
-                <td style="white-space:nowrap">${cpfFormatado}</td> <!-- COLUNA RESTAURADA -->
-                <td>${p.cidade || '-'}</td>
-                <td>${p.estado || '-'}</td>
-                <td>${p.transportadora || '-'}</td>
-                <td style="font-weight:bold; color:var(--text-main);">${tempoTexto}</td> <!-- COLUNA RESTAURADA -->
-                <td style="font-family: monospace; font-size:12px;">${p.rastreio || '-'}</td> <!-- COLUNA RESTAURADA -->
+                <td style="font-weight:500;">${p.nome_cliente || '-'}</td>
                 <td>${statusNuvem}</td>
-                <td>${acaoFeedback}</td>
+                <td>${acaoComunicacao}</td>
             `;
             tbody.appendChild(linha);
         });
     }
     renderizarControlesPaginacaoNuvem(totalPaginas);
-    atualizarIcones(); // Mantém os ícones funcionando
+    atualizarIcones(); 
+}
+
+// ==========================================
+// FUNÇÕES DO PAINEL LATERAL DE DETALHES
+// ==========================================
+function abrirDetalhesPedido(idPedido) {
+    const pedido = todosOsPedidosNuvem.find(p => p.id_pedido === idPedido);
+    if (!pedido) return;
+
+    // 1. Atualiza o título
+    document.getElementById('drawer-titulo').innerText = `Pedido #${pedido.numero_pedido}`;
+
+    // 2. Calcula o tempo de entrega novamente apenas para este pedido
+    let tempoTexto = 'Em andamento';
+    if (pedido.data_envio && pedido.data_entrega) {
+        const dataEnvio = new Date(pedido.data_envio);
+        const dataEntrega = new Date(pedido.data_entrega);
+        const diffDias = Math.ceil(Math.abs(dataEntrega - dataEnvio) / (1000 * 60 * 60 * 24));
+        tempoTexto = `${diffDias} dias`;
+    }
+
+    // 3. Monta o visual interno parecido com o print de "Lead Detail"
+    const conteudo = document.getElementById('drawer-conteudo');
+    conteudo.innerHTML = `
+        <div class="detail-header-card">
+            <div class="detail-avatar"><i data-lucide="user"></i></div>
+            <div class="detail-header-info">
+                <h3>${pedido.nome_cliente || '-'}</h3>
+                <p><i data-lucide="phone" style="width:12px; height:12px;"></i> ${pedido.telefone || 'Sem telefone'}</p>
+            </div>
+        </div>
+
+        <div class="detail-group">
+            <label>Documento (CPF/CNPJ)</label>
+            <p>${formatarDocumento(pedido.cpf_cliente || '-')}</p>
+        </div>
+
+        <div class="detail-grid">
+            <div class="detail-group">
+                <label>Cidade</label>
+                <p>${pedido.cidade || '-'}</p>
+            </div>
+            <div class="detail-group">
+                <label>Estado (UF)</label>
+                <p>${pedido.estado || '-'}</p>
+            </div>
+        </div>
+
+        <div class="detail-group">
+            <label>Transportadora</label>
+            <p>${pedido.transportadora || '-'}</p>
+        </div>
+
+        <div class="detail-group">
+            <label>Código de Rastreio</label>
+            <p style="font-family: monospace; color: var(--primary); font-weight: 600; font-size: 15px;">${pedido.rastreio || 'Aguardando envio...'}</p>
+        </div>
+
+        <div class="detail-group">
+            <label>Tempo de Entrega Logístico</label>
+            <p>${tempoTexto}</p>
+        </div>
+    `;
+
+    // 4. Abre o painel e recria os ícones Lucide recém injetados
+    document.getElementById('drawer-overlay').classList.add('active');
+    document.getElementById('drawer-pedido').classList.add('active');
+    atualizarIcones();
+}
+
+function fecharDetalhesPedido() {
+    document.getElementById('drawer-overlay').classList.remove('active');
+    document.getElementById('drawer-pedido').classList.remove('active');
 }
 
 function renderizarControlesPaginacaoNuvem(totalPaginas) {
@@ -588,6 +666,58 @@ let paginaAtualRelatorio = 1;
 const itensPorPaginaRelatorio = 50;
 let colunaOrdenacao = -1;
 let ordemCrescente = true;
+
+// ==========================================
+// FUNÇÃO: DESENHAR GRÁFICO DE PIZZA (DASHBOARD)
+// ==========================================
+function renderizarGraficoClientes() {
+    const divGrafico = document.getElementById('grafico-clientes-div');
+    // Aborta se a div não existir ou o Google Charts ainda não tiver carregado
+    if (!divGrafico || typeof google === 'undefined' || !google.visualization || !google.visualization.PieChart) return;
+
+    // 1. Cria as caixas de contagem
+    let contagem = { "DIAMANTE": 0, "OURO": 0, "PRATA": 0, "BRONZE": 0, "PRIMEIRA COMPRA": 0 };
+    
+    // 2. Varre todos os clientes para classificá-los (Ignoramos os "Sem Compras")
+    todaABaseDeClientes.forEach(c => {
+        let totalPedidos = c.total_pedidos || 0;
+        let valorTotal = parseFloat(c.valor_total || 0);
+        
+        if (totalPedidos === 1) contagem["PRIMEIRA COMPRA"]++;
+        else if (totalPedidos > 1) {
+            if (valorTotal <= 1000) contagem["BRONZE"]++;
+            else if (valorTotal <= 3000) contagem["PRATA"]++;
+            else if (valorTotal <= 6000) contagem["OURO"]++;
+            else contagem["DIAMANTE"]++;
+        }
+    });
+
+    // 3. Monta a tabela de dados no formato que o Google exige
+    const dadosGrafico = [
+        ['Grupo', 'Quantidade'],
+        ['Diamante', contagem["DIAMANTE"]],
+        ['Ouro', contagem["OURO"]],
+        ['Prata', contagem["PRATA"]],
+        ['Bronze', contagem["BRONZE"]],
+        ['1ª Compra', contagem["PRIMEIRA COMPRA"]]
+    ];
+
+    const dataTable = google.visualization.arrayToDataTable(dadosGrafico);
+    
+    // 4. Configura as cores idênticas às das nossas Badges do CSS
+    const options = {
+        title: 'Distribuição de Clientes (Com Compras)',
+        pieHole: 0.4, // Transforma a pizza num "Donut" moderno
+        colors: ['#d97706', '#a16207', '#475569', '#c2410c', '#4338ca'],
+        backgroundColor: 'transparent',
+        chartArea: { width: '90%', height: '75%' },
+        legend: { position: 'right', textStyle: { color: '#475569', fontSize: 13 } }
+    };
+
+    // 5. Desenha na tela
+    const chart = new google.visualization.PieChart(divGrafico);
+    chart.draw(dataTable, options);
+}
 
 async function carregarClientesTinyDB() {
     const tbody = document.getElementById('tabela-clientes-body');

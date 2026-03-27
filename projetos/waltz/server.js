@@ -363,6 +363,7 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         console.log(`⏳ Aguardando 3 segundos para o Tiny processar o pedido internamente...`);
         await delay(3000); 
 
+        // 1. Busca o histórico de compras do cliente para LTV
         const urlBusca = `https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`;
         const respostaBusca = await fetch(urlBusca);
         const textoResposta = await respostaBusca.text();
@@ -379,11 +380,10 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
             
             const totalPedidos = dadosBusca.retorno.pedidos.length;
             const valorTotalGasto = dadosBusca.retorno.pedidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
-
             const primeiroPedido = dadosBusca.retorno.pedidos[0].pedido;
             const nomeCliente = primeiroPedido.nome || 'Cliente Importado';
 
-            // 1. Atualiza o banco de dados local
+            // Atualiza o banco de dados local
             await sql`
                 INSERT INTO clientes (cpf, nome, cidade, estado, telefone, total_pedidos, valor_total)
                 VALUES (${cpfLimpo}, ${nomeCliente}, '-', '-', '-', ${totalPedidos}, ${valorTotalGasto})
@@ -395,9 +395,7 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
             
             console.log(`✅ Cliente CPF ${cpfLimpo} atualizado! Pedidos totais: ${totalPedidos} | Valor: R$ ${valorTotalGasto}`);
 
-            // --------------------------------------------------------
-            // 2. NOVA LÓGICA: IDENTIFICAR O GRUPO E INJETAR OBSERVAÇÃO
-            // --------------------------------------------------------
+            // Lógica de Grupos
             let grupoReal = "SEM COMPRAS";
             if (totalPedidos === 1) {
                 grupoReal = "PRIMEIRA COMPRA";
@@ -408,10 +406,26 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
                 else grupoReal = "DIAMANTE";
             }
 
-            // Monta EXCLUSIVAMENTE a mensagem interna com os dados de BI do cliente
+            // --------------------------------------------------------
+            // 🛑 O DISJUNTOR (CIRCUIT BREAKER) PARA EVITAR LOOP INFINITO 🛑
+            // --------------------------------------------------------
+            // Vamos ler o pedido específico para ver o que já está escrito nele
+            const urlObterPedido = `https://api.tiny.com.br/api2/pedido.obter.php?token=${TOKEN}&id=${idPedido}&formato=JSON`;
+            const respostaObter = await fetch(urlObterPedido);
+            const jsonObter = await respostaObter.json();
+
+            if (jsonObter.retorno && jsonObter.retorno.status === 'OK') {
+                const obsAtual = jsonObter.retorno.pedido.obs_interna || '';
+                
+                // Se a nossa estrela já estiver na observação, significa que já processamos!
+                if (obsAtual.includes('⭐ CLASSIFICAÇÃO: Cliente')) {
+                    console.log(`🛑 Loop Evitado: O pedido ${idPedido} já possui a classificação. Ignorando Efeito Eco.`);
+                    return; // ABORTA A MISSÃO AQUI E SALVA O SERVIDOR!
+                }
+            }
+
+            // Se a estrela não existir, monta a mensagem e injeta!
             const obsInterna = `⭐ CLASSIFICAÇÃO: Cliente ${grupoReal} | Histórico: ${totalPedidos} pedidos | LTV: R$ ${valorTotalGasto.toFixed(2).replace('.', ',')}`;
-            
-            // Dispara a atualização para o Tiny ERP enviando apenas a observação interna
             await atualizarObservacaoTiny(idPedido, obsInterna);
 
         } else if (dadosBusca.retorno && dadosBusca.retorno.status === 'Erro') {
