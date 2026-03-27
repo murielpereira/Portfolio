@@ -111,7 +111,7 @@ function getTemplateLogin() {
     <div style="background-color: #111827; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif;">
         <div style="background: white; border-radius: 12px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
             <div style="text-align: center; margin-bottom: 30px;">
-                <img src="../images/logo.jpg" alt="Waltz" style="height: 45px; margin-bottom: 15px; border-radius: 4px;">
+                <img src="../images/logo.png" alt="Waltz" style="height: 45px; margin-bottom: 15px; border-radius: 4px;">
                 <p style="color: #64748b; font-size: 14px; margin: 0;">Acesse sua conta para continuar</p>
             </div>
             <form id="form-login">
@@ -143,7 +143,7 @@ function getTemplatePainel() {
         <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <img src="../images/logo.jpg" alt="Waltz" style="border-radius:4px; filter: brightness(0) invert(1);"> <!-- Logo Branca -->
+                <img src="../images/logo.png" alt="Waltz" style="border-radius:4px; max-width: 150px; background: white; padding: 5px;">
                 <i data-lucide="chevron-left" style="color: #64748b; cursor:pointer;"></i>
             </div>
             
@@ -234,29 +234,45 @@ function getTemplatePainel() {
 
                 <!-- ABA NUVEMSHOP (PEDIDOS) -->
                 <div id="sub-nuvem" class="sub-pagina" style="display: none;">
-                    <div class="table-header-actions">
-                        <div class="search-bar">
-                            <i data-lucide="search"></i>
-                            <input type="text" id="busca-nuvem" placeholder="Buscar pedido ou cliente..." onkeyup="resetarPaginacaoNuvem()">
+                    <div class="table-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: -50px;">
+                        <div class="filtros-area" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                            <div class="search-bar" style="margin: 0; width: 250px;">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="busca-nuvem" placeholder="Buscar pedido, cliente ou CPF..." onkeyup="resetarPaginacaoNuvem()">
+                            </div>
+                            <select id="filtro-status-nuvem" onchange="resetarPaginacaoNuvem()" style="padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; outline: none; font-size: 13px; color: var(--text-muted); background: white; cursor: pointer;">
+                                <option value="TODOS">Todos os Status</option>
+                                <option value="Aberto">Aberto</option>
+                                <option value="Entregue">Entregue</option>
+                                <option value="Arquivado">Arquivado</option>
+                                <option value="Cancelado">Cancelado</option>
+                            </select>
+                            <span id="contador-nuvem" style="background: var(--bg-sidebar); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+                                0 pedidos
+                            </span>
                         </div>
                     </div>
                     <div class="card-table">
-                        <div class="tabela-responsiva">
-                            <table class="tabela-dados">
+                        <!-- O overflow-x resolve a tela quebrando! -->
+                        <div class="tabela-responsiva" style="width: 100%; overflow-x: auto;">
+                            <table class="tabela-dados" style="min-width: 1100px;">
                                 <thead>
                                     <tr>
                                         <th>Data/Hora <span>↕</span></th>
                                         <th>Pedido <span>↕</span></th>
                                         <th>Cliente <span>↕</span></th>
+                                        <th>CPF <span>↕</span></th>
                                         <th>Cidade <span>↕</span></th>
                                         <th>UF <span>↕</span></th>
                                         <th>Transportadora <span>↕</span></th>
+                                        <th>Tempo <span>↕</span></th>
+                                        <th>Rastreio <span>↕</span></th>
                                         <th>Status <span>↕</span></th>
                                         <th>Feedback <span>↕</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="corpo-tabela-nuvem">
-                                    <tr><td colspan="8" style="text-align: center; padding: 30px;">Carregando...</td></tr>
+                                    <tr><td colspan="11" style="text-align: center; padding: 30px;">Carregando...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -488,8 +504,8 @@ function renderizarPaginaNuvem() {
     
     const termoBusca = (document.getElementById("busca-nuvem")?.value || "").toLowerCase();
     const filtroStatus = document.getElementById("filtro-status-nuvem")?.value || "TODOS";
-    const filtroFeedback = document.getElementById("filtro-feedback-nuvem")?.value || "TODOS";
     
+    // Filtro Inteligente Restaurado
     let dadosFiltrados = todosOsPedidosNuvem.filter(p => {
         const numPedido = (p.numero_pedido || "").toLowerCase();
         const nomeCliente = (p.nome_cliente || "").toLowerCase();
@@ -498,9 +514,8 @@ function renderizarPaginaNuvem() {
         
         const passaBusca = termoBusca === "" || numPedido.includes(termoBusca) || nomeCliente.includes(termoBusca) || (buscaLimpa !== "" && cpfCliente.includes(buscaLimpa));
         const passaStatus = filtroStatus === "TODOS" || p.status_nuvemshop === filtroStatus;
-        const passaFeedback = filtroFeedback === "TODOS" || p.status_feedback === filtroFeedback;
 
-        return passaBusca && passaStatus && passaFeedback;
+        return passaBusca && passaStatus;
     });
 
     const contadorElem = document.getElementById('contador-nuvem');
@@ -514,30 +529,22 @@ function renderizarPaginaNuvem() {
 
     tbody.innerHTML = ''; 
     if (itensDaPagina.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px;">Nenhum pedido atende aos filtros.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px;">Nenhum pedido atende aos filtros.</td></tr>';
     } else {
         itensDaPagina.forEach(p => {
             const dataO = new Date(p.data_criacao);
-            
-            // CORREÇÃO DEFINITIVA DO FUSO HORÁRIO: Horário Oficial de Brasília
             const opcoesData = { timeZone: 'America/Sao_Paulo' };
             const opcoesHora = { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute:'2-digit' };
             const dataF = dataO.toLocaleDateString('pt-BR', opcoesData) + ' ' + dataO.toLocaleTimeString('pt-BR', opcoesHora);
             
             const cpfFormatado = formatarDocumento(p.cpf_cliente || '-');
             
-            // LÓGICA DO TEMPO DE ENTREGA
+            // Restaura o cálculo de tempo de entrega
             let tempoTexto = '-';
-            // Só calculamos se o pedido tiver sido enviado e entregue
             if (p.data_envio && p.data_entrega) {
                 const dataEnvio = new Date(p.data_envio);
                 const dataEntrega = new Date(p.data_entrega);
-                
-                // Calcula a diferença em milissegundos
-                const diffMilissegundos = Math.abs(dataEntrega - dataEnvio);
-                
-                // Converte milissegundos para dias
-                const diffDias = Math.ceil(diffMilissegundos / (1000 * 60 * 60 * 24));
+                const diffDias = Math.ceil(Math.abs(dataEntrega - dataEnvio) / (1000 * 60 * 60 * 24));
                 tempoTexto = `${diffDias} d`;
             }
 
@@ -545,19 +552,23 @@ function renderizarPaginaNuvem() {
             if (p.status_feedback === 'Enviado') {
                 acaoFeedback = `<span class="badge" style="background: #eef2ff; color: #4f46e5; border-color: #c7d2fe;">ENVIADO</span>`;
             } else if (p.status_nuvemshop === 'Entregue' || p.status_nuvemshop === 'Arquivado') {
-                acaoFeedback = `<span class="badge badge-diamante" style="cursor:pointer;" onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '')">ENVIAR WPP</span>`;
+                const produtosSeguros = encodeURIComponent(p.produtos || ''); 
+                acaoFeedback = `<span class="badge badge-diamante" style="cursor:pointer;" onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '${produtosSeguros}')">ENVIAR WPP</span>`;
             }
             
             let statusNuvem = `<span class="badge badge-aberto">${(p.status_nuvemshop || 'Aberto').toUpperCase()}</span>`;
             
             const linha = document.createElement('tr');
             linha.innerHTML = `
-                <td style="white-space:nowrap; color: var(--text-muted);">${dataF.split(' ')[0]} ${dataF.split(' ')[1]}</td>
+                <td style="white-space:nowrap; color: var(--text-muted);">${dataF.split(' ')[0]} <br><span style="font-size:11px">${dataF.split(' ')[1]}</span></td>
                 <td style="font-weight:600; color:var(--primary);">#${p.numero_pedido}</td>
                 <td>${p.nome_cliente || '-'}</td>
+                <td style="white-space:nowrap">${cpfFormatado}</td> <!-- COLUNA RESTAURADA -->
                 <td>${p.cidade || '-'}</td>
                 <td>${p.estado || '-'}</td>
                 <td>${p.transportadora || '-'}</td>
+                <td style="font-weight:bold; color:var(--text-main);">${tempoTexto}</td> <!-- COLUNA RESTAURADA -->
+                <td style="font-family: monospace; font-size:12px;">${p.rastreio || '-'}</td> <!-- COLUNA RESTAURADA -->
                 <td>${statusNuvem}</td>
                 <td>${acaoFeedback}</td>
             `;
@@ -565,6 +576,7 @@ function renderizarPaginaNuvem() {
         });
     }
     renderizarControlesPaginacaoNuvem(totalPaginas);
+    atualizarIcones(); // Mantém os ícones funcionando
 }
 
 function renderizarControlesPaginacaoNuvem(totalPaginas) {

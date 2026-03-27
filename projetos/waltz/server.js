@@ -623,23 +623,19 @@ async function atualizarObservacaoTiny(idPedidoTiny, observacaoExterna, observac
     const TOKEN = process.env.TINY_TOKEN;
     const urlTiny = `https://erp.tiny.com.br/api2/pedido.alterar.php?token=${TOKEN}&id=${idPedidoTiny}&formato=JSON`;
     
-    // Constrói o objeto JSON exatamente como o suporte indicou
-    const objetoDadosPedido = {
+    // Constrói a string JSON pura exatamente como no comando cURL do suporte
+    const corpoRaw = JSON.stringify({
         "dados_pedido": {
             "obs": observacaoExterna,
             "obs_interna": observacaoInterna
         }
-    };
-
-    // 💡 A MÁGICA DO URLENCODED: Transforma o JSON no formato que o PHP do Tiny entende
-    const parametrosUrl = new URLSearchParams();
-    parametrosUrl.append('dados_pedido', JSON.stringify(objetoDadosPedido.dados_pedido));
+    });
 
     try {
         const resposta = await fetch(urlTiny, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: parametrosUrl
+            body: corpoRaw // Passa a string crua sem converter para URLSearchParams
         });
 
         const dadosJson = await resposta.json();
