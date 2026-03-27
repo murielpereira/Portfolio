@@ -361,34 +361,30 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
 
     try {
         console.log(`⏳ Aguardando 3 segundos para o Tiny processar o pedido internamente...`);
-        await delay(3000);
+        // Função delay deve estar definida no topo do seu server.js
+        await delay(3000); 
 
         const urlBusca = `https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`;
         const respostaBusca = await fetch(urlBusca);
         const textoResposta = await respostaBusca.text();
         
         let dadosBusca;
-        
-        // 1. Bloco Isolado: Tenta apenas converter o JSON
         try {
             dadosBusca = JSON.parse(textoResposta);
         } catch (parseErro) {
             console.error(`⚠️ O Tiny não devolveu JSON. Resposta:`, textoResposta.substring(0, 300));
-            return; // Para a execução aqui se não for JSON
+            return; 
         }
 
-        // 2. Se chegou aqui, é um JSON válido. Vamos processar com segurança!
         if (dadosBusca.retorno && dadosBusca.retorno.status === 'OK' && dadosBusca.retorno.pedidos) {
             
-            // Calcula o Lifetime Value (LTV)
             const totalPedidos = dadosBusca.retorno.pedidos.length;
             const valorTotalGasto = dadosBusca.retorno.pedidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
 
-            // Extração Correta e Segura: O nome está direto dentro de "pedido"
             const primeiroPedido = dadosBusca.retorno.pedidos[0].pedido;
             const nomeCliente = primeiroPedido.nome || 'Cliente Importado';
 
-            // 3. Atualiza o banco de forma cirúrgica (Não apaga o endereço que já existe)
+            // 1. Atualiza o banco de dados local
             await sql`
                 INSERT INTO clientes (cpf, nome, cidade, estado, telefone, total_pedidos, valor_total)
                 VALUES (${cpfLimpo}, ${nomeCliente}, '-', '-', '-', ${totalPedidos}, ${valorTotalGasto})
@@ -398,13 +394,40 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
                     valor_total = EXCLUDED.valor_total;
             `;
             
-            console.log(`✅ Cliente CPF ${cpfLimpo} atualizado via Webhook! Pedidos totais: ${totalPedidos} | Valor: R$ ${valorTotalGasto}`);
+            console.log(`✅ Cliente CPF ${cpfLimpo} atualizado! Pedidos totais: ${totalPedidos} | Valor: R$ ${valorTotalGasto}`);
+
+            // --------------------------------------------------------
+            // 2. NOVA LÓGICA: IDENTIFICAR O GRUPO E INJETAR OBSERVAÇÃO
+            // --------------------------------------------------------
+            let grupoReal = "SEM COMPRAS";
+            if (totalPedidos === 1) {
+                grupoReal = "PRIMEIRA COMPRA";
+            } else if (totalPedidos > 1) {
+                if (valorTotalGasto <= 1000) grupoReal = "BRONZE";
+                else if (valorTotalGasto <= 3000) grupoReal = "PRATA";
+                else if (valorTotalGasto <= 6000) grupoReal = "OURO";
+                else grupoReal = "DIAMANTE";
+            }
+
+            // Monta as mensagens personalizadas
+            const obsInterna = `⭐ CLASSIFICAÇÃO: Cliente ${grupoReal} | Histórico: ${totalPedidos} pedidos | LTV: R$ ${valorTotalGasto.toFixed(2).replace('.', ',')}`;
+            let obsExterna = ``; 
+            
+            // Você pode customizar a mensagem externa que vai na nota do cliente
+            if (grupoReal === "PRIMEIRA COMPRA") {
+                obsExterna = `Bem-vindo(a) à Âme Acessórios Pet! Preparamos o seu primeiro pedido com muito carinho.`;
+            } else {
+                obsExterna = `Obrigado por escolher a Âme Acessórios Pet novamente! Você é um cliente categoria ${grupoReal}.`;
+            }
+
+            // Dispara a atualização para o Tiny ERP
+            await atualizarObservacaoTiny(idPedido, obsExterna, obsInterna);
+
         } else if (dadosBusca.retorno && dadosBusca.retorno.status === 'Erro') {
             console.log(`⚠️ O Tiny retornou um aviso estruturado:`, dadosBusca.retorno.erros);
         }
 
     } catch (erro) {
-        // Agora, se der qualquer outro erro na nossa lógica de leitura, ele cai aqui, apontando o motivo real!
         console.error("❌ Erro ao extrair dados na função do Webhook Tiny:", erro.message);
     }
 }
@@ -590,3 +613,46 @@ app.post('/api/relatorios/calcular-lote-financeiro', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Servidor rodando na porta: ${PORT}`));
 module.exports = app;
+
+// ==========================================
+// FUNÇÃO: ATUALIZAR OBSERVAÇÕES NO TINY ERP
+// ==========================================
+async function atualizarObservacaoTiny(idPedidoTiny, observacaoExterna, observacaoInterna) {
+    console.log(`\n📝 TINY API: Escrevendo observações no pedido ID: ${idPedidoTiny}`);
+    
+    const TOKEN = process.env.TINY_TOKEN;
+    const urlTiny = `https://erp.tiny.com.br/api2/pedido.alterar.php?token=${TOKEN}&id=${idPedidoTiny}&formato=JSON`;
+    
+    // Constrói o objeto JSON exatamente como o suporte indicou
+    const objetoDadosPedido = {
+        "dados_pedido": {
+            "obs": observacaoExterna,
+            "obs_interna": observacaoInterna
+        }
+    };
+
+    // 💡 A MÁGICA DO URLENCODED: Transforma o JSON no formato que o PHP do Tiny entende
+    const parametrosUrl = new URLSearchParams();
+    parametrosUrl.append('dados_pedido', JSON.stringify(objetoDadosPedido.dados_pedido));
+
+    try {
+        const resposta = await fetch(urlTiny, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: parametrosUrl
+        });
+
+        const dadosJson = await resposta.json();
+
+        if (dadosJson.retorno && dadosJson.retorno.status === 'OK') {
+            console.log(`✅ Observações injetadas com sucesso no pedido ${idPedidoTiny}!`);
+            return true;
+        } else {
+            console.error(`⚠️ O Tiny recusou a atualização da observação:`, dadosJson.retorno.erros);
+            return false;
+        }
+    } catch (erro) {
+        console.error(`❌ Erro ao tentar atualizar observação no Tiny:`, erro.message);
+        return false;
+    }
+}

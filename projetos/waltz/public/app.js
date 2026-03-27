@@ -1,3 +1,19 @@
+// Função para carregar os ícones Lovable/Lucide
+function inicializarIcones() {
+    const scriptLucide = document.createElement('script');
+    scriptLucide.src = 'https://unpkg.com/lucide@latest';
+    scriptLucide.onload = () => {
+        if (window.lucide) window.lucide.createIcons();
+    };
+    document.head.appendChild(scriptLucide);
+}
+inicializarIcones();
+
+// Função auxiliar para re-desenhar os ícones após trocar de tela ou mudar paginação
+function atualizarIcones() {
+    if (window.lucide) window.lucide.createIcons();
+}
+
 // ============================================================================
 // INICIALIZAÇÃO SPA E UTILITÁRIOS GERAIS
 // ============================================================================
@@ -92,24 +108,30 @@ function toggleSenha() {
 
 function getTemplateLogin() {
     return `
-    <div class="login-wrapper">
-        <div class="login-container">
-            <h2>Acesso Restrito</h2>
+    <div style="background-color: #111827; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif;">
+        <div style="background: white; border-radius: 12px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <img src="../images/logo.jpg" alt="Waltz" style="height: 45px; margin-bottom: 15px; border-radius: 4px;">
+                <p style="color: #64748b; font-size: 14px; margin: 0;">Acesse sua conta para continuar</p>
+            </div>
             <form id="form-login">
-                <div class="input-group" style="margin-bottom: 15px;">
-                    <label for="usuario" style="display: block; margin-bottom: 5px; font-weight: bold; color: #475569;">Usuário</label>
-                    <input type="text" id="usuario" name="usuario" class="input-padrao" required>
+                <div style="margin-bottom: 20px;">
+                    <label for="usuario" style="display: block; margin-bottom: 8px; font-weight: 600; color: #1e293b; font-size: 13px;">E-mail</label>
+                    <input type="text" id="usuario" name="usuario" placeholder="seu@email.com" style="width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-size: 14px; box-sizing: border-box; color: #334155;" required>
                 </div>
-                <div class="input-group" style="margin-bottom: 25px;">
-                    <label for="senha" style="display: block; margin-bottom: 5px; font-weight: bold; color: #475569;">Senha</label>
-                    <div class="senha-container" style="position: relative; display: flex; align-items: center;">
-                        <input type="password" id="senha" name="senha" class="input-padrao" style="padding-right: 40px;" required>
-                        <button type="button" id="btn-mostrar-senha" title="Mostrar/Ocultar senha" style="position: absolute; right: 5px; background: transparent; border: none; color: #64748b; padding: 5px; display: flex; cursor: pointer;">
-                            <span class="material-symbols-outlined" id="icone-senha">visibility</span>
+                <div style="margin-bottom: 10px;">
+                    <label for="senha" style="display: block; margin-bottom: 8px; font-weight: 600; color: #1e293b; font-size: 13px;">Senha</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" id="senha" name="senha" placeholder="••••••••" style="width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-size: 14px; box-sizing: border-box; color: #334155;" required>
+                        <button type="button" id="btn-mostrar-senha" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #94a3b8; display: flex;">
+                            <span class="material-symbols-outlined" id="icone-senha" style="font-size: 20px;">visibility</span>
                         </button>
                     </div>
                 </div>
-                <button type="submit" id="btn-login-submit" class="btn-azul" style="width: 100%; font-weight: bold; padding: 12px; font-size: 16px;">Entrar</button>
+                <div style="text-align: right; margin-bottom: 30px;">
+                    <a href="#" style="color: #64748b; font-size: 13px; text-decoration: none;">Esqueceu a senha?</a>
+                </div>
+                <button type="submit" id="btn-login-submit" style="width: 100%; background-color: #1e293b; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; transition: background 0.3s;">Entrar</button>
             </form>
         </div>
     </div>`;
@@ -118,86 +140,87 @@ function getTemplateLogin() {
 function getTemplatePainel() {
     return `
     <div class="dashboard-wrapper">
+        <!-- SIDEBAR -->
         <aside class="sidebar">
-            <div class="brand" style="margin-bottom: 40px; text-align: center;">
-                <img src="../images/logo.png" alt="Waltz" style="max-width: 150px; height: auto; border-radius: 8px;">
+            <div class="sidebar-header">
+                <img src="../images/logo.jpg" alt="Waltz" style="border-radius:4px; filter: brightness(0) invert(1);"> <!-- Logo Branca -->
+                <i data-lucide="chevron-left" style="color: #64748b; cursor:pointer;"></i>
             </div>
+            
             <ul class="nav-links">
-                <li>
-                    <div id="nav-tiny" class="nav-link" onclick="mostrarSubPaginaDash('tiny')">
-                        <span class="material-symbols-outlined">analytics</span>
-                        Clientes
-                    </div>
-                </li>
-                <li>
-                    <div id="nav-nuvem" class="nav-link" onclick="mostrarSubPaginaDash('nuvem')">
-                        <span class="material-symbols-outlined">shopping_cart</span>
-                        Pedidos
-                    </div>
-                </li>
-                <li>
-                    <div id="nav-cep" class="nav-link" onclick="mostrarSubPaginaDash('cep')">
-                        <span class="material-symbols-outlined">map</span>
-                        Regiões e CEPs
-                    </div>
-                </li>
+                <li><div id="nav-dash" class="nav-link" onclick="mostrarSubPaginaDash('dash')"><i data-lucide="layout-dashboard"></i> Dashboard</div></li>
+                <li><div id="nav-tiny" class="nav-link" onclick="mostrarSubPaginaDash('tiny')"><i data-lucide="users"></i> Clientes</div></li>
+                <li><div id="nav-nuvem" class="nav-link" onclick="mostrarSubPaginaDash('nuvem')"><i data-lucide="shopping-cart"></i> Pedidos</div></li>
+                <li><div class="nav-link"><i data-lucide="truck"></i> Entregas</div></li>
+                <li><div class="nav-link"><i data-lucide="mail"></i> E-mail</div></li>
+                <li><div class="nav-link"><i data-lucide="message-circle"></i> WhatsApp</div></li>
+                <li><div id="nav-cep" class="nav-link" onclick="mostrarSubPaginaDash('cep')"><i data-lucide="map"></i> Regiões Logísticas</div></li>
             </ul>
-            <div class="user-menu-area" style="margin-top: auto; border-top: 1px solid #2d3748; padding-top: 20px;">
-                <button id="btn-logout" class="btn-sair">
-                    <span class="material-symbols-outlined">logout</span>
-                    Sair do Sistema
-                </button>
+
+            <div class="sidebar-footer">
+                <div class="nav-link"><i data-lucide="settings"></i> Configurações</div>
+                <div class="nav-link" id="btn-logout"><i data-lucide="log-out"></i> Sair</div>
             </div>
         </aside>
 
+        <!-- MAIN CONTENT -->
         <main class="main-content">
             <header class="topbar">
-                <h1 id="dash-page-title">Painel de Automação</h1>
-                <div class="info-loja">Âme Acessórios Pet | Automação v1.007</div>
+                <div class="page-title">
+                    <h1 id="dash-page-title">Dashboard</h1>
+                    <p id="dash-page-subtitle">Visão geral do seu e-commerce</p>
+                </div>
             </header>
 
             <div class="page-content-wrapper" id="dashboard-content-area">
                 
-                <!-- ABA TINY -->
-                <div id="sub-tiny" class="sub-pagina" style="display: none;">
-                    <section class="card">
-                        <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <div class="filtros-area" style="display: flex; gap: 20px; align-items: center;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-weight: bold; color: #475569;">Buscar:</label>
-                                    <input type="text" id="filtro-texto" class="input-padrao" placeholder="Nome ou CPF/CNPJ..." onkeyup="resetarEPaginacao()" style="width: 220px; padding: 8px;">
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="margin-left:15px; font-weight:bold; font-size:12px; color:#475569;">Grupo:</label>
-                                    <select id="filtro-grupo" onchange="resetarEPaginacao()" style="padding:6px; border:1px solid #cbd5e1; border-radius:6px; outline:none; font-size:13px; margin-left:5px;">
-                                        <option value="TODOS">Todos os Grupos</option>
-                                        <option value="DIAMANTE">Diamante</option>
-                                        <option value="OURO">Ouro</option>
-                                        <option value="PRATA">Prata</option>
-                                        <option value="BRONZE">Bronze</option>
-                                        <option value="PRIMEIRA COMPRA">1ª Compra</option>
-                                        <option value="SEM COMPRAS">Sem Compras</option>
-                                    </select>
-                                </div>
-                                <span id="contador-cadastros" style="background: #e2e8f0; color: #334155; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold;">
-                                    0 cadastros
-                                </span>
-                            </div>
+                <!-- ABA DASHBOARD (NOVA) -->
+                <div id="sub-dash" class="sub-pagina" style="display: none;">
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-icon" style="background:#eff6ff; color:#3b82f6;"><i data-lucide="users"></i></div>
+                            <div class="kpi-info"><h3>Clientes</h3><div class="value">27.935</div><div class="trend positive"><i data-lucide="trending-up" style="width:12px;"></i> +12% vs mês anterior</div></div>
                         </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon" style="background:#ecfdf5; color:#10b981;"><i data-lucide="shopping-cart"></i></div>
+                            <div class="kpi-info"><h3>Pedidos</h3><div class="value">7.485</div><div class="trend positive"><i data-lucide="trending-up" style="width:12px;"></i> +8% vs mês anterior</div></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon" style="background:#fffbeb; color:#f59e0b;"><i data-lucide="truck"></i></div>
+                            <div class="kpi-info"><h3>Entregas Pendentes</h3><div class="value">342</div><div class="trend negative"><i data-lucide="trending-down" style="width:12px;"></i> -5% vs mês anterior</div></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon" style="background:#fef2f2; color:#ef4444;"><i data-lucide="mail"></i></div>
+                            <div class="kpi-info"><h3>E-mails Enviados</h3><div class="value">1.204</div><div class="trend positive"><i data-lucide="trending-up" style="width:12px;"></i> +23% vs mês anterior</div></div>
+                        </div>
+                    </div>
+                    <div class="charts-grid">
+                        <div class="chart-card">Gráfico de vendas — em breve</div>
+                        <div class="chart-card">Desempenho logístico — em breve</div>
+                    </div>
+                </div>
+
+                <!-- ABA TINY (CLIENTES) -->
+                <div id="sub-tiny" class="sub-pagina" style="display: none;">
+                    <div class="table-header-actions">
+                        <div class="search-bar">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="filtro-texto" placeholder="Buscar por nome ou CPF..." onkeyup="resetarEPaginacao()">
+                        </div>
+                    </div>
+                    <div class="card-table">
                         <div class="tabela-responsiva">
                             <table class="tabela-dados">
                                <thead>
                                     <tr>
-                                        <th class="col-sort" onclick="ordenarTabela(0)">Nome <span id="sort-icon-0">↕️</span></th>
-                                        <th class="col-sort" onclick="ordenarTabela(1)">WhatsApp <span id="sort-icon-1">↕️</span></th>
-                                        <th class="col-sort" onclick="ordenarTabela(2)">CPF/CNPJ <span id="sort-icon-2">↕️</span></th>
-                                        <th class="col-sort" onclick="ordenarTabela(3)">Cidade <span id="sort-icon-3">↕️</span></th>
-                                        <th class="col-sort" onclick="ordenarTabela(4)">UF <span id="sort-icon-4">↕️</span></th>
-                                        <th class="col-sort" onclick="ordenarTabela(5)">Grupo <span id="sort-icon-5">↕️</span></th> 
-                                        <th class="col-sort" onclick="ordenarTabela(6)">Pedidos <span id="sort-icon-6">↕️</span></th>
-                                        <th class="col-sort" onclick="ordenarTabela(7)">Ticket Médio <span id="sort-icon-7">↕️</span></th>
-                                        <th class="col-sort" onclick="ordenarTabela(8)">Entrega <span id="sort-icon-8">↕️</span></th>
-                                        <th class="col-sort" onclick="ordenarTabela(9)">Valor Total <span id="sort-icon-9">↕️</span></th>
+                                        <th onclick="ordenarTabela(0)">Nome <span id="sort-icon-0">↕</span></th>
+                                        <th onclick="ordenarTabela(1)">WhatsApp <span id="sort-icon-1">↕</span></th>
+                                        <th onclick="ordenarTabela(2)">CPF/CNPJ <span id="sort-icon-2">↕</span></th>
+                                        <th onclick="ordenarTabela(3)">Cidade <span id="sort-icon-3">↕</span></th>
+                                        <th onclick="ordenarTabela(4)">UF <span id="sort-icon-4">↕</span></th>
+                                        <th onclick="ordenarTabela(5)">Grupo <span id="sort-icon-5">↕</span></th> 
+                                        <th onclick="ordenarTabela(6)">Pedidos <span id="sort-icon-6">↕</span></th>
+                                        <th onclick="ordenarTabela(9)">Valor Total <span id="sort-icon-9">↕</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-clientes-body">
@@ -206,65 +229,39 @@ function getTemplatePainel() {
                             </table>
                         </div>
                         <div class="paginacao-controles" id="paginacao-ltv"></div>
-                    </section>
+                    </div>
                 </div>
 
-                <!-- ABA NUVEMSHOP -->
+                <!-- ABA NUVEMSHOP (PEDIDOS) -->
                 <div id="sub-nuvem" class="sub-pagina" style="display: none;">
-                    <section class="card">
-                        <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <div class="filtros-area" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-weight: bold; color: #475569;">Buscar:</label>
-                                    <input type="text" id="busca-nuvem" class="input-padrao" placeholder="Pedido, Cliente..." onkeyup="resetarPaginacaoNuvem()" style="width: 200px; padding: 8px;">
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-weight: bold; color: #475569;">Status:</label>
-                                    <select id="filtro-status-nuvem" class="input-padrao" onchange="resetarPaginacaoNuvem()" style="padding: 8px; cursor: pointer;">
-                                        <option value="TODOS">Todos</option>
-                                        <option value="Aberto">Aberto</option>
-                                        <option value="Entregue">Entregue</option>
-                                        <option value="Arquivado">Arquivado</option>
-                                        <option value="Cancelado">Cancelado</option>
-                                    </select>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-weight: bold; color: #475569;">Feedback:</label>
-                                    <select id="filtro-feedback-nuvem" class="input-padrao" onchange="resetarPaginacaoNuvem()" style="padding: 8px; cursor: pointer;">
-                                        <option value="TODOS">Todos</option>
-                                        <option value="Enviado">Enviado</option>
-                                        <option value="Não Enviado">Não Enviado</option>
-                                    </select>
-                                </div>
-                                <span id="contador-nuvem" style="background: #e2e8f0; color: #334155; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold;">
-                                    0 pedidos
-                                </span>
-                            </div>
+                    <div class="table-header-actions">
+                        <div class="search-bar">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="busca-nuvem" placeholder="Buscar pedido ou cliente..." onkeyup="resetarPaginacaoNuvem()">
                         </div>
+                    </div>
+                    <div class="card-table">
                         <div class="tabela-responsiva">
                             <table class="tabela-dados">
                                 <thead>
                                     <tr>
-                                        <th>Data/Hora</th>
-                                        <th>Pedido</th>
-                                        <th>Cliente</th>
-                                        <th>CPF</th>
-                                        <th>Cidade</th>
-                                        <th>UF</th>
-                                        <th>Transportadora</th>
-                                        <th>Tempo</th>
-                                        <th>Rastreio</th>
-                                        <th>Status</th>
-                                        <th style="text-align:center;">Feedback</th>
+                                        <th>Data/Hora <span>↕</span></th>
+                                        <th>Pedido <span>↕</span></th>
+                                        <th>Cliente <span>↕</span></th>
+                                        <th>Cidade <span>↕</span></th>
+                                        <th>UF <span>↕</span></th>
+                                        <th>Transportadora <span>↕</span></th>
+                                        <th>Status <span>↕</span></th>
+                                        <th>Feedback <span>↕</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="corpo-tabela-nuvem">
-                                    <tr><td colspan="10" style="text-align: center; padding: 30px;">Carregando...</td></tr>
+                                    <tr><td colspan="8" style="text-align: center; padding: 30px;">Carregando...</td></tr>
                                 </tbody>
                             </table>
                         </div>
                         <div class="paginacao-controles" id="paginacao-nuvem"></div>
-                    </section>
+                    </div>
                 </div>
 
                 <!-- ========================================== -->
@@ -275,7 +272,11 @@ function getTemplatePainel() {
                     <!-- CARD DO MAPA -->
                     <section id="mapa_brasil_card" class="card" style="display:none; padding: 20px; margin-bottom: 20px;">
                         <h2 style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 10px;">Visualização Geográfica (Heatmap de Entrega)</h2>
-                        <div id="mapa_brasil_div" style="width: 100%; height: 350px; background: #f8fafc; border-radius: 8px;"></div>
+                        
+                        <!-- Caixa de centralização para forçar o Zoom correto do Google Charts -->
+                        <div style="display: flex; justify-content: center; align-items: center; background: #f8fafc; border-radius: 8px; padding: 10px;">
+                            <div id="mapa_brasil_div" style="width: 100%; max-width: 650px; height: 350px;"></div>
+                        </div>
                     </section>
 
                     <!-- CARD DA TABELA DE ANÁLISE -->
@@ -391,11 +392,16 @@ async function mostrarSubPaginaDash(idAlvo) {
     if (painelAlvo) painelAlvo.style.display = 'block';
     if (menuAlvo) menuAlvo.classList.add('active');
 
-    if (idAlvo === 'tiny') {
+    if (idAlvo === 'dash') {
+        document.getElementById('dash-page-title').innerText = "Dashboard";
+        document.getElementById('dash-page-subtitle').innerText = "Visão geral do seu e-commerce";
+    } else if (idAlvo === 'tiny') {
         document.getElementById('dash-page-title').innerText = "Clientes";
+        document.getElementById('dash-page-subtitle').innerText = "Listagem de cadastros"; // O JS de paginação vai atualizar isso
         await carregarClientesTinyDB();
     } else if (idAlvo === 'nuvem') {
         document.getElementById('dash-page-title').innerText = "Pedidos";
+        document.getElementById('dash-page-subtitle').innerText = "Listagem de vendas"; // O JS de paginação vai atualizar isso
         await carregarPedidosNuvemDB();
     } else if (idAlvo === 'cep') { // 👇 NOVA REGRA AQUI
         document.getElementById('dash-page-title').innerText = "Desempenho Logístico por Região";
@@ -403,6 +409,7 @@ async function mostrarSubPaginaDash(idAlvo) {
         if (todosOsPedidosNuvem.length === 0) await carregarPedidosNuvemDB(); 
         renderizarTabelaCEPs();
     }
+    atualizarIcones();
 }
 
 // ============================================================================
@@ -534,27 +541,25 @@ function renderizarPaginaNuvem() {
                 tempoTexto = `${diffDias} d`;
             }
 
-            let acaoFeedback = `<span class="selo status-wpp-pendente">Aguardando</span>`;
+            let acaoFeedback = `<span class="badge badge-aguardando">AGUARDANDO</span>`;
             if (p.status_feedback === 'Enviado') {
-                acaoFeedback = `<span class="selo status-wpp-enviado" style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe;">Enviado</span>`;
+                acaoFeedback = `<span class="badge" style="background: #eef2ff; color: #4f46e5; border-color: #c7d2fe;">ENVIADO</span>`;
             } else if (p.status_nuvemshop === 'Entregue' || p.status_nuvemshop === 'Arquivado') {
-                const produtosSeguros = encodeURIComponent(p.produtos || ''); 
-                acaoFeedback = `<button onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '${produtosSeguros}')" style="background: #25d366; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; gap: 5px; margin: 0 auto;">Enviar WPP</button>`;
+                acaoFeedback = `<span class="badge badge-diamante" style="cursor:pointer;" onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '')">ENVIAR WPP</span>`;
             }
+            
+            let statusNuvem = `<span class="badge badge-aberto">${(p.status_nuvemshop || 'Aberto').toUpperCase()}</span>`;
             
             const linha = document.createElement('tr');
             linha.innerHTML = `
-                <td style="white-space:nowrap">${dataF}</td>
-                <td style="font-weight:bold; color:#2563eb;">#${p.numero_pedido}</td>
+                <td style="white-space:nowrap; color: var(--text-muted);">${dataF.split(' ')[0]} ${dataF.split(' ')[1]}</td>
+                <td style="font-weight:600; color:var(--primary);">#${p.numero_pedido}</td>
                 <td>${p.nome_cliente || '-'}</td>
-                <td style="white-space:nowrap">${cpfFormatado}</td>
                 <td>${p.cidade || '-'}</td>
                 <td>${p.estado || '-'}</td>
                 <td>${p.transportadora || '-'}</td>
-                <td style="font-weight:bold; color:#0f172a;">${tempoTexto}</td> <!-- NOVA CÉLULA AQUI -->
-                <td>${p.rastreio || '-'}</td>
-                <td>${p.status_nuvemshop || '-'}</td>
-                <td style="text-align:center;">${acaoFeedback}</td>
+                <td>${statusNuvem}</td>
+                <td>${acaoFeedback}</td>
             `;
             tbody.appendChild(linha);
         });
@@ -619,12 +624,11 @@ async function carregarClientesTinyDB() {
 }
 
 function classificarClienteVisual(totalPedidos, valorTotal) {
-    if (totalPedidos === 0) return '<span class="selo sem-compra">Sem Compras</span>';
-    if (totalPedidos === 1) return '<span class="selo primeira-compra">1ª Compra</span>';
-    if (valorTotal <= 1000) return '<span class="selo bronze">Bronze</span>';
-    if (valorTotal <= 3000) return '<span class="selo prata">Prata</span>';
-    if (valorTotal <= 6000) return '<span class="selo ouro">Ouro</span>';
-    return '<span class="selo diamante">Diamante</span>';
+    // Usando as novas classes CSS da badge
+    if (totalPedidos === 0) return '<span class="badge badge-aberto">Sem Compras</span>';
+    if (totalPedidos === 1) return '<span class="badge badge-aguardando">1ª Compra</span>';
+    if (valorTotal > 6000) return '<span class="badge badge-diamante">DIAMANTE</span>';
+    return `<span class="badge badge-aberto">${valorTotal > 3000 ? 'OURO' : 'PRATA'}</span>`;
 }
 
 function ordenarTabela(colIndex) {
@@ -730,10 +734,8 @@ function renderizarPaginaRelatorio() {
                 <td>${cliente.cidade || '-'}</td>
                 <td>${cliente.estado || '-'}</td>
                 <td>${seloHtml}</td>
-                <td style="text-align:center; font-weight:bold;">${cliente.total_pedidos || 0}</td>
-                <td style="white-space:nowrap">R$ ${ticketMedio}</td>
-                <td style="text-align:center;">${tempoEntrega}</td>
-                <td data-valor="${valTotalNum}" style="white-space:nowrap; font-weight:bold; color: #0f172a;">R$ ${valTotalNum.toFixed(2).replace('.', ',')}</td>
+                <td style="text-align:center;">${cliente.total_pedidos || 0}</td>
+                <td data-valor="${valTotalNum}" style="white-space:nowrap; font-weight:600;">R$ ${valTotalNum.toFixed(2).replace('.', ',')}</td>
             `;
             tbody.appendChild(linha);
         });
@@ -934,7 +936,7 @@ function renderizarTabelaCEPs() {
         // O Mapa sempre agrupa pelo Estado Inteiro (BR-ISO) para tirar a média de cor do estado.
         // mapEstadoParaISO deve usar Title Case agora (normalizado)
         const isoCode = mapEstadoParaISO(ufStandard);
-        if (isoCode && cepLimpo) { 
+        if (isoCode) { // 👈 CORREÇÃO AQUI: Removemos o "&& cepLimpo" para aceitar pedidos antigos
             if (!analiseAgrupadaMapaBR[isoCode]) {
                 analiseAgrupadaMapaBR[isoCode] = { somaDias: 0, quantidadePedidos: 0 };
             }
@@ -959,10 +961,11 @@ function renderizarTabelaCEPs() {
                 const dataTable = google.visualization.arrayToDataTable(dadosMapa);
                 
                 const options = {
-                    region: 'BR', // Foco no Brasil
+                    region: 'BR', // Foco exclusivo no Brasil
                     resolution: 'provinces', // Divisão por estados
+                    displayMode: 'regions', // Força o preenchimento da região
                     colorAxis: { colors: ['#a7f3d0', '#fef08a', '#fca5a5'] }, // Verde -> Amarelo -> Vermelho
-                    backgroundColor: '#f8fafc',
+                    backgroundColor: 'transparent', // Remove bordas brancas do Google
                     datalessRegionColor: '#f1f5f9',
                     legend: { textStyle: { color: '#475569', fontSize: 11 } }
                 };
