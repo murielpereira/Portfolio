@@ -361,7 +361,6 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
 
     try {
         console.log(`⏳ Aguardando 3 segundos para o Tiny processar o pedido internamente...`);
-        // Função delay deve estar definida no topo do seu server.js
         await delay(3000); 
 
         const urlBusca = `https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`;
@@ -409,19 +408,11 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
                 else grupoReal = "DIAMANTE";
             }
 
-            // Monta as mensagens personalizadas
+            // Monta EXCLUSIVAMENTE a mensagem interna com os dados de BI do cliente
             const obsInterna = `⭐ CLASSIFICAÇÃO: Cliente ${grupoReal} | Histórico: ${totalPedidos} pedidos | LTV: R$ ${valorTotalGasto.toFixed(2).replace('.', ',')}`;
-            let obsExterna = ``; 
             
-            // Você pode customizar a mensagem externa que vai na nota do cliente
-            if (grupoReal === "PRIMEIRA COMPRA") {
-                obsExterna = `Bem-vindo(a) à Âme Acessórios Pet! Preparamos o seu primeiro pedido com muito carinho.`;
-            } else {
-                obsExterna = `Obrigado por escolher a Âme Acessórios Pet novamente! Você é um cliente categoria ${grupoReal}.`;
-            }
-
-            // Dispara a atualização para o Tiny ERP
-            await atualizarObservacaoTiny(idPedido, obsExterna, obsInterna);
+            // Dispara a atualização para o Tiny ERP enviando apenas a observação interna
+            await atualizarObservacaoTiny(idPedido, obsInterna);
 
         } else if (dadosBusca.retorno && dadosBusca.retorno.status === 'Erro') {
             console.log(`⚠️ O Tiny retornou um aviso estruturado:`, dadosBusca.retorno.erros);
@@ -615,18 +606,18 @@ app.listen(PORT, () => console.log(`✅ Servidor rodando na porta: ${PORT}`));
 module.exports = app;
 
 // ==========================================
-// FUNÇÃO: ATUALIZAR OBSERVAÇÕES NO TINY ERP
+// FUNÇÃO: ATUALIZAR OBSERVAÇÕES INTERNAS NO TINY ERP
 // ==========================================
-async function atualizarObservacaoTiny(idPedidoTiny, observacaoExterna, observacaoInterna) {
-    console.log(`\n📝 TINY API: Escrevendo observações no pedido ID: ${idPedidoTiny}`);
+async function atualizarObservacaoTiny(idPedidoTiny, observacaoInterna) {
+    console.log(`\n📝 TINY API: Escrevendo observação INTERNA no pedido ID: ${idPedidoTiny}`);
     
     const TOKEN = process.env.TINY_TOKEN;
     const urlTiny = `https://erp.tiny.com.br/api2/pedido.alterar.php?token=${TOKEN}&id=${idPedidoTiny}&formato=JSON`;
     
-    // Constrói a string JSON pura exatamente como no comando cURL do suporte
+    // Constrói a string JSON pura contendo APENAS a observação interna.
+    // Omitimos a chave "obs" para que o Tiny não apague as observações originais do cliente.
     const corpoRaw = JSON.stringify({
         "dados_pedido": {
-            "obs": observacaoExterna,
             "obs_interna": observacaoInterna
         }
     });
@@ -635,13 +626,13 @@ async function atualizarObservacaoTiny(idPedidoTiny, observacaoExterna, observac
         const resposta = await fetch(urlTiny, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: corpoRaw // Passa a string crua sem converter para URLSearchParams
+            body: corpoRaw
         });
 
         const dadosJson = await resposta.json();
 
         if (dadosJson.retorno && dadosJson.retorno.status === 'OK') {
-            console.log(`✅ Observações injetadas com sucesso no pedido ${idPedidoTiny}!`);
+            console.log(`✅ Observação interna injetada com sucesso no pedido ${idPedidoTiny}!`);
             return true;
         } else {
             console.error(`⚠️ O Tiny recusou a atualização da observação:`, dadosJson.retorno.erros);
