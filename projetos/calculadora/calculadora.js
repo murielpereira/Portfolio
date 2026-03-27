@@ -33,7 +33,6 @@ function calcular(tipo, valor) {
         if(valor === '=') {
             var historico = document.getElementById('resultado').value + '='
             var valor_campo = eval(document.getElementById('resultado').value)
-            console.log(eval(valor_campo))
             document.getElementById('historico').value = historico + valor_campo
             document.getElementById('resultado').value = valor_campo
         }
