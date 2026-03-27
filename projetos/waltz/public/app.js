@@ -5,33 +5,49 @@
 // 🚦 Flag global para saber se o motor de mapas do Google está pronto 🚦
 let isGoogleChartsReady = false;
 
-// Função para carregar a biblioteca do Google Charts de forma segura
+// Função para carregar a biblioteca do Google Charts de forma segura e dinâmica
 function inicializarGoogleCharts() {
-    // 1. Verifica se a tag <script> está presente no HTML (inserida no Módulo 2)
-    if (typeof google === 'undefined') {
-        console.error('❌ Google Charts library (<script>) não foi carregada no template HTML.');
-        return;
-    }
     
-    try {
-        // 2. Tenta carregar o pacote e define o callback de sucesso
-        google.charts.load('current', { 'packages': ['geochart'], 'language': 'pt-br' });
-        
-        google.charts.setOnLoadCallback(() => {
-            console.log('✅ Google GeoChart carregado e pronto para uso.');
-            isGoogleChartsReady = true;
+    // 1. Cria a tag de script dinamicamente
+    const scriptGoogle = document.createElement('script');
+    scriptGoogle.src = 'https://www.gstatic.com/charts/loader.js';
+    
+    // 2. Quando o navegador terminar de baixar o script da internet, ele entra aqui
+    scriptGoogle.onload = () => {
+        try {
+            // Agora sim é seguro carregar o pacote do mapa
+            google.charts.load('current', { 'packages': ['geochart'], 'language': 'pt-br' });
             
-            // Se já estivermos visualizando a aba de CEP, desenha o mapa agora!
-            const abaCep = document.getElementById('sub-cep');
-            if (abaCep && abaCep.style.display === 'block') {
-                renderizarTabelaCEPs();
-            }
-        });
-    } catch (e) { console.error('❌ Falha ao inicializar Google ChartsLoader', e); }
+            google.charts.setOnLoadCallback(() => {
+                console.log('✅ Google GeoChart carregado e pronto para uso.');
+                isGoogleChartsReady = true;
+                
+                // Se o utilizador já estiver na aba de CEPs quando o mapa terminar de carregar, manda desenhar!
+                const abaCep = document.getElementById('sub-cep');
+                if (abaCep && abaCep.style.display === 'block') {
+                    renderizarTabelaCEPs();
+                }
+            });
+        } catch (e) { 
+            console.error('❌ Falha ao inicializar o motor Google ChartsLoader', e); 
+        }
+    };
+
+    // 3. Tratamento de erro caso a internet falhe
+    scriptGoogle.onerror = () => {
+        console.error('❌ Erro de rede: Não foi possível baixar a biblioteca do Google Charts.');
+    };
+
+    // 4. Injeta o script no "cérebro" da página de forma permitida pelo navegador
+    document.head.appendChild(scriptGoogle);
 }
 
 // Chame a inicialização assim que o script carregar
 inicializarGoogleCharts();
+
+// ============================================================================
+// MÓDULO 1: UTILITÁRIOS E FORMATAÇÕES GERAIS
+// ============================================================================
 
 // ============================================================================
 // MÓDULO 1: UTILITÁRIOS E FORMATAÇÕES GERAIS
@@ -104,7 +120,7 @@ function getTemplatePainel() {
     <div class="dashboard-wrapper">
         <aside class="sidebar">
             <div class="brand" style="margin-bottom: 40px; text-align: center;">
-                <img src="../images/logo.jpg" alt="Waltz" style="max-width: 150px; height: auto; border-radius: 8px;">
+                <img src="../images/logo.png" alt="Waltz" style="max-width: 150px; height: auto; border-radius: 8px;">
             </div>
             <ul class="nav-links">
                 <li>
@@ -134,12 +150,10 @@ function getTemplatePainel() {
             </div>
         </aside>
 
-        <script src="https://www.gstatic.com/charts/loader.js"></script>
-
         <main class="main-content">
             <header class="topbar">
                 <h1 id="dash-page-title">Painel de Automação</h1>
-                <div class="info-loja">Âme Acessórios Pet | Automação v1.005</div>
+                <div class="info-loja">Âme Acessórios Pet | Automação v1.007</div>
             </header>
 
             <div class="page-content-wrapper" id="dashboard-content-area">
