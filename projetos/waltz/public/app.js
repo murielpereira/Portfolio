@@ -141,90 +141,74 @@ function getTemplatePainel() {
     return `
     <div class="dashboard-wrapper">
         <!-- SIDEBAR -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="../images/logo.png" alt="Waltz" style="border-radius:4px; max-width: 150px; background: white; padding: 5px;">
-                <i data-lucide="chevron-left" style="color: #64748b; cursor:pointer;"></i>
+                <img src="../images/logo.jpg" alt="Waltz" style="border-radius:4px; filter: brightness(0) invert(1);"> 
+                <div class="btn-toggle-menu" onclick="toggleSidebar()"><i data-lucide="chevron-left"></i></div>
             </div>
             
             <ul class="nav-links">
-                <li><div id="nav-dash" class="nav-link" onclick="mostrarSubPaginaDash('dash')"><i data-lucide="layout-dashboard"></i> Dashboard</div></li>
-                <li><div id="nav-tiny" class="nav-link" onclick="mostrarSubPaginaDash('tiny')"><i data-lucide="users"></i> Clientes</div></li>
-                <li><div id="nav-nuvem" class="nav-link" onclick="mostrarSubPaginaDash('nuvem')"><i data-lucide="shopping-cart"></i> Pedidos</div></li>
-                <li><div class="nav-link"><i data-lucide="truck"></i> Entregas</div></li>
-                <li><div class="nav-link"><i data-lucide="mail"></i> E-mail</div></li>
-                <li><div class="nav-link"><i data-lucide="message-circle"></i> WhatsApp</div></li>
-                <li><div id="nav-cep" class="nav-link" onclick="mostrarSubPaginaDash('cep')"><i data-lucide="map"></i> Regiões Logísticas</div></li>
+                <li><div id="nav-dash" class="nav-link" onclick="mostrarSubPaginaDash('dash')"><i data-lucide="layout-dashboard"></i> <span class="nav-text">Dashboard</span></div></li>
+                <li><div id="nav-tiny" class="nav-link" onclick="mostrarSubPaginaDash('tiny')"><i data-lucide="users"></i> <span class="nav-text">Clientes</span></div></li>
+                <li><div id="nav-nuvem" class="nav-link" onclick="mostrarSubPaginaDash('nuvem')"><i data-lucide="shopping-cart"></i> <span class="nav-text">Pedidos</span></div></li>
+                <li><div class="nav-link"><i data-lucide="truck"></i> <span class="nav-text">Entregas</span></div></li>
+                <li><div class="nav-link"><i data-lucide="mail"></i> <span class="nav-text">E-mail</span></div></li>
+                <li><div class="nav-link"><i data-lucide="message-circle"></i> <span class="nav-text">WhatsApp</span></div></li>
+                <li><div id="nav-cep" class="nav-link" onclick="mostrarSubPaginaDash('cep')"><i data-lucide="map"></i> <span class="nav-text">Regiões Logísticas</span></div></li>
             </ul>
 
             <div class="sidebar-footer">
-                <div class="nav-link"><i data-lucide="settings"></i> Configurações</div>
-                <div class="nav-link" id="btn-logout"><i data-lucide="log-out"></i> Sair</div>
+                <div class="nav-link"><i data-lucide="settings"></i> <span class="nav-text">Configurações</span></div>
+                <div class="nav-link" id="btn-logout"><i data-lucide="log-out"></i> <span class="nav-text">Sair</span></div>
             </div>
         </aside>
 
         <!-- MAIN CONTENT -->
         <main class="main-content">
             <header class="topbar">
-                <div class="page-title">
+                <div class="page-title-area">
                     <h1 id="dash-page-title">Dashboard</h1>
                     <p id="dash-page-subtitle">Visão geral do seu e-commerce</p>
                 </div>
+                
+                <!-- ÁREA DINÂMICA DE FILTROS DO TOPO -->
+                <div id="dynamic-top-actions" class="table-top-actions"></div>
             </header>
 
             <div class="page-content-wrapper" id="dashboard-content-area">
                 
-                <!-- ABA DASHBOARD (NOVA) -->
+                <!-- ABA DASHBOARD -->
                 <div id="sub-dash" class="sub-pagina" style="display: none;">
                     <div class="kpi-grid">
-                        <div class="kpi-card">
-                            <div class="kpi-icon" style="background:#eff6ff; color:#3b82f6;"><i data-lucide="users"></i></div>
-                            <div class="kpi-info"><h3>Clientes</h3><div class="value">27.935</div><div class="trend positive"><i data-lucide="trending-up" style="width:12px;"></i> +12% vs mês anterior</div></div>
-                        </div>
-                        <div class="kpi-card">
-                            <div class="kpi-icon" style="background:#ecfdf5; color:#10b981;"><i data-lucide="shopping-cart"></i></div>
-                            <div class="kpi-info"><h3>Pedidos</h3><div class="value">7.485</div><div class="trend positive"><i data-lucide="trending-up" style="width:12px;"></i> +8% vs mês anterior</div></div>
-                        </div>
-                        <div class="kpi-card">
-                            <div class="kpi-icon" style="background:#fffbeb; color:#f59e0b;"><i data-lucide="truck"></i></div>
-                            <div class="kpi-info"><h3>Entregas Pendentes</h3><div class="value">342</div><div class="trend negative"><i data-lucide="trending-down" style="width:12px;"></i> -5% vs mês anterior</div></div>
-                        </div>
-                        <div class="kpi-card">
-                            <div class="kpi-icon" style="background:#fef2f2; color:#ef4444;"><i data-lucide="mail"></i></div>
-                            <div class="kpi-info"><h3>E-mails Enviados</h3><div class="value">1.204</div><div class="trend positive"><i data-lucide="trending-up" style="width:12px;"></i> +23% vs mês anterior</div></div>
-                        </div>
+                        <div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff; color:#3b82f6;"><i data-lucide="users"></i></div><div class="kpi-info"><h3>Clientes</h3><div class="value">27.935</div><div class="trend positive"><i data-lucide="trending-up" style="width:12px;"></i> +12%</div></div></div>
+                        <div class="kpi-card"><div class="kpi-icon" style="background:#ecfdf5; color:#10b981;"><i data-lucide="shopping-cart"></i></div><div class="kpi-info"><h3>Pedidos</h3><div class="value">7.485</div><div class="trend positive"><i data-lucide="trending-up" style="width:12px;"></i> +8%</div></div></div>
+                        <div class="kpi-card"><div class="kpi-icon" style="background:#fffbeb; color:#f59e0b;"><i data-lucide="truck"></i></div><div class="kpi-info"><h3>Entregas Pendentes</h3><div class="value">342</div><div class="trend negative"><i data-lucide="trending-down" style="width:12px;"></i> -5%</div></div></div>
+                        <div class="kpi-card"><div class="kpi-icon" style="background:#fef2f2; color:#ef4444;"><i data-lucide="mail"></i></div><div class="kpi-info"><h3>E-mails Enviados</h3><div class="value">1.204</div><div class="trend positive"><i data-lucide="trending-up" style="width:12px;"></i> +23%</div></div></div>
                     </div>
-                    <div class="charts-grid">
-                        <div class="chart-card">Gráfico de vendas — em breve</div>
-                        <div class="chart-card">Desempenho logístico — em breve</div>
-                    </div>
+                    <div class="charts-grid"><div class="chart-card">Gráfico de vendas — em breve</div><div class="chart-card">Desempenho logístico — em breve</div></div>
                 </div>
 
-                <!-- ABA TINY (CLIENTES) -->
+                <!-- ABA TINY (CLIENTES) RESTAURADA -->
                 <div id="sub-tiny" class="sub-pagina" style="display: none;">
-                    <div class="table-header-actions">
-                        <div class="search-bar">
-                            <i data-lucide="search"></i>
-                            <input type="text" id="filtro-texto" placeholder="Buscar por nome ou CPF..." onkeyup="resetarEPaginacao()">
-                        </div>
-                    </div>
                     <div class="card-table">
                         <div class="tabela-responsiva">
                             <table class="tabela-dados">
                                <thead>
                                     <tr>
-                                        <th onclick="ordenarTabela(0)">Nome <span id="sort-icon-0">↕</span></th>
-                                        <th onclick="ordenarTabela(1)">WhatsApp <span id="sort-icon-1">↕</span></th>
-                                        <th onclick="ordenarTabela(2)">CPF/CNPJ <span id="sort-icon-2">↕</span></th>
-                                        <th onclick="ordenarTabela(3)">Cidade <span id="sort-icon-3">↕</span></th>
-                                        <th onclick="ordenarTabela(4)">UF <span id="sort-icon-4">↕</span></th>
-                                        <th onclick="ordenarTabela(5)">Grupo <span id="sort-icon-5">↕</span></th> 
-                                        <th onclick="ordenarTabela(6)">Pedidos <span id="sort-icon-6">↕</span></th>
-                                        <th onclick="ordenarTabela(9)">Valor Total <span id="sort-icon-9">↕</span></th>
+                                        <th onclick="ordenarTabela(0)">Nome <span class="sort-icon" id="sort-icon-0">↑↓</span></th>
+                                        <th onclick="ordenarTabela(1)">WhatsApp <span class="sort-icon" id="sort-icon-1">↑↓</span></th>
+                                        <th onclick="ordenarTabela(2)">CPF/CNPJ <span class="sort-icon" id="sort-icon-2">↑↓</span></th>
+                                        <th onclick="ordenarTabela(3)">Cidade <span class="sort-icon" id="sort-icon-3">↑↓</span></th>
+                                        <th onclick="ordenarTabela(4)">UF <span class="sort-icon" id="sort-icon-4">↑↓</span></th>
+                                        <th onclick="ordenarTabela(5)">Grupo <span class="sort-icon" id="sort-icon-5">↑↓</span></th> 
+                                        <th onclick="ordenarTabela(6)">Pedidos <span class="sort-icon" id="sort-icon-6">↑↓</span></th>
+                                        <th onclick="ordenarTabela(7)">Ticket Médio <span class="sort-icon" id="sort-icon-7">↑↓</span></th>
+                                        <th onclick="ordenarTabela(8)">Entrega <span class="sort-icon" id="sort-icon-8">↑↓</span></th>
+                                        <th onclick="ordenarTabela(9)">Valor Total <span class="sort-icon" id="sort-icon-9">↑↓</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-clientes-body">
-                                    <tr><td colspan="8" style="text-align:center; padding: 30px;">Carregando...</td></tr>
+                                    <tr><td colspan="10" style="text-align:center; padding: 30px;">Carregando...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -232,43 +216,24 @@ function getTemplatePainel() {
                     </div>
                 </div>
 
-                <!-- ABA NUVEMSHOP (PEDIDOS) -->
+                <!-- ABA NUVEMSHOP (PEDIDOS) RESTAURADA -->
                 <div id="sub-nuvem" class="sub-pagina" style="display: none;">
-                    <div class="table-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: -50px;">
-                        <div class="filtros-area" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                            <div class="search-bar" style="margin: 0; width: 250px;">
-                                <i data-lucide="search"></i>
-                                <input type="text" id="busca-nuvem" placeholder="Buscar pedido, cliente ou CPF..." onkeyup="resetarPaginacaoNuvem()">
-                            </div>
-                            <select id="filtro-status-nuvem" onchange="resetarPaginacaoNuvem()" style="padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; outline: none; font-size: 13px; color: var(--text-muted); background: white; cursor: pointer;">
-                                <option value="TODOS">Todos os Status</option>
-                                <option value="Aberto">Aberto</option>
-                                <option value="Entregue">Entregue</option>
-                                <option value="Arquivado">Arquivado</option>
-                                <option value="Cancelado">Cancelado</option>
-                            </select>
-                            <span id="contador-nuvem" style="background: var(--bg-sidebar); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: bold;">
-                                0 pedidos
-                            </span>
-                        </div>
-                    </div>
                     <div class="card-table">
-                        <!-- O overflow-x resolve a tela quebrando! -->
-                        <div class="tabela-responsiva" style="width: 100%; overflow-x: auto;">
-                            <table class="tabela-dados" style="min-width: 1100px;">
+                        <div class="tabela-responsiva">
+                            <table class="tabela-dados">
                                 <thead>
                                     <tr>
-                                        <th>Data/Hora <span>↕</span></th>
-                                        <th>Pedido <span>↕</span></th>
-                                        <th>Cliente <span>↕</span></th>
-                                        <th>CPF <span>↕</span></th>
-                                        <th>Cidade <span>↕</span></th>
-                                        <th>UF <span>↕</span></th>
-                                        <th>Transportadora <span>↕</span></th>
-                                        <th>Tempo <span>↕</span></th>
-                                        <th>Rastreio <span>↕</span></th>
-                                        <th>Status <span>↕</span></th>
-                                        <th>Feedback <span>↕</span></th>
+                                        <th>Data/Hora <span class="sort-icon">↑↓</span></th>
+                                        <th>Pedido <span class="sort-icon">↑↓</span></th>
+                                        <th>Cliente <span class="sort-icon">↑↓</span></th>
+                                        <th>CPF <span class="sort-icon">↑↓</span></th>
+                                        <th>Cidade <span class="sort-icon">↑↓</span></th>
+                                        <th>UF <span class="sort-icon">↑↓</span></th>
+                                        <th>Transportadora <span class="sort-icon">↑↓</span></th>
+                                        <th>Tempo <span class="sort-icon">↑↓</span></th>
+                                        <th>Rastreio <span class="sort-icon">↑↓</span></th>
+                                        <th>Status <span class="sort-icon">↑↓</span></th>
+                                        <th>Feedback <span class="sort-icon">↑↓</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="corpo-tabela-nuvem">
@@ -279,56 +244,35 @@ function getTemplatePainel() {
                         <div class="paginacao-controles" id="paginacao-nuvem"></div>
                     </div>
                 </div>
-
-                <!-- ========================================== -->
-                <!-- ABA CEPs E REGIÕES (Média de Entregas)     -->
-                <!-- ========================================== -->
+                
                 <div id="sub-cep" class="sub-pagina" style="display: none;">
-                    
-                    <!-- CARD DO MAPA -->
-                    <section id="mapa_brasil_card" class="card" style="display:none; padding: 20px; margin-bottom: 20px;">
+                    <section id="mapa_brasil_card" class="card" style="display:none; padding: 20px; margin-bottom: 20px; background:white; border-radius:12px; border:1px solid var(--border-color);">
                         <h2 style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 10px;">Visualização Geográfica (Heatmap de Entrega)</h2>
-                        
-                        <!-- Caixa de centralização para forçar o Zoom correto do Google Charts -->
                         <div style="display: flex; justify-content: center; align-items: center; background: #f8fafc; border-radius: 8px; padding: 10px;">
                             <div id="mapa_brasil_div" style="width: 100%; max-width: 650px; height: 350px;"></div>
                         </div>
                     </section>
-
-                    <!-- CARD DA TABELA DE ANÁLISE -->
-                    <section class="card">
-                        <div class="card-header-actions" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <div class="filtros-area" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-weight: bold; color: #475569;">Buscar Região (CEP):</label>
-                                    <input type="text" id="busca-cep-analise" class="input-padrao" placeholder="Ex: 01000..." onkeyup="renderizarTabelaCEPs()" style="width: 180px; padding: 8px;">
-                                </div>
-                                <span style="font-size: 12px; color: #64748b; margin-left: 10px;">
-                                    *Apenas pedidos já entregues são contabilizados. Digite um CEP para detalhar.
-                                </span>
-                            </div>
-                        </div>
+                    <div class="card-table">
                         <div class="tabela-responsiva">
                             <table class="tabela-dados">
                                 <thead>
-                                    <tr>
-                                        <th>Estado (UF)</th>
-                                        <th>CEP Base</th>
-                                        <th>Média de Tempo de Entrega</th>
-                                        <th>Volume (Qtd de Pedidos)</th>
-                                    </tr>
+                                    <tr><th>Estado (UF)</th><th>CEP Base</th><th>Média de Tempo de Entrega</th><th>Volume (Qtd de Pedidos)</th></tr>
                                 </thead>
-                                <tbody id="corpo-tabela-ceps">
-                                    <tr><td colspan="4" style="text-align: center; padding: 30px;">Aguardando processamento analítico...</td></tr>
-                                </tbody>
+                                <tbody id="corpo-tabela-ceps"><tr><td colspan="4" style="text-align: center; padding: 30px;">Aguardando processamento...</td></tr></tbody>
                             </table>
                         </div>
-                    </section>
+                    </div>
                 </div>
 
             </div>
         </main>
     </div>`;
+}
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('collapsed');
+    }
 }
 
 // ============================================================================
@@ -404,24 +348,44 @@ async function mostrarSubPaginaDash(idAlvo) {
     
     const painelAlvo = document.getElementById(`sub-${idAlvo}`);
     const menuAlvo = document.getElementById(`nav-${idAlvo}`);
+    const topActions = document.getElementById('dynamic-top-actions');
     
     if (painelAlvo) painelAlvo.style.display = 'block';
     if (menuAlvo) menuAlvo.classList.add('active');
+    if (topActions) topActions.innerHTML = ''; // Limpa os filtros antigos
 
     if (idAlvo === 'dash') {
         document.getElementById('dash-page-title').innerText = "Dashboard";
         document.getElementById('dash-page-subtitle').innerText = "Visão geral do seu e-commerce";
     } else if (idAlvo === 'tiny') {
         document.getElementById('dash-page-title').innerText = "Clientes";
-        document.getElementById('dash-page-subtitle').innerText = "Listagem de cadastros"; // O JS de paginação vai atualizar isso
+        document.getElementById('dash-page-subtitle').innerText = "Listagem de cadastros";
+        // Injeta os filtros do Tiny no topo
+        topActions.innerHTML = `
+            <div class="search-bar"><i data-lucide="search"></i><input type="text" id="filtro-texto" placeholder="Buscar por nome ou CPF..." onkeyup="resetarEPaginacao()"></div>
+            <select id="filtro-grupo" class="select-modern" onchange="resetarEPaginacao()">
+                <option value="TODOS">Todos os Grupos</option><option value="DIAMANTE">Diamante</option><option value="OURO">Ouro</option><option value="PRATA">Prata</option><option value="BRONZE">Bronze</option><option value="PRIMEIRA COMPRA">1ª Compra</option><option value="SEM COMPRAS">Sem Compras</option>
+            </select>
+        `;
         await carregarClientesTinyDB();
     } else if (idAlvo === 'nuvem') {
         document.getElementById('dash-page-title').innerText = "Pedidos";
-        document.getElementById('dash-page-subtitle').innerText = "Listagem de vendas"; // O JS de paginação vai atualizar isso
+        document.getElementById('dash-page-subtitle').innerText = "Listagem de vendas";
+        // Injeta os filtros da Nuvemshop no topo
+        topActions.innerHTML = `
+            <div class="search-bar"><i data-lucide="search"></i><input type="text" id="busca-nuvem" placeholder="Buscar pedido ou cliente..." onkeyup="resetarPaginacaoNuvem()"></div>
+            <select id="filtro-status-nuvem" class="select-modern" onchange="resetarPaginacaoNuvem()">
+                <option value="TODOS">Todos os Status</option><option value="Aberto">Aberto</option><option value="Entregue">Entregue</option><option value="Arquivado">Arquivado</option><option value="Cancelado">Cancelado</option>
+            </select>
+            <span id="contador-nuvem" class="contador-badge">0 pedido(s)</span>
+        `;
         await carregarPedidosNuvemDB();
-    } else if (idAlvo === 'cep') { // 👇 NOVA REGRA AQUI
+    } else if (idAlvo === 'cep') { 
         document.getElementById('dash-page-title').innerText = "Desempenho Logístico por Região";
-        // Garante que a lista de pedidos esteja carregada para fazermos a matemática
+        document.getElementById('dash-page-subtitle').innerText = "Análise de tempo de entrega";
+        topActions.innerHTML = `
+            <div class="search-bar"><i data-lucide="search"></i><input type="text" id="busca-cep-analise" placeholder="Filtrar por CEP (Ex: 01000)..." onkeyup="renderizarTabelaCEPs()"></div>
+        `;
         if (todosOsPedidosNuvem.length === 0) await carregarPedidosNuvemDB(); 
         renderizarTabelaCEPs();
     }
@@ -549,11 +513,20 @@ function renderizarPaginaNuvem() {
             }
 
             let acaoFeedback = `<span class="badge badge-aguardando">AGUARDANDO</span>`;
+            
             if (p.status_feedback === 'Enviado') {
-                acaoFeedback = `<span class="badge" style="background: #eef2ff; color: #4f46e5; border-color: #c7d2fe;">ENVIADO</span>`;
+                // Renderiza o círculo verde com o ícone SVG de check duplo
+                acaoFeedback = `
+                <div style="background: #10b981; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;" title="Enviado">
+                    <svg stroke="#ffffff" width="16" height="16" stroke-width="2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1.5 12.5L5.57574 16.5757C5.81005 16.8101 6.18995 16.8101 6.42426 16.5757L9 14" stroke="#ffffff" stroke-linecap="round"/>
+                        <path d="M16 7L12 11" stroke="#ffffff" stroke-linecap="round"/>
+                        <path d="M7 12L11.5757 16.5757C11.8101 16.8101 12.1899 16.8101 12.4243 16.5757L22 7" stroke="#ffffff" stroke-linecap="round"/>
+                    </svg>
+                </div>`;
             } else if (p.status_nuvemshop === 'Entregue' || p.status_nuvemshop === 'Arquivado') {
                 const produtosSeguros = encodeURIComponent(p.produtos || ''); 
-                acaoFeedback = `<span class="badge badge-diamante" style="cursor:pointer;" onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '${produtosSeguros}')">ENVIAR WPP</span>`;
+                acaoFeedback = `<span class="badge badge-diamante" style="cursor:pointer;" onclick="enviarFeedbackWpp('${p.id_pedido}', '${p.telefone}', '${p.nome_cliente}', '${p.numero_pedido}', '${produtosSeguros}')">ENVIAR</span>`;
             }
             
             let statusNuvem = `<span class="badge badge-aberto">${(p.status_nuvemshop || 'Aberto').toUpperCase()}</span>`;
@@ -678,10 +651,16 @@ function ordenarTabela(colIndex) {
     // 3. Atualiza os ícones de setinhas na tela
     for(let i = 0; i <= 9; i++) {
         const icon = document.getElementById(`sort-icon-${i}`);
-        if(icon) icon.innerText = '↕️'; 
+        if(icon) {
+            icon.innerText = '↑↓'; 
+            icon.classList.remove('active'); // Volta a ficar cinza
+        }
     }
     const activeIcon = document.getElementById(`sort-icon-${colIndex}`);
-    if(activeIcon) activeIcon.innerText = ordemCrescente ? '▲' : '▼'; // Acende o atual
+    if(activeIcon) {
+        activeIcon.innerText = ordemCrescente ? '↑' : '↓'; 
+        activeIcon.classList.add('active'); // Fica Laranja!
+    }
 
     // 4. Redesenha a tela
     resetarEPaginacao();
@@ -747,6 +726,8 @@ function renderizarPaginaRelatorio() {
                 <td>${cliente.estado || '-'}</td>
                 <td>${seloHtml}</td>
                 <td style="text-align:center;">${cliente.total_pedidos || 0}</td>
+                <td style="white-space:nowrap">R$ ${ticketMedio}</td>
+                <td style="text-align:center;">${tempoEntrega}</td>
                 <td data-valor="${valTotalNum}" style="white-space:nowrap; font-weight:600;">R$ ${valTotalNum.toFixed(2).replace('.', ',')}</td>
             `;
             tbody.appendChild(linha);
