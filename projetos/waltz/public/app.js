@@ -417,15 +417,21 @@ function renderizarPaginaNuvem() {
             let corTexto = step > 0 ? 'var(--primary)' : 'var(--text-muted)';
             let acaoComunicacao = `<span style="font-size: 13px; font-weight: 600; color: ${corTexto};">${ultimoStatusTexto}</span>`;
             
-            let statusNuvem = `<span class="badge badge-aberto">${stNuvem}</span>`;
+            // 👇 CORREÇÃO AQUI: Aplicação dinâmica da cor da Badge
+            let corBadge = 'badge-aberto';
+            if (stNuvem === 'ENTREGUE') corBadge = 'badge-entregue';
+            else if (stNuvem === 'ENVIADO') corBadge = 'badge-ouro';
+            else if (stNuvem === 'CANCELADO') corBadge = 'badge-semcompra';
+            
+            let statusBadge = `<span class="badge ${corBadge}">${stNuvem}</span>`;
             
             const linha = document.createElement('tr');
             linha.onclick = () => abrirDetalhesPedido(p.id_pedido);
             linha.innerHTML = `
-                <td style="white-space:nowrap; color: var(--text-muted);">${dataF.split(' ')[0]} <br><span style="font-size:11px">${dataF.split(' ')[1]}</span></td>
+                <td style="white-space:nowrap; color: var(--text-muted);">${dataF}</td>
                 <td style="font-weight:600; color:var(--primary);">#${p.numero_pedido}</td>
                 <td style="font-weight:500;">${p.nome_cliente || '-'}</td>
-                <td>${statusNuvem}</td>
+                <td>${statusBadge}</td> <!-- Variável corrigida inserida aqui -->
                 <td>${acaoComunicacao}</td>
             `;
             tbody.appendChild(linha);
@@ -441,10 +447,22 @@ function abrirDetalhesPedido(idPedido) {
 
     document.getElementById('drawer-titulo').innerText = `Pedido #${pedido.numero_pedido}`;
 
-    let tempoTexto = 'Em andamento';
+    // NOVA MATEMÁTICA LOGÍSTICA (Ignora horas, subtrai dias do calendário)
+    let tempoTexto = 'Aguardando envio';
     if (pedido.data_envio && pedido.data_entrega) {
-        const diffDias = Math.ceil(Math.abs(new Date(pedido.data_entrega) - new Date(pedido.data_envio)) / (1000 * 60 * 60 * 24));
-        tempoTexto = `${diffDias} dias`;
+        const d1 = new Date(pedido.data_envio);
+        const d2 = new Date(pedido.data_entrega);
+        
+        // Converte as datas para as 00:00:00 (Fuso horário universal) para comparar perfeitamente
+        const data1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+        const data2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+        
+        const diffDias = Math.floor((data2 - data1) / (1000 * 60 * 60 * 24));
+        
+        if (diffDias === 0) tempoTexto = 'Entregue no mesmo dia';
+        else tempoTexto = `${diffDias} dia(s)`;
+    } else if (pedido.data_envio) {
+        tempoTexto = 'Em andamento';
     }
 
     const telLimpo = (pedido.telefone || '').replace(/\D/g, '');

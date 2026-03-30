@@ -173,7 +173,6 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
         const statusPagamento = (dadosPedido.payment_status || '').toLowerCase();
         const statusEnvio = (dadosPedido.shipping_status || '').toLowerCase();
 
-        // 2. UNIFICAÇÃO: "Closed" (Arquivado) ou "Delivered" viram apenas "Entregue"
         if (statusPrincipal === 'closed' || statusEnvio === 'delivered') status = 'Entregue';
         else if (statusEnvio === 'shipped') status = 'Enviado'; 
         
@@ -182,7 +181,13 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
         }
 
         let data_entrega = null;
-        if (status === 'Entregue') data_entrega = new Date();
+        if (status === 'Entregue') {
+            // SOLUÇÃO: Só aplica a data atual se NÃO houver código de rastreio (ex: Motoboy).
+            // Se houver rastreio, deixa vazio para o Robô da SmartEnvios ditar a regra!
+            if (!rastreio || rastreio === '') {
+                data_entrega = new Date();
+            }
+        }
 
         let listaProdutos = '';
         if (dadosPedido.products && Array.isArray(dadosPedido.products)) {
