@@ -12,7 +12,7 @@ async function forcarArquivamento() {
             SELECT id_pedido, numero_pedido, rastreio 
             FROM pedidos_nuvemshop
             WHERE rastreio IS NOT NULL AND rastreio != '' 
-            AND status_nuvemshop IN ('Aberto', 'Enviado');
+            AND status_nuvemshop IN ('Aberto', 'Enviado', 'Entregue');
         `;
 
         console.log(`📦 Encontrados ${pedidosPendentes.length} pedidos para varrer. Verificando SmartEnvios...`);

@@ -685,29 +685,79 @@ function classificarClienteVisual(totalPedidos, valorTotal) {
 }
 
 function ordenarTabela(colIndex) {
-    if (colunaOrdenacao === colIndex) ordemCrescente = !ordemCrescente; else { colunaOrdenacao = colIndex; ordemCrescente = true; }
+    if (colunaOrdenacao === colIndex) {
+        ordemCrescente = !ordemCrescente; 
+    } else { 
+        colunaOrdenacao = colIndex; 
+        ordemCrescente = true; 
+    }
+    
     todaABaseDeClientes.sort((a, b) => {
         let valA, valB;
+        
         switch(colIndex) {
-            case 0: valA = (a.nome || '').toLowerCase(); break;
-            case 1: valA = (a.telefone || '').replace(/\D/g, ''); break;
-            case 2: valA = (a.cpf || '').replace(/\D/g, ''); break;
-            case 3: valA = (a.cidade || '').toLowerCase(); break;
-            case 4: valA = (a.estado || '').toLowerCase(); break;
-            case 5: valA = parseFloat(a.valor_total || 0); break; 
-            case 6: valA = parseInt(a.total_pedidos || 0); break;
-            case 7: valA = parseFloat(a.ticket_medio || 0); break;
-            case 8: valA = parseInt(a.tempo_medio_entrega_dias || 0); break;
-            case 9: valA = parseFloat(a.valor_total || 0); break;
+            case 0: valA = (a.nome || '').toLowerCase(); valB = (b.nome || '').toLowerCase(); break;
+            case 1: valA = (a.telefone || '').replace(/\D/g, ''); valB = (b.telefone || '').replace(/\D/g, ''); break;
+            case 2: valA = (a.cpf || '').replace(/\D/g, ''); valB = (b.cpf || '').replace(/\D/g, ''); break;
+            case 3: valA = (a.cidade || '').toLowerCase(); valB = (b.cidade || '').toLowerCase(); break;
+            case 4: valA = (a.estado || '').toLowerCase(); valB = (b.estado || '').toLowerCase(); break;
+            case 5: valA = a.segmento_rfm || ''; valB = b.segmento_rfm || ''; break; 
+            case 6: valA = parseInt(a.total_pedidos || 0); valB = parseInt(b.total_pedidos || 0); break;
+            case 7: valA = parseFloat(a.ticket_medio || 0); valB = parseFloat(b.ticket_medio || 0); break;
+            case 8: valA = parseInt(a.tempo_medio_entrega_dias || 0); valB = parseInt(b.tempo_medio_entrega_dias || 0); break;
+            case 9: valA = parseFloat(a.valor_total || 0); valB = parseFloat(b.valor_total || 0); break;
         }
+        
         if (valA < valB) return ordemCrescente ? -1 : 1;
         if (valA > valB) return ordemCrescente ? 1 : -1;
         return 0;
     });
-    for(let i = 0; i <= 9; i++) { const icon = document.getElementById(`sort-icon-${i}`); if(icon) { icon.innerText = '↑↓'; icon.classList.remove('active'); } }
+
+    // Atualiza as setinhas no cabeçalho
+    for(let i = 0; i <= 9; i++) { 
+        const icon = document.getElementById(`sort-icon-${i}`); 
+        if(icon) { icon.innerText = '↑↓'; icon.classList.remove('active'); } 
+    }
     const activeIcon = document.getElementById(`sort-icon-${colIndex}`);
     if(activeIcon) { activeIcon.innerText = ordemCrescente ? '↑' : '↓'; activeIcon.classList.add('active'); }
+    
     resetarEPaginacao();
+}
+
+// ==========================================================
+// ORDENAÇÃO: ABA PEDIDOS (NUVEMSHOP)
+// ==========================================================
+function ordenarTabelaNuvem(colIndex) {
+    if (colunaOrdenacaoNuvem === colIndex) {
+        ordemCrescenteNuvem = !ordemCrescenteNuvem; 
+    } else { 
+        colunaOrdenacaoNuvem = colIndex; 
+        ordemCrescenteNuvem = true; 
+    }
+    
+    todosOsPedidosNuvem.sort((a, b) => {
+        let valA, valB;
+        switch(colIndex) {
+            case 0: valA = new Date(a.data_criacao).getTime(); valB = new Date(b.data_criacao).getTime(); break;
+            case 1: valA = parseInt((a.numero_pedido || '0').replace(/\D/g, '')); valB = parseInt((b.numero_pedido || '0').replace(/\D/g, '')); break;
+            case 2: valA = (a.nome_cliente || '').toLowerCase(); valB = (b.nome_cliente || '').toLowerCase(); break;
+            case 3: valA = (a.status_nuvemshop || '').toLowerCase(); valB = (b.status_nuvemshop || '').toLowerCase(); break;
+        }
+        
+        if (valA < valB) return ordemCrescenteNuvem ? -1 : 1;
+        if (valA > valB) return ordemCrescenteNuvem ? 1 : -1;
+        return 0;
+    });
+
+    // Atualiza as setinhas no cabeçalho
+    for(let i = 0; i <= 3; i++) { 
+        const icon = document.getElementById(`sort-nuvem-${i}`); 
+        if(icon) { icon.innerText = '↑↓'; icon.classList.remove('active'); } 
+    }
+    const activeIcon = document.getElementById(`sort-nuvem-${colIndex}`);
+    if(activeIcon) { activeIcon.innerText = ordemCrescenteNuvem ? '↑' : '↓'; activeIcon.classList.add('active'); }
+    
+    resetarPaginacaoNuvem();
 }
 
 function renderizarPaginaRelatorio() {
@@ -794,6 +844,32 @@ function normalizarNomeEstado(estadoRaw) {
     return mapNormalizacao[input] || estadoRaw; 
 }
 
+// ==========================================================
+// ORDENAÇÃO E RENDERIZAÇÃO: ABA REGIÕES LOGÍSTICAS (CEP)
+// ==========================================================
+let colunaOrdenacaoCep = -1;
+let ordemCrescenteCep = true;
+
+function ordenarTabelaCep(colIndex) {
+    if (colunaOrdenacaoCep === colIndex) {
+        ordemCrescenteCep = !ordemCrescenteCep; 
+    } else { 
+        colunaOrdenacaoCep = colIndex; 
+        ordemCrescenteCep = true; 
+    }
+    
+    // Atualiza os ícones visuais (setinhas)
+    for(let i = 0; i <= 3; i++) { 
+        const icon = document.getElementById(`sort-cep-${i}`); 
+        if(icon) { icon.innerText = '↑↓'; icon.classList.remove('active'); } 
+    }
+    const activeIcon = document.getElementById(`sort-cep-${colIndex}`);
+    if(activeIcon) { activeIcon.innerText = ordemCrescenteCep ? '↑' : '↓'; activeIcon.classList.add('active'); }
+    
+    // Re-desenha a tabela com a nova ordem aplicada
+    renderizarTabelaCEPs();
+}
+
 function renderizarTabelaCEPs() {
     const tbody = document.getElementById('corpo-tabela-ceps'); 
     const divMapaCard = document.getElementById('mapa_brasil_card'); 
@@ -801,8 +877,10 @@ function renderizarTabelaCEPs() {
     if (!tbody || !divMapaCanvas) return;
     
     const filtroCepLimpo = (document.getElementById("busca-cep-analise")?.value || "").replace(/\D/g, '');
-    let analiseAgrupadaTabela = {}; let analiseAgrupadaMapaBR = {};
+    let analiseAgrupadaTabela = {}; 
+    let analiseAgrupadaMapaBR = {};
     
+    // O mesmo agrupamento inteligente continua igual
     todosOsPedidosNuvem.forEach(p => {
         if (!p.data_envio || !p.data_entrega) return;
         const status = (p.status_nuvemshop || '').toUpperCase();
@@ -841,17 +919,48 @@ function renderizarTabelaCEPs() {
         divMapaCard.style.display = 'none';
     }
 
-    let resultadosTabela = Object.values(analiseAgrupadaTabela).map(item => ({ estado: item.estado, cep: item.cep, mediaDias: Math.round(item.somaDias / item.quantidadePedidos), quantidade: item.quantidadePedidos }));
-    resultadosTabela.sort((a, b) => a.estado.localeCompare(b.estado));
+    // Transforma o agrupamento numa lista para a tabela
+    let resultadosTabela = Object.values(analiseAgrupadaTabela).map(item => ({ 
+        estado: item.estado, 
+        cep: item.cep, 
+        mediaDias: Math.round(item.somaDias / item.quantidadePedidos), 
+        quantidade: item.quantidadePedidos 
+    }));
     
+    // APLICA A ORDENAÇÃO CONFORME CLIQUE (OU ORDEM ALFABÉTICA POR DEFEITO)
+    if (colunaOrdenacaoCep !== -1) {
+        resultadosTabela.sort((a, b) => {
+            let valA, valB;
+            switch(colunaOrdenacaoCep) {
+                case 0: valA = a.estado; valB = b.estado; break;
+                case 1: valA = a.cep; valB = b.cep; break;
+                case 2: valA = a.mediaDias; valB = b.mediaDias; break;
+                case 3: valA = a.quantidade; valB = b.quantidade; break;
+            }
+            if (valA < valB) return ordemCrescenteCep ? -1 : 1;
+            if (valA > valB) return ordemCrescenteCep ? 1 : -1;
+            return 0;
+        });
+    } else {
+        // Ordem padrão: Alfabética por Estado
+        resultadosTabela.sort((a, b) => a.estado.localeCompare(b.estado));
+    }
+    
+    // Limpa e desenha o HTML da tabela
     tbody.innerHTML = '';
     if (resultadosTabela.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico encontrado.</td></tr>`; return;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico encontrado.</td></tr>`; 
+        return;
     }
     
     resultadosTabela.forEach(r => {
         const linha = document.createElement('tr');
-        linha.innerHTML = `<td style="font-weight:500;">${r.estado}</td> <td style="font-family: monospace; font-size: 14px; color: #64748b;">${r.cep}</td><td style="font-weight: bold; color: #2563eb; font-size: 15px;">${r.mediaDias} dias</td><td style="color: #475569;">${r.quantidade} entregas mapeadas</td>`;
+        linha.innerHTML = `
+            <td style="font-weight:500;">${r.estado}</td> 
+            <td style="font-family: monospace; font-size: 14px; color: #64748b;">${r.cep}</td>
+            <td style="font-weight: bold; color: #2563eb; font-size: 15px;">${r.mediaDias} dias</td>
+            <td style="color: #475569;">${r.quantidade} entregas mapeadas</td>
+        `;
         tbody.appendChild(linha);
     });
 }
