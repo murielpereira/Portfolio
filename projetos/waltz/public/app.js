@@ -104,9 +104,99 @@ function getTemplatePainel() {
                 <li><div id="nav-cep" class="nav-link" onclick="mostrarSubPaginaDash('cep')"><i data-lucide="map"></i> <span class="nav-text">Regiões Logísticas</span></div></li>
             </ul>
             <div class="sidebar-footer">
-                <div class="nav-link"><i data-lucide="settings"></i> <span class="nav-text">Configurações</span></div>
+                <!-- NOVIDADE: Adicionado ID e evento onclick no menu de Configurações -->
+                <div class="nav-link" id="nav-config" onclick="mostrarSubPaginaDash('config')"><i data-lucide="settings"></i> <span class="nav-text">Configurações</span></div>
                 <div class="nav-link" id="btn-logout"><i data-lucide="log-out"></i> <span class="nav-text">Sair</span></div>
             </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="page-title-area">
+                    <h1 id="dash-page-title">Dashboard</h1>
+                    <p id="dash-page-subtitle">Visão geral do seu e-commerce</p>
+                </div>
+                <div id="dynamic-top-actions" class="table-top-actions"></div>
+            </header>
+
+            <div class="page-content-wrapper" id="dashboard-content-area">
+                
+                <!-- NOVIDADE: Painel de Configurações de Mensagens -->
+                <div id="sub-config" class="sub-pagina" style="display: none;">
+                    <div class="card-table" style="padding: 30px; height: calc(100vh - 220px); overflow-y: auto;">
+                        <div style="max-width: 800px; margin: 0 auto;">
+                            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                                <div style="width: 50px; height: 50px; background: #eff6ff; color: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                    <i data-lucide="message-circle" style="width: 24px; height: 24px;"></i>
+                                </div>
+                                <div>
+                                    <h2 style="font-size: 18px; color: var(--text-main); margin-bottom: 4px;">Templates do WhatsApp</h2>
+                                    <p style="font-size: 13px; color: var(--text-muted);">Personalize as mensagens disparadas em cada etapa do funil logístico.</p>
+                                </div>
+                            </div>
+                            
+                            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 25px; font-size: 13px; color: var(--text-muted);">
+                                <strong>Variáveis Disponíveis:</strong> Use <span class="var-tag">{nome}</span> para o cliente, <span class="var-tag">{pedido}</span> para o número, <span class="var-tag">{rastreio}</span> para o código e <span class="var-tag">{link_rastreio}</span> para a URL.
+                            </div>
+
+                            <form id="form-config-msg" onsubmit="salvarConfiguracoes(event)">
+                                <div class="detail-group">
+                                    <label style="font-size: 13px; color: var(--primary);">1. Pedido Aprovado</label>
+                                    <textarea id="msg-aprovado" class="textarea-modern">Olá {nome}! Seu pedido #{pedido} foi aprovado com sucesso e já estamos preparando tudo com muito carinho. 🐶💙</textarea>
+                                </div>
+                                <div class="detail-group">
+                                    <label style="font-size: 13px; color: var(--primary);">2. Em Fabricação</label>
+                                    <textarea id="msg-fabricacao" class="textarea-modern">Boas notícias, {nome}! Os itens do seu pedido #{pedido} acabaram de entrar em produção. Em breve estarão prontos!</textarea>
+                                </div>
+                                <div class="detail-group">
+                                    <label style="font-size: 13px; color: var(--primary);">3. Código de Rastreio</label>
+                                    <textarea id="msg-rastreio" class="textarea-modern">{nome}, sua encomenda foi despachada! 🚚 Seu código de rastreio é {rastreio}. Acompanhe por aqui: {link_rastreio}</textarea>
+                                </div>
+                                <div class="detail-group">
+                                    <label style="font-size: 13px; color: var(--primary);">4. Rota de Entrega</label>
+                                    <textarea id="msg-rota" class="textarea-modern">Atenção, {nome}! O carteiro saiu para entrega. Fique de olho, o seu pedido #{pedido} chega hoje! 📦✨</textarea>
+                                </div>
+                                <div class="detail-group" style="margin-bottom: 30px;">
+                                    <label style="font-size: 13px; color: var(--primary);">5. Feedback</label>
+                                    <textarea id="msg-feedback" class="textarea-modern">Olá {nome}, vimos que seu pedido chegou! O que achou dos produtos? Seu feedback é muito importante para nós! 🥰</textarea>
+                                </div>
+
+                                <!-- NOVIDADE: Configuração das Regras VIP (RFM) -->
+                                <div style="margin-top: 40px; margin-bottom: 20px; padding-top: 30px; border-top: 1px solid var(--border-color);">
+                                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                                        <div style="width: 40px; height: 40px; background: #fffbeb; color: #f59e0b; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                            <i data-lucide="award" style="width: 20px; height: 20px;"></i>
+                                        </div>
+                                        <div>
+                                            <h3 style="font-size: 16px; color: var(--text-main); margin-bottom: 4px;">Regras de Classificação VIP</h3>
+                                            <p style="font-size: 12px; color: var(--text-muted);">Defina o valor mínimo de LTV (Gasto Total) para cada categoria.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                                        <div class="detail-group">
+                                            <label style="font-size: 13px; color: #475569;"><span class="badge badge-diamante">Diamante</span> Mínimo (R$)</label>
+                                            <input type="number" id="cfg-diamante" class="input-modern" value="6000">
+                                        </div>
+                                        <div class="detail-group">
+                                            <label style="font-size: 13px; color: #475569;"><span class="badge badge-ouro">Ouro</span> Mínimo (R$)</label>
+                                            <input type="number" id="cfg-ouro" class="input-modern" value="3000">
+                                        </div>
+                                        <div class="detail-group">
+                                            <label style="font-size: 13px; color: #475569;"><span class="badge badge-prata">Prata</span> Mínimo (R$)</label>
+                                            <input type="number" id="cfg-prata" class="input-modern" value="1000">
+                                        </div>
+                                    </div>
+                                    <p style="font-size: 11px; color: var(--text-muted); margin-top: -10px; margin-bottom: 20px;">* Clientes com gasto abaixo do valor Prata serão classificados automaticamente como Bronze.</p>
+                                </div>
+                                
+                                <div style="text-align: right; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                                    <button type="submit" class="btn-salvar"><i data-lucide="save" style="width:18px; height:18px;"></i> Salvar Textos</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
         </aside>
 
         <main class="main-content">
@@ -349,8 +439,14 @@ async function mostrarSubPaginaDash(idAlvo) {
         document.getElementById('dash-page-subtitle').innerText = "Análise de tempo de entrega";
         topActions.innerHTML = `<div class="search-bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg><input type="text" id="busca-cep-analise" placeholder="Filtrar por CEP..." onkeyup="renderizarTabelaCEPs()"></div>`;
         if (todosOsPedidosNuvem.length === 0) await carregarPedidosNuvemDB(); 
-        renderizarTabelaCEPs();
+        else renderizarTabelaCEPs();
+    } else if (idAlvo === 'config') {
+        document.getElementById('dash-page-title').innerText = "Configurações do Sistema";
+        document.getElementById('dash-page-subtitle').innerText = "Personalização de Automações e Variáveis";
+        topActions.innerHTML = ''; // Limpa os botões do topo
+        carregarMensagensSalvas(); // Carrega os textos guardados ao abrir a aba
     }
+    
     atualizarIcones();
 }
 
@@ -673,12 +769,24 @@ function renderizarMatrizRFM() {
 function renderizarGraficoClientes() {
     const divGrafico = document.getElementById('grafico-clientes-div');
     if (!divGrafico || typeof google === 'undefined' || !google.visualization) return;
+    
     let contagem = { "DIAMANTE": 0, "OURO": 0, "PRATA": 0, "BRONZE": 0, "PRIMEIRA COMPRA": 0 };
+    const regras = getRegrasVIP(); // <-- NOVIDADE
+    
     todaABaseDeClientes.forEach(c => {
-        let totalPedidos = c.total_pedidos || 0; let valorTotal = parseFloat(c.valor_total || 0);
+        let totalPedidos = c.total_pedidos || 0; 
+        let valorTotal = parseFloat(c.valor_total || 0);
+        
         if (totalPedidos === 1) contagem["PRIMEIRA COMPRA"]++;
-        else if (totalPedidos > 1) { if (valorTotal <= 1000) contagem["BRONZE"]++; else if (valorTotal <= 3000) contagem["PRATA"]++; else if (valorTotal <= 6000) contagem["OURO"]++; else contagem["DIAMANTE"]++; }
+        else if (totalPedidos > 1) { 
+            // <-- NOVIDADE: Usando os valores configurados
+            if (valorTotal <= regras.prata) contagem["BRONZE"]++; 
+            else if (valorTotal <= regras.ouro) contagem["PRATA"]++; 
+            else if (valorTotal <= regras.diamante) contagem["OURO"]++; 
+            else contagem["DIAMANTE"]++; 
+        }
     });
+    
     const dadosGrafico = [['Grupo', 'Quantidade'],['Diamante', contagem["DIAMANTE"]],['Ouro', contagem["OURO"]],['Prata', contagem["PRATA"]],['Bronze', contagem["BRONZE"]],['1ª Compra', contagem["PRIMEIRA COMPRA"]]];
     const dataTable = google.visualization.arrayToDataTable(dadosGrafico);
     const options = { title: 'Distribuição de Clientes', pieHole: 0.4, colors: ['#d97706', '#a16207', '#475569', '#c2410c', '#4338ca'], backgroundColor: 'transparent', chartArea: { width: '90%', height: '75%' }, legend: { position: 'right', textStyle: { color: '#475569', fontSize: 13 } } };
@@ -733,9 +841,12 @@ function filtrarTabelaPorRFM(segmento) {
 function classificarClienteVisual(totalPedidos, valorTotal) {
     if (totalPedidos === 0) return '<span class="badge badge-semcompra">SEM COMPRAS</span>';
     if (totalPedidos === 1) return '<span class="badge badge-primeiracompra">1ª COMPRA</span>';
-    if (valorTotal > 6000) return '<span class="badge badge-diamante">DIAMANTE</span>';
-    if (valorTotal > 3000) return '<span class="badge badge-ouro">OURO</span>';
-    if (valorTotal > 1000) return '<span class="badge badge-prata">PRATA</span>';
+    
+    const regras = getRegrasVIP();
+    if (valorTotal > regras.diamante) return '<span class="badge badge-diamante">DIAMANTE</span>';
+    if (valorTotal > regras.ouro) return '<span class="badge badge-ouro">OURO</span>';
+    if (valorTotal > regras.prata) return '<span class="badge badge-prata">PRATA</span>';
+    
     return '<span class="badge badge-bronze">BRONZE</span>';
 }
 
@@ -824,10 +935,21 @@ function renderizarPaginaRelatorio() {
     let dadosFiltrados = todaABaseDeClientes.filter(c => {
         const nomeStr = (c.nome || "").toLowerCase(); const cpfStr = (c.cpf || "").toLowerCase();
         if (termoBusca !== "" && !nomeStr.includes(termoBusca) && !cpfStr.includes(termoBusca)) return false;
+        
         if (filtroGrupo !== "TODOS") {
-            let totalPedidos = c.total_pedidos || 0; let valorTotal = parseFloat(c.valor_total || 0); let grupoReal = "SEM COMPRAS";
+            let totalPedidos = c.total_pedidos || 0; 
+            let valorTotal = parseFloat(c.valor_total || 0); 
+            let grupoReal = "SEM COMPRAS";
+            const regras = getRegrasVIP(); // <-- NOVIDADE
+            
             if (totalPedidos === 1) grupoReal = "PRIMEIRA COMPRA";
-            else if (totalPedidos > 1) { if (valorTotal <= 1000) grupoReal = "BRONZE"; else if (valorTotal <= 3000) grupoReal = "PRATA"; else if (valorTotal <= 6000) grupoReal = "OURO"; else grupoReal = "DIAMANTE"; }
+            else if (totalPedidos > 1) { 
+                // <-- NOVIDADE: Aplicando regras dinâmicas ao filtro Dropdown
+                if (valorTotal <= regras.prata) grupoReal = "BRONZE"; 
+                else if (valorTotal <= regras.ouro) grupoReal = "PRATA"; 
+                else if (valorTotal <= regras.diamante) grupoReal = "OURO"; 
+                else grupoReal = "DIAMANTE"; 
+            }
             if (grupoReal !== filtroGrupo) return false;
         }
         return true;
@@ -1018,4 +1140,69 @@ function renderizarTabelaCEPs() {
         `;
         tbody.appendChild(linha);
     });
+}
+
+// ============================================================================
+// MÓDULO DE CONFIGURAÇÕES, TEMPLATES E REGRAS VIP
+// ============================================================================
+
+// Função global para pegar as regras financeiras em qualquer lugar do app
+function getRegrasVIP() {
+    const regrasPadrao = { diamante: 6000, ouro: 3000, prata: 1000 };
+    const salvos = localStorage.getItem('waltz_regras_vip');
+    return salvos ? JSON.parse(salvos) : regrasPadrao;
+}
+
+function salvarConfiguracoes(event) {
+    event.preventDefault();
+    
+    // 1. Salva Mensagens do WhatsApp
+    const configMsg = {
+        aprovado: document.getElementById('msg-aprovado').value,
+        fabricacao: document.getElementById('msg-fabricacao').value,
+        rastreio: document.getElementById('msg-rastreio').value,
+        rota: document.getElementById('msg-rota').value,
+        feedback: document.getElementById('msg-feedback').value,
+    };
+    localStorage.setItem('waltz_templates_wpp', JSON.stringify(configMsg));
+    
+    // 2. Salva Regras VIP
+    const regrasVIP = {
+        diamante: parseFloat(document.getElementById('cfg-diamante').value) || 6000,
+        ouro: parseFloat(document.getElementById('cfg-ouro').value) || 3000,
+        prata: parseFloat(document.getElementById('cfg-prata').value) || 1000
+    };
+    localStorage.setItem('waltz_regras_vip', JSON.stringify(regrasVIP));
+    
+    // 3. Força a re-renderização da tabela de clientes para aplicar os novos crachás na hora!
+    if(todaABaseDeClientes.length > 0) {
+        renderizarPaginaRelatorio();
+        renderizarGraficoClientes();
+    }
+    
+    // Feedback visual
+    const btn = event.submitter;
+    const textoOriginal = btn.innerHTML;
+    btn.innerHTML = '<i data-lucide="check" style="width:18px; height:18px;"></i> Salvo!';
+    btn.style.backgroundColor = '#10b981';
+    atualizarIcones();
+    setTimeout(() => { btn.innerHTML = textoOriginal; btn.style.backgroundColor = ''; atualizarIcones(); }, 2000);
+}
+
+function carregarMensagensSalvas() {
+    // Carrega mensagens
+    const salvaMsg = localStorage.getItem('waltz_templates_wpp');
+    if (salvaMsg) {
+        const configMsg = JSON.parse(salvaMsg);
+        if(document.getElementById('msg-aprovado')) document.getElementById('msg-aprovado').value = configMsg.aprovado;
+        if(document.getElementById('msg-fabricacao')) document.getElementById('msg-fabricacao').value = configMsg.fabricacao;
+        if(document.getElementById('msg-rastreio')) document.getElementById('msg-rastreio').value = configMsg.rastreio;
+        if(document.getElementById('msg-rota')) document.getElementById('msg-rota').value = configMsg.rota;
+        if(document.getElementById('msg-feedback')) document.getElementById('msg-feedback').value = configMsg.feedback;
+    }
+    // Carrega Regras VIP na interface
+    const regras = getRegrasVIP();
+    if(document.getElementById('cfg-diamante')) document.getElementById('cfg-diamante').value = regras.diamante;
+    if(document.getElementById('cfg-ouro')) document.getElementById('cfg-ouro').value = regras.ouro;
+    if(document.getElementById('cfg-prata')) document.getElementById('cfg-prata').value = regras.prata;
 }

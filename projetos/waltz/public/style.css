@@ -92,7 +92,7 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .contador-badge { background: var(--text-main); color: white; padding: 10px 15px; border-radius: 8px; font-size: 12px; font-weight: bold; display: flex; align-items: center;}
 
 .card-table { background: white; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.02); width: 100%; margin-top: 15px;}
-.tabela-responsiva { width: 100%; max-height: 65vh; overflow-y: auto; overflow-x: auto; } 
+.tabela-responsiva { width: 100%; height: calc(100vh - 280px); overflow-y: auto; overflow-x: auto; } 
 .tabela-dados { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; min-width: 1100px;}
 .tabela-dados th { position: sticky; top: 0; background-color: white; z-index: 10; padding: 16px 20px; font-size: 12px; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; user-select: none; white-space: nowrap; }
 .tabela-dados td { padding: 16px 20px; font-size: 14px; color: var(--text-main); border-bottom: 1px solid var(--border-color); background: white;}
@@ -101,6 +101,17 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .tabela-dados tbody tr { cursor: pointer; }
 .sort-icon { font-size: 11px; margin-left: 6px; color: #94a3b8; transition: color 0.2s;}
 .sort-icon.active { color: var(--orange-active); font-weight: bold; font-size: 14px;}
+
+/* ESTILOS PARA O PAINEL DE CONFIGURAÇÕES */
+.textarea-modern { width: 100%; padding: 12px 15px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; color: var(--text-main); font-family: inherit; resize: vertical; min-height: 80px; outline: none; transition: border 0.2s; }
+.textarea-modern:focus { border-color: var(--primary); }
+.btn-salvar { background-color: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; gap: 8px;}
+.btn-salvar:hover { background-color: #2563eb; }
+.var-tag { background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; font-weight: bold;}
+.input-modern { width: 100%; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; color: var(--text-main); font-family: inherit; outline: none; transition: border 0.2s; background: white;}
+.input-modern:focus { border-color: var(--primary); }
+
+/* BADGES*/
 
 .badge { padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; border: 1px solid transparent; text-align: center;}
 .badge-diamante { background-color: #6586cf; color: #ffffff; border-color: #405fa1; }
