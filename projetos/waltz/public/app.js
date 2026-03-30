@@ -372,6 +372,9 @@ async function carregarPedidosNuvemDB() {
     } catch (e) {}
 }
 
+// ==========================================================
+// RENDERIZAÇÃO: ABA PEDIDOS (NUVEMSHOP) COM UNIFICAÇÃO HISTÓRICA
+// ==========================================================
 function renderizarPaginaNuvem() {
     const tbody = document.getElementById('corpo-tabela-nuvem');
     if(!tbody) return;
@@ -379,9 +382,40 @@ function renderizarPaginaNuvem() {
     const termoBusca = (document.getElementById("busca-nuvem")?.value || "").toLowerCase();
     const filtroStatus = document.getElementById("filtro-status-nuvem")?.value || "TODOS";
     
-    let dadosFiltrados = todosOsPedidosNuvem.filter(p => {
-        const passaBusca = termoBusca === "" || (p.numero_pedido || "").toLowerCase().includes(termoBusca) || (p.nome_cliente || "").toLowerCase().includes(termoBusca);
+    // 1. Processamento Inteligente dos Dados Históricos ANTES do Filtro
+    let dadosFiltrados = todosOsPedidosNuvem.map(p => {
+        // Clonamos o objeto para não alterar a matriz original acidentalmente
+        let pedidoProcessado = { ...p };
+        
+        // Padronizamos o status que vem da base de dados
+        let stOriginal = (pedidoProcessado.status_nuvemshop || '').toLowerCase();
+        let stFinal = 'Aberto'; // Valor por defeito
+
+        // A Mágica da Unificação (A mesma regra do Webhook, agora aplicada ao histórico visual)
+        if (stOriginal === 'closed' || stOriginal === 'arquivado' || stOriginal === 'delivered' || stOriginal === 'entregue') {
+            stFinal = 'Entregue';
+        } else if (stOriginal === 'shipped' || stOriginal === 'enviado') {
+            stFinal = 'Enviado';
+        } else if (stOriginal === 'canceled' || stOriginal === 'cancelled' || stOriginal === 'cancelado') {
+            stFinal = 'Cancelado';
+        }
+
+        // Atualizamos o status do objeto processado com a versão limpa e padronizada (Title Case)
+        pedidoProcessado.status_nuvemshop = stFinal;
+        return pedidoProcessado;
+
+    }).filter(p => {
+        // 2. Aplicação do Filtro sobre os dados já "limpos"
+        const numPedido = (p.numero_pedido || "").toLowerCase();
+        const nomeCliente = (p.nome_cliente || "").toLowerCase();
+        const cpfCliente = (p.cpf_cliente || "").replace(/\D/g, ''); 
+        const buscaLimpa = termoBusca.replace(/\D/g, ''); 
+        
+        const passaBusca = termoBusca === "" || numPedido.includes(termoBusca) || nomeCliente.includes(termoBusca) || (buscaLimpa !== "" && cpfCliente.includes(buscaLimpa));
+        
+        // A verificação de status agora funciona porque todos os 'Arquivados' viraram 'Entregue' no passo anterior
         const passaStatus = filtroStatus === "TODOS" || p.status_nuvemshop === filtroStatus;
+
         return passaBusca && passaStatus;
     });
 
@@ -390,6 +424,7 @@ function renderizarPaginaNuvem() {
 
     const totalPaginas = Math.ceil(dadosFiltrados.length / itensPorPaginaNuvem);
     if (paginaAtualNuvem > totalPaginas && totalPaginas > 0) paginaAtualNuvem = totalPaginas;
+    
     const inicio = (paginaAtualNuvem - 1) * itensPorPaginaNuvem;
     const itensDaPagina = dadosFiltrados.slice(inicio, inicio + itensPorPaginaNuvem);
 
@@ -399,25 +434,30 @@ function renderizarPaginaNuvem() {
     } else {
         itensDaPagina.forEach(p => {
             const dataO = new Date(p.data_criacao);
-            const dataF = dataO.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ' ' + dataO.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute:'2-digit' });
+            // Formatação de data simplificada e mais robusta
+            const dataF = dataO.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ' <br><span style="font-size:11px">' + dataO.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute:'2-digit' }) + '</span>';
             
-            const stNuvem = (p.status_nuvemshop || '').toUpperCase();
+            // O status já vem limpo e em formato legível ("Entregue", "Aberto", etc.) do mapeamento acima
+            const stNuvem = p.status_nuvemshop.toUpperCase();
+            
+            let checkAprovado = true; 
+            let checkFab = stNuvem !== 'ABERTO' && stNuvem !== 'CANCELADO';
+            let checkRastreio = p.rastreio && p.rastreio.trim() !== '' ? true : false;
+            let checkRota = stNuvem === 'ENTREGUE' || stNuvem === 'ARQUIVADO';
+            let checkFeedback = p.status_feedback === 'Enviado';
 
-            // LÓGICA DO PROGRESSO (Qual foi a última etapa enviada?)
             let step = 0;
-            let ultimoStatusTexto = "Aguardando...";
+            let ultimoStatusTexto = "Aguardando Automação...";
             
-            if (p.auto_aprovado === true) { step = 1; ultimoStatusTexto = "1. Pedido Aprovado"; }
-            if (p.auto_fabricacao === true) { step = 2; ultimoStatusTexto = "2. Em Fabricação"; }
-            if (p.auto_rastreio === true) { step = 3; ultimoStatusTexto = "3. Rastreio Enviado"; }
-            if (p.auto_entrega === true) { step = 4; ultimoStatusTexto = "4. Em Rota / Entregue"; }
-            if (p.status_feedback === 'Enviado') { step = 5; ultimoStatusTexto = "5. Feedback Concluído"; }
+            if (p.auto_aprovado === true || checkAprovado) { step = 1; ultimoStatusTexto = "1. Pedido Aprovado"; }
+            if (p.auto_fabricacao === true || checkFab) { step = 2; ultimoStatusTexto = "2. Em Fabricação"; }
+            if (p.auto_rastreio === true || checkRastreio) { step = 3; ultimoStatusTexto = "3. Rastreio Enviado"; }
+            if (p.auto_entrega === true || checkRota) { step = 4; ultimoStatusTexto = "4. Em Rota / Entregue"; }
+            if (p.status_feedback === 'Enviado' || checkFeedback) { step = 5; ultimoStatusTexto = "5. Feedback Concluído"; }
 
-            // HTML da Célula de Automação (Agora super Clean)
             let corTexto = step > 0 ? 'var(--primary)' : 'var(--text-muted)';
             let acaoComunicacao = `<span style="font-size: 13px; font-weight: 600; color: ${corTexto};">${ultimoStatusTexto}</span>`;
             
-            // 👇 CORREÇÃO AQUI: Aplicação dinâmica da cor da Badge
             let corBadge = 'badge-aberto';
             if (stNuvem === 'ENTREGUE') corBadge = 'badge-entregue';
             else if (stNuvem === 'ENVIADO') corBadge = 'badge-ouro';
@@ -431,7 +471,7 @@ function renderizarPaginaNuvem() {
                 <td style="white-space:nowrap; color: var(--text-muted);">${dataF}</td>
                 <td style="font-weight:600; color:var(--primary);">#${p.numero_pedido}</td>
                 <td style="font-weight:500;">${p.nome_cliente || '-'}</td>
-                <td>${statusBadge}</td> <!-- Variável corrigida inserida aqui -->
+                <td>${statusBadge}</td>
                 <td>${acaoComunicacao}</td>
             `;
             tbody.appendChild(linha);
@@ -441,19 +481,21 @@ function renderizarPaginaNuvem() {
     atualizarIcones(); 
 }
 
+// ==========================================================
+// FUNÇÃO: ABRIR GAVETA LATERAL DE DETALHES DO PEDIDO
+// ==========================================================
 function abrirDetalhesPedido(idPedido) {
     const pedido = todosOsPedidosNuvem.find(p => p.id_pedido === idPedido);
     if (!pedido) return;
 
     document.getElementById('drawer-titulo').innerText = `Pedido #${pedido.numero_pedido}`;
 
-    // NOVA MATEMÁTICA LOGÍSTICA (Ignora horas, subtrai dias do calendário)
+    // 1. Lógica Matemática do Tempo de Entrega
     let tempoTexto = 'Aguardando envio';
     if (pedido.data_envio && pedido.data_entrega) {
         const d1 = new Date(pedido.data_envio);
         const d2 = new Date(pedido.data_entrega);
         
-        // Converte as datas para as 00:00:00 (Fuso horário universal) para comparar perfeitamente
         const data1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
         const data2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
         
@@ -465,11 +507,21 @@ function abrirDetalhesPedido(idPedido) {
         tempoTexto = 'Em andamento';
     }
 
+    // 2. Preparação do Link do WhatsApp
     const telLimpo = (pedido.telefone || '').replace(/\D/g, '');
     const urlWpp = `https://wa.me/55${telLimpo}`;
 
-    // LÓGICA MATEMÁTICA DA BARRA DE PROGRESSO
-    // 4. LÓGICA MATEMÁTICA DO STEPPER VERTICAL
+    // 3. Preparação Dinâmica do Link de Rastreio
+    let htmlRastreio = `<p style="font-family: monospace; color: var(--text-muted); font-size: 15px;">Aguardando envio...</p>`;
+    if (pedido.rastreio && pedido.rastreio.trim() !== '') {
+        // Pode substituir esta URL base pelo endereço exato da sua transportadora
+        const urlRastreio = `https://portal.smartenvios.com/rastreamento/codigo-de-rastreio/${pedido.rastreio}`; 
+        
+        // Criamos um link sublinhado com um pequeno ícone de "Seta a apontar para fora" para indicar que abre uma nova página
+        htmlRastreio = `<a href="${urlRastreio}" target="_blank" style="font-family: monospace; color: var(--primary); font-weight: 600; font-size: 15px; text-decoration: underline; display: inline-flex; align-items: center; gap: 5px;" title="Rastrear Encomenda">${pedido.rastreio} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>`;
+    }
+
+    // 4. Lógica Matemática do Stepper Vertical
     let step = 0;
     if (pedido.auto_aprovado === true) step = 1;
     if (pedido.auto_fabricacao === true) step = 2;
@@ -491,9 +543,7 @@ function abrirDetalhesPedido(idPedido) {
         </div>`;
     };
 
-    // Calcula a porcentagem (0%, 20%, 40%, 60%, 80% ou 100%)
-    let progressPct = (step / 5) * 100;
-
+    // 5. Injeção do HTML do Drawer
     const conteudo = document.getElementById('drawer-conteudo');
     conteudo.innerHTML = `
         <div class="detail-header-card">
@@ -502,23 +552,23 @@ function abrirDetalhesPedido(idPedido) {
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h3>${pedido.nome_cliente || '-'}</h3>
                 </div>
-                <p style="margin-top:5px;"><i data-lucide="phone" style="width:12px; height:12px;"></i> ${pedido.telefone || 'Sem telefone'}</p>
+                
+                <!-- NOVIDADE: Telefone agora é um link direto para o WhatsApp -->
+                <p style="margin-top:5px;">
+                    ${pedido.telefone 
+                        ? `<a href="${urlWpp}" target="_blank" style="color: #10b981; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;" title="Chamar no WhatsApp"><i data-lucide="message-circle" style="width:14px; height:14px;"></i> ${pedido.telefone}</a>` 
+                        : `<span style="color: var(--text-muted);"><i data-lucide="phone" style="width:12px; height:12px;"></i> Sem telefone</span>`
+                    }
+                </p>
                 <p><i data-lucide="mail" style="width:12px; height:12px;"></i> ${pedido.email_cliente || 'Sem e-mail'}</p>
             </div>
         </div>
 
-        <!-- CONTATO RÁPIDO -->
-        <div class="detail-group">
-            <label>Contato Rápido</label>
-            <a href="${urlWpp}" target="_blank" style="display:inline-flex; align-items:center; gap:8px; background:#25d366; color:white; padding:8px 15px; border-radius:8px; text-decoration:none; font-weight:600; font-size:13px; transition: background 0.2s;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                Chamar no WhatsApp
-            </a>
-        </div>
+        <!-- O BOTÃO ANTIGO DE WHATSAPP FOI REMOVIDO DAQUI PARA LIMPEZA DO DESIGN -->
 
         <!-- STEPPER VERTICAL (LINHA DO TEMPO) -->
         <div class="detail-group" style="margin-bottom: 30px; background:#f8fafc; padding:20px; border-radius:12px; border:1px solid var(--border-color);">
-            <label>Progresso das Automações WPP</label>
+            <label>Progresso das Automações</label>
             <div style="position:relative; display:flex; flex-direction:column; gap:15px; margin-top:15px;">
                 <div style="position:absolute; left:11px; top:10px; bottom:10px; width:2px; background:var(--border-color); z-index:1;"></div>
                 <div style="position:absolute; left:11px; top:10px; height:${(step/4)*100}%; max-height:100%; width:2px; background:#10b981; z-index:2; transition:height 0.8s ease-in-out;"></div>
@@ -540,13 +590,19 @@ function abrirDetalhesPedido(idPedido) {
         </div>
 
         <div class="detail-group"><label>Transportadora</label><p>${pedido.transportadora || '-'}</p></div>
-        <div class="detail-group"><label>Código de Rastreio</label><p style="font-family: monospace; color: var(--primary); font-weight: 600; font-size: 15px;">${pedido.rastreio || 'Aguardando envio...'}</p></div>
+        
+        <!-- NOVIDADE: Código de rastreio agora é embutido como hiperligação (Link) -->
+        <div class="detail-group">
+            <label>Código de Rastreio</label>
+            ${htmlRastreio}
+        </div>
+        
         <div class="detail-group"><label>Tempo de Entrega Logístico</label><p>${tempoTexto}</p></div>
     `;
 
     document.getElementById('drawer-overlay').classList.add('active');
     document.getElementById('drawer-pedido').classList.add('active');
-    atualizarIcones();
+    atualizarIcones(); // Renderiza os ícones do Lucide (incluindo o novo ícone do WhatsApp)
 }
 
 function fecharDetalhesPedido() {
@@ -581,33 +637,32 @@ function renderizarMatrizRFM() {
 
     let somaLTV = 0, somaFreq = 0, somaRecencia = 0, clientesComCompra = 0;
     let campeoes = 0, fieis = 0, recentes = 0, risco = 0;
-    const hoje = new Date();
 
     todaABaseDeClientes.forEach(c => {
-        let freq = parseInt(c.total_pedidos) || 0;
-        if (freq === 0) return; 
-        
-        let ltv = parseFloat(c.valor_total) || 0;
-        let recencia = 0;
-        
-        if (c.ultima_compra) {
-            const dataCompra = new Date(c.ultima_compra);
-            recencia = Math.ceil(Math.abs(hoje - dataCompra) / (1000 * 60 * 60 * 24));
-        }
+        // Ignora quem não tem compras para não estragar as médias
+        if (c.segmento_rfm === "SEM COMPRAS") return;
 
-        somaLTV += ltv; somaFreq += freq; somaRecencia += recencia; clientesComCompra++;
+        somaLTV += parseFloat(c.valor_total || 0);
+        somaFreq += parseInt(c.total_pedidos || 0);
+        
+        // Usa a recência pré-calculada (que protege contra datas vazias com 999 dias)
+        somaRecencia += c.recenciaDias; 
+        clientesComCompra++;
 
-        if (recencia <= 30 && freq >= 3 && ltv > 1000) campeoes++;
-        else if (freq >= 2 && recencia <= 90) fieis++;
-        else if (freq === 1 && recencia <= 30) recentes++;
-        else risco++; 
+        // Conta os clientes baseando-se no segmento inteligente da Prax.ai já calculado
+        if (c.segmento_rfm === "CAMPEOES") campeoes++;
+        else if (c.segmento_rfm === "FIEIS") fieis++;
+        else if (c.segmento_rfm === "RECENTES") recentes++;
+        else if (c.segmento_rfm === "RISCO") risco++;
     });
 
     if (clientesComCompra > 0) {
+        // Atualiza os cartões de médias
         document.getElementById('rfm-r-avg').innerText = Math.round(somaRecencia / clientesComCompra) + ' d';
         document.getElementById('rfm-f-avg').innerText = (somaFreq / clientesComCompra).toFixed(1);
         document.getElementById('rfm-m-avg').innerText = 'R$ ' + (somaLTV / clientesComCompra).toFixed(2).replace('.', ',');
         
+        // Atualiza as contagens dos grupos
         document.getElementById('rfm-campeoes').innerText = campeoes + ' clientes';
         document.getElementById('rfm-fieis').innerText = fieis + ' clientes';
         document.getElementById('rfm-recentes').innerText = recentes + ' clientes';
