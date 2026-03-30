@@ -108,16 +108,6 @@ function getTemplatePainel() {
                 <div class="nav-link" id="nav-config" onclick="mostrarSubPaginaDash('config')"><i data-lucide="settings"></i> <span class="nav-text">Configurações</span></div>
                 <div class="nav-link" id="btn-logout"><i data-lucide="log-out"></i> <span class="nav-text">Sair</span></div>
             </div>
-        </aside>
-
-        <main class="main-content">
-            <header class="topbar">
-                <div class="page-title-area">
-                    <h1 id="dash-page-title">Dashboard</h1>
-                    <p id="dash-page-subtitle">Visão geral do seu e-commerce</p>
-                </div>
-                <div id="dynamic-top-actions" class="table-top-actions"></div>
-            </header>
 
             <div class="page-content-wrapper" id="dashboard-content-area">
                 
@@ -630,7 +620,7 @@ function abrirDetalhesPedido(idPedido) {
         const bg = isDone ? '#10b981' : 'white';
         const icon = isDone ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` : ``;
         return `
-        <div style="display:flex; gap:12px; align-items:center; z-index:3; position:relative; background:white; padding:4px 0;">
+        <div style="display:flex; gap:12px; align-items:center; z-index:3; position:relative; padding:4px 0;">
             <div style="width:24px; height:24px; border-radius:50%; border:2px solid ${color}; background:${bg}; display:flex; align-items:center; justify-content:center;">${icon}</div>
             <div style="display:flex; flex-direction:column;">
                 <span style="font-size:13px; font-weight:700; color:var(--text-main);">${title}</span>
