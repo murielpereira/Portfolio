@@ -89,8 +89,7 @@ function getTemplatePainel() {
     <div class="dashboard-wrapper">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <!-- Correção do caminho da Logo. A imagem não tem mais invert para o fundo limpo. -->
-                <img src="./logo.png" alt="Waltz" style="border-radius:4px; max-height: 40px;"> 
+                <img src="./logo.png" alt="Waltz" style="border-radius:4px; max-height: 40px; cursor: pointer;" onclick="mostrarSubPaginaDash('dash')" title="Ir para o Início"> 
                 <div class="btn-toggle-menu" onclick="toggleSidebar()"><i data-lucide="chevron-left"></i></div>
             </div>
             <ul class="nav-links">
@@ -103,18 +102,29 @@ function getTemplatePainel() {
                 <li><div id="nav-rfm" class="nav-link" onclick="mostrarSubPaginaDash('rfm')"><i data-lucide="bar-chart-2"></i> <span class="nav-text">Matriz RFM</span></div></li>
                 <li><div id="nav-cep" class="nav-link" onclick="mostrarSubPaginaDash('cep')"><i data-lucide="map"></i> <span class="nav-text">Regiões Logísticas</span></div></li>
             </ul>
+            // ... [CÓDIGO ANTERIOR DOS LINKS DO MENU]
             <div class="sidebar-footer">
-                <!-- NOVIDADE: Adicionado ID e evento onclick no menu de Configurações -->
                 <div class="nav-link" id="nav-config" onclick="mostrarSubPaginaDash('config')"><i data-lucide="settings"></i> <span class="nav-text">Configurações</span></div>
                 <div class="nav-link" id="btn-logout"><i data-lucide="log-out"></i> <span class="nav-text">Sair</span></div>
             </div>
+        </aside> <!-- CORREÇÃO VITAL: Fechamos o painel lateral AQUI! -->
+
+        <main class="main-content"> <!-- Iniciamos a parte central! -->
+            <header class="topbar">
+                <div class="page-title-area">
+                    <h1 id="dash-page-title">Dashboard</h1>
+                    <p id="dash-page-subtitle">Visão geral do seu e-commerce</p>
+                </div>
+                <div id="dynamic-top-actions" class="table-top-actions"></div>
+            </header>
 
             <div class="page-content-wrapper" id="dashboard-content-area">
                 
-                <!-- NOVIDADE: Painel de Configurações de Mensagens -->
+                <!-- PAINEL DE CONFIGURAÇÕES DE MENSAGENS -->
                 <div id="sub-config" class="sub-pagina" style="display: none;">
                     <div class="card-table" style="padding: 30px; height: calc(100vh - 220px); overflow-y: auto;">
                         <div style="max-width: 800px; margin: 0 auto;">
+                            <!-- ... TODO O INTERIOR DO FORMULÁRIO FICA AQUI ... -->
                             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
                                 <div style="width: 50px; height: 50px; background: #eff6ff; color: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                                     <i data-lucide="message-circle" style="width: 24px; height: 24px;"></i>
@@ -151,7 +161,6 @@ function getTemplatePainel() {
                                     <textarea id="msg-feedback" class="textarea-modern">Olá {nome}, vimos que seu pedido chegou! O que achou dos produtos? Seu feedback é muito importante para nós! 🥰</textarea>
                                 </div>
 
-                                <!-- NOVIDADE: Configuração das Regras VIP (RFM) -->
                                 <div style="margin-top: 40px; margin-bottom: 20px; padding-top: 30px; border-top: 1px solid var(--border-color);">
                                     <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
                                         <div style="width: 40px; height: 40px; background: #fffbeb; color: #f59e0b; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
@@ -187,6 +196,7 @@ function getTemplatePainel() {
                         </div>
                     </div>
                 </div>
+            </div>
         </aside>
 
         <main class="main-content">
@@ -341,22 +351,34 @@ function toggleSidebar() {
 
 document.addEventListener('DOMContentLoaded', async () => { await inicializarApp(); });
 
+// ==========================================================
+// FUNÇÃO: INICIALIZAÇÃO DO APLICATIVO
+// ==========================================================
 async function inicializarApp() {
     const appDiv = document.getElementById('app');
     if (!appDiv) return;
     try {
         const resposta = await fetch('/api/check-session');
         const dados = await resposta.json();
+        
         if (dados.logado) {
             appDiv.innerHTML = getTemplatePainel();
             document.getElementById('btn-logout')?.addEventListener('click', realizarLogout);
-            mostrarSubPaginaDash('tiny'); 
+            
+            // Faz o download das configurações do Banco de Dados para a memória
+            await carregarConfiguracoesDoBanco(); 
+            
+            // NOVIDADE: A página inicial agora é o Dashboard ('dash')
+            mostrarSubPaginaDash('dash'); 
+            
         } else {
             appDiv.innerHTML = getTemplateLogin();
             document.getElementById('form-login')?.addEventListener('submit', realizarLogin);
             document.getElementById('btn-mostrar-senha')?.addEventListener('click', toggleSenha);
         }
-    } catch (erro) { appDiv.innerHTML = '<p style="text-align:center; padding:50px;">Erro de conexão. Atualize a página.</p>'; }
+    } catch (erro) { 
+        appDiv.innerHTML = '<p style="text-align:center; padding:50px;">Erro de conexão. Atualize a página.</p>'; 
+    }
 }
 
 async function realizarLogin(event) {
@@ -433,10 +455,9 @@ async function mostrarSubPaginaDash(idAlvo) {
     } else if (idAlvo === 'config') {
         document.getElementById('dash-page-title').innerText = "Configurações do Sistema";
         document.getElementById('dash-page-subtitle').innerText = "Personalização de Automações e Variáveis";
-        topActions.innerHTML = ''; // Limpa os botões do topo
-        carregarMensagensSalvas(); // Carrega os textos guardados ao abrir a aba
+        topActions.innerHTML = ''; 
+        preencherFormularioConfig(); // NOVIDADE: Muda o nome da função a ser chamada
     }
-    
     atualizarIcones();
 }
 
@@ -566,7 +587,6 @@ function renderizarPaginaNuvem() {
     renderizarControlesPaginacaoNuvem(totalPaginas);
     atualizarIcones(); 
 }
-
 // ==========================================================
 // FUNÇÃO: ABRIR GAVETA LATERAL DE DETALHES DO PEDIDO
 // ==========================================================
@@ -576,119 +596,133 @@ function abrirDetalhesPedido(idPedido) {
 
     document.getElementById('drawer-titulo').innerText = `Pedido #${pedido.numero_pedido}`;
 
-    // 1. Lógica Matemática do Tempo de Entrega
+    // 1. Lógica do Tempo de Entrega
     let tempoTexto = 'Aguardando envio';
     if (pedido.data_envio && pedido.data_entrega) {
         const d1 = new Date(pedido.data_envio);
         const d2 = new Date(pedido.data_entrega);
-        
-        const data1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
-        const data2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
-        
-        const diffDias = Math.floor((data2 - data1) / (1000 * 60 * 60 * 24));
-        
-        if (diffDias === 0) tempoTexto = 'Entregue no mesmo dia';
-        else tempoTexto = `${diffDias} dia(s)`;
-    } else if (pedido.data_envio) {
-        tempoTexto = 'Em andamento';
-    }
+        const diffDias = Math.floor((Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate()) - Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate())) / (1000 * 60 * 60 * 24));
+        tempoTexto = diffDias === 0 ? 'Entregue no mesmo dia' : `${diffDias} dia(s)`;
+    } else if (pedido.data_envio) tempoTexto = 'Em andamento';
 
-    // 2. Preparação do Link do WhatsApp
+    // 2. Link Base e Rastreio
     const telLimpo = (pedido.telefone || '').replace(/\D/g, '');
     const urlWpp = `https://wa.me/55${telLimpo}`;
-
-    // 3. Preparação Dinâmica do Link de Rastreio
+    let urlRastreioBase = '';
     let htmlRastreio = `<p style="font-family: monospace; color: var(--text-muted); font-size: 15px;">Aguardando envio...</p>`;
+    
     if (pedido.rastreio && pedido.rastreio.trim() !== '') {
-        // Pode substituir esta URL base pelo endereço exato da sua transportadora
-        const urlRastreio = `https://portal.smartenvios.com/rastreamento/codigo-de-rastreio/${pedido.rastreio}`; 
-        
-        // Criamos um link sublinhado com um pequeno ícone de "Seta a apontar para fora" para indicar que abre uma nova página
-        htmlRastreio = `<a href="${urlRastreio}" target="_blank" style="font-family: monospace; color: var(--primary); font-weight: 600; font-size: 15px; text-decoration: underline; display: inline-flex; align-items: center; gap: 5px;" title="Rastrear Encomenda">${pedido.rastreio} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>`;
+        urlRastreioBase = `https://portal.smartenvios.com/rastreamento/codigo-de-rastreio/${pedido.rastreio}`; 
+        htmlRastreio = `<a href="${urlRastreioBase}" target="_blank" style="font-family: monospace; color: var(--primary); font-weight: 600; font-size: 15px; text-decoration: underline; display: inline-flex; align-items: center; gap: 5px;" title="Rastrear Encomenda">${pedido.rastreio} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>`;
     }
 
-    // 4. Lógica Matemática do Stepper Vertical
-    let step = 0;
-    if (pedido.auto_aprovado === true) step = 1;
-    if (pedido.auto_fabricacao === true) step = 2;
-    if (pedido.auto_rastreio === true) step = 3;
-    if (pedido.auto_entrega === true) step = 4;
-    if (pedido.status_feedback === 'Enviado') step = 5;
+    const stNuvem = (pedido.status_nuvemshop || 'Aberto').toUpperCase();
+    let corBadge = stNuvem === 'ENTREGUE' ? 'badge-entregue' : (stNuvem === 'ENVIADO' ? 'badge-ouro' : (stNuvem === 'CANCELADO' ? 'badge-semcompra' : 'badge-aberto'));
+    let statusBadge = `<span class="badge ${corBadge}">${stNuvem}</span>`;
 
-    const createStep = (isDone, title, subtitle) => {
+    const formatarData = (dataBase) => {
+        if (!dataBase) return '-';
+        const d = new Date(dataBase);
+        return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ' <span style="font-size:11px; color:var(--text-muted)">' + d.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute:'2-digit' }) + '</span>';
+    };
+
+    // A. Puxar os templates salvos do nosso novo cérebro global (BD)
+    let templates = {
+        aprovado: "Olá {nome}! Seu pedido #{pedido} foi aprovado com sucesso e já estamos preparando tudo com muito carinho. 🐶💙",
+        fabricacao: "Boas notícias, {nome}! Os itens do seu pedido #{pedido} acabaram de entrar em produção.",
+        rastreio: "{nome}, sua encomenda foi despachada! 🚚 Rastreio: {rastreio}. Acompanhe por aqui: {link_rastreio}",
+        rota: "Atenção, {nome}! O carteiro saiu para entrega. Fique de olho, o seu pedido #{pedido} chega hoje! 📦✨",
+        feedback: "Olá {nome}, vimos que seu pedido chegou! O que achou dos produtos? Seu feedback é muito importante para nós! 🥰"
+    };
+    
+    // Puxa diretamente da memória (configsGlobais) alimentada pelo banco
+    if (configsGlobais && configsGlobais.templates_wpp) {
+        templates = { ...templates, ...configsGlobais.templates_wpp };
+    }
+
+    const primeiroNome = (pedido.nome_cliente || 'Cliente').split(' ')[0];
+    const trackCode = pedido.rastreio || 'Aguardando rastreio';
+
+    const gerarLinkWpp = (templateText) => {
+        if (!telLimpo) return '#'; 
+        let textoFinal = templateText.replace(/{nome}/g, primeiroNome).replace(/{pedido}/g, pedido.numero_pedido).replace(/{rastreio}/g, trackCode).replace(/{link_rastreio}/g, urlRastreioBase);
+        return `https://wa.me/55${telLimpo}?text=${encodeURIComponent(textoFinal)}`;
+    };
+    // ==============================================================
+
+    let checkAprovado = true; 
+    let checkFab = stNuvem !== 'ABERTO' && stNuvem !== 'CANCELADO';
+    let checkRastreio = pedido.rastreio && pedido.rastreio.trim() !== '' ? true : false;
+    let checkRota = stNuvem === 'ENTREGUE' || stNuvem === 'ARQUIVADO';
+    let checkFeedback = pedido.status_feedback === 'Enviado';
+
+    let step = 0;
+    if (pedido.auto_aprovado === true || checkAprovado) step = 1;
+    if (pedido.auto_fabricacao === true || checkFab) step = 2;
+    if (pedido.auto_rastreio === true || checkRastreio) step = 3;
+    if (pedido.auto_entrega === true || checkRota) step = 4;
+    if (pedido.status_feedback === 'Enviado' || checkFeedback) step = 5;
+
+    const createStep = (isDone, title, subtitle, msgTemplate) => {
         const color = isDone ? '#10b981' : '#cbd5e1';
-        const bg = isDone ? '#10b981' : 'white';
+        const bg = isDone ? '#10b981' : 'transparent';
         const icon = isDone ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` : ``;
+        const linkWpp = gerarLinkWpp(msgTemplate);
+        const btnWppHtml = telLimpo ? `<a href="${linkWpp}" target="_blank" style="margin-left: auto; background: #25d366; color: white; padding: 4px 10px; border-radius: 6px; text-decoration: none; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 4px; transition: opacity 0.2s;" title="Enviar mensagem desta etapa"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> Enviar</a>` : ``;
+
         return `
-        <div style="display:flex; gap:12px; align-items:center; z-index:3; position:relative; padding:4px 0;">
-            <div style="width:24px; height:24px; border-radius:50%; border:2px solid ${color}; background:${bg}; display:flex; align-items:center; justify-content:center;">${icon}</div>
+        <div style="display:flex; gap:12px; align-items:center; z-index:3; position:relative; background:transparent; padding:4px 0; width:100%;">
+            <div style="width:24px; height:24px; border-radius:50%; border:2px solid ${color}; background:${bg}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${icon}</div>
             <div style="display:flex; flex-direction:column;">
                 <span style="font-size:13px; font-weight:700; color:var(--text-main);">${title}</span>
                 <span style="font-size:11px; color:var(--text-muted);">${subtitle}</span>
             </div>
+            ${btnWppHtml}
         </div>`;
     };
 
-    // 5. Injeção do HTML do Drawer
     const conteudo = document.getElementById('drawer-conteudo');
     conteudo.innerHTML = `
+        <!-- ... [A parte inicial do header mantém-se idêntica, fui direto ao miolo] ... -->
         <div class="detail-header-card">
             <div class="detail-avatar"><i data-lucide="user"></i></div>
             <div class="detail-header-info" style="flex:1;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h3>${pedido.nome_cliente || '-'}</h3>
-                </div>
-                
-                <!-- NOVIDADE: Telefone agora é um link direto para o WhatsApp -->
-                <p style="margin-top:5px;">
-                    ${pedido.telefone 
-                        ? `<a href="${urlWpp}" target="_blank" style="color: #10b981; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;" title="Chamar no WhatsApp"><i data-lucide="message-circle" style="width:14px; height:14px;"></i> ${pedido.telefone}</a>` 
-                        : `<span style="color: var(--text-muted);"><i data-lucide="phone" style="width:12px; height:12px;"></i> Sem telefone</span>`
-                    }
-                </p>
+                <div style="display:flex; justify-content:space-between; align-items:center;"><h3>${pedido.nome_cliente || '-'}</h3>${statusBadge}</div>
+                <p style="margin-top:5px;">${pedido.telefone ? `<a href="https://wa.me/55${telLimpo}" target="_blank" style="color: #10b981; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;"><i data-lucide="message-circle" style="width:14px; height:14px;"></i> ${pedido.telefone}</a>` : `<span style="color: var(--text-muted);"><i data-lucide="phone" style="width:12px; height:12px;"></i> Sem telefone</span>`}</p>
                 <p><i data-lucide="mail" style="width:12px; height:12px;"></i> ${pedido.email_cliente || 'Sem e-mail'}</p>
             </div>
         </div>
 
-        <!-- O BOTÃO ANTIGO DE WHATSAPP FOI REMOVIDO DAQUI PARA LIMPEZA DO DESIGN -->
-
-        <!-- STEPPER VERTICAL (LINHA DO TEMPO) -->
         <div class="detail-group" style="margin-bottom: 30px; background:#f8fafc; padding:20px; border-radius:12px; border:1px solid var(--border-color);">
             <label>Progresso das Automações</label>
             <div style="position:relative; display:flex; flex-direction:column; gap:15px; margin-top:15px;">
                 <div style="position:absolute; left:11px; top:10px; bottom:10px; width:2px; background:var(--border-color); z-index:1;"></div>
                 <div style="position:absolute; left:11px; top:10px; height:${(step/4)*100}%; max-height:100%; width:2px; background:#10b981; z-index:2; transition:height 0.8s ease-in-out;"></div>
                 
-                ${createStep(step >= 1, "1. Pedido Aprovado", "Confirmação do pagamento")}
-                ${createStep(step >= 2, "2. Em Fabricação", "Peça entrou em produção")}
-                ${createStep(step >= 3, "3. Código de Rastreio", "Envio do link da transportadora")}
-                ${createStep(step >= 4, "4. Rota de Entrega", "Aviso de entrega no dia")}
-                ${createStep(step >= 5, "5. Feedback", "Pesquisa de satisfação")}
+                ${createStep(step >= 1, "1. Pedido Aprovado", "Confirmação do pagamento", templates.aprovado)}
+                ${createStep(step >= 2, "2. Em Fabricação", "Peça entrou em produção", templates.fabricacao)}
+                ${createStep(step >= 3, "3. Código de Rastreio", "Envio do link da transportadora", templates.rastreio)}
+                ${createStep(step >= 4, "4. Rota de Entrega", "Aviso de entrega no dia", templates.rota)}
+                ${createStep(step >= 5, "5. Feedback", "Pesquisa de satisfação", templates.feedback)}
             </div>
         </div>
 
-        <div class="detail-group"><label>Documento (CPF/CNPJ)</label><p>${formatarDocumento(pedido.cpf_cliente || '-')}</p></div>
-        
-        <div class="detail-group">
-            <label>Endereço de Entrega</label>
-            <p>${pedido.endereco_completo || 'Endereço não capturado'}</p>
-            <p style="color:var(--text-muted); font-size:13px; margin-top:2px;">${pedido.cidade || '-'} - ${pedido.estado || '-'} (${pedido.cep || 'Sem CEP'})</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; background: #fff; padding: 15px; border-radius: 8px; border: 1px dashed var(--border-color);">
+            <div class="detail-group" style="margin-bottom:0;"><label>Data da Compra</label><p>${formatarData(pedido.data_criacao)}</p></div>
+            <div class="detail-group" style="margin-bottom:0;"><label>Data de Envio</label><p>${formatarData(pedido.data_envio)}</p></div>
+            <div class="detail-group" style="margin-bottom:0; grid-column: span 2;"><label>Data de Entrega</label><p>${formatarData(pedido.data_entrega)}</p></div>
         </div>
 
+        <div class="detail-group"><label>Documento (CPF/CNPJ)</label><p>${formatarDocumento(pedido.cpf_cliente || '-')}</p></div>
+        <div class="detail-group"><label>Endereço de Entrega</label><p>${pedido.endereco_completo || 'Endereço não capturado'}</p><p style="color:var(--text-muted); font-size:13px; margin-top:2px;">${pedido.cidade || '-'} - ${pedido.estado || '-'} (${pedido.cep || 'Sem CEP'})</p></div>
         <div class="detail-group"><label>Transportadora</label><p>${pedido.transportadora || '-'}</p></div>
-        
-        <!-- NOVIDADE: Código de rastreio agora é embutido como hiperligação (Link) -->
-        <div class="detail-group">
-            <label>Código de Rastreio</label>
-            ${htmlRastreio}
-        </div>
-        
+        <div class="detail-group"><label>Código de Rastreio</label>${htmlRastreio}</div>
         <div class="detail-group"><label>Tempo de Entrega Logístico</label><p>${tempoTexto}</p></div>
     `;
 
     document.getElementById('drawer-overlay').classList.add('active');
     document.getElementById('drawer-pedido').classList.add('active');
-    atualizarIcones(); // Renderiza os ícones do Lucide (incluindo o novo ícone do WhatsApp)
+    atualizarIcones();
 }
 
 function fecharDetalhesPedido() {
@@ -1133,66 +1167,105 @@ function renderizarTabelaCEPs() {
 }
 
 // ============================================================================
-// MÓDULO DE CONFIGURAÇÕES, TEMPLATES E REGRAS VIP
+// MÓDULO DE CONFIGURAÇÕES (LIGADO AO BANCO DE DADOS)
 // ============================================================================
 
-// Função global para pegar as regras financeiras em qualquer lugar do app
-function getRegrasVIP() {
-    const regrasPadrao = { diamante: 6000, ouro: 3000, prata: 1000 };
-    const salvos = localStorage.getItem('waltz_regras_vip');
-    return salvos ? JSON.parse(salvos) : regrasPadrao;
+// Memória RAM do sistema: guarda as definições globais para acesso instantâneo
+let configsGlobais = {
+    templates_wpp: null,
+    regras_vip: { diamante: 6000, ouro: 3000, prata: 1000 } // Fallback de segurança
+};
+
+// 1. Faz o Download do Banco de Dados
+async function carregarConfiguracoesDoBanco() {
+    try {
+        const res = await fetch('/api/configuracoes');
+        const data = await res.json();
+        if (data.sucesso && data.config) {
+            if (data.config.templates_wpp) configsGlobais.templates_wpp = data.config.templates_wpp;
+            if (data.config.regras_vip) configsGlobais.regras_vip = data.config.regras_vip;
+        }
+    } catch (e) { console.error('Aviso: Utilizando configurações locais de segurança.'); }
 }
 
-function salvarConfiguracoes(event) {
+// 2. Disponibiliza as Regras VIP para o resto do sistema (filtros, gráficos)
+function getRegrasVIP() {
+    return configsGlobais.regras_vip;
+}
+
+// 3. Pinta os formulários da aba de configurações com os dados da memória
+function preencherFormularioConfig() {
+    const t = configsGlobais.templates_wpp;
+    if (t) {
+        if(document.getElementById('msg-aprovado')) document.getElementById('msg-aprovado').value = t.aprovado || '';
+        if(document.getElementById('msg-fabricacao')) document.getElementById('msg-fabricacao').value = t.fabricacao || '';
+        if(document.getElementById('msg-rastreio')) document.getElementById('msg-rastreio').value = t.rastreio || '';
+        if(document.getElementById('msg-rota')) document.getElementById('msg-rota').value = t.rota || '';
+        if(document.getElementById('msg-feedback')) document.getElementById('msg-feedback').value = t.feedback || '';
+    }
+    const r = configsGlobais.regras_vip;
+    if (r) {
+        if(document.getElementById('cfg-diamante')) document.getElementById('cfg-diamante').value = r.diamante;
+        if(document.getElementById('cfg-ouro')) document.getElementById('cfg-ouro').value = r.ouro;
+        if(document.getElementById('cfg-prata')) document.getElementById('cfg-prata').value = r.prata;
+    }
+}
+
+// 4. Salva as configurações diretamente no Servidor (PostgreSQL)
+async function salvarConfiguracoes(event) {
     event.preventDefault();
+    const btn = event.submitter;
+    const textoOriginal = btn.innerHTML;
     
-    // 1. Salva Mensagens do WhatsApp
-    const configMsg = {
+    // Feedback de carregamento
+    btn.innerHTML = 'Salvando no Banco...';
+    btn.style.opacity = '0.7';
+    
+    // Recolhe os dados do ecrã
+    const templates_wpp = {
         aprovado: document.getElementById('msg-aprovado').value,
         fabricacao: document.getElementById('msg-fabricacao').value,
         rastreio: document.getElementById('msg-rastreio').value,
         rota: document.getElementById('msg-rota').value,
         feedback: document.getElementById('msg-feedback').value,
     };
-    localStorage.setItem('waltz_templates_wpp', JSON.stringify(configMsg));
     
-    // 2. Salva Regras VIP
-    const regrasVIP = {
+    const regras_vip = {
         diamante: parseFloat(document.getElementById('cfg-diamante').value) || 6000,
         ouro: parseFloat(document.getElementById('cfg-ouro').value) || 3000,
         prata: parseFloat(document.getElementById('cfg-prata').value) || 1000
     };
-    localStorage.setItem('waltz_regras_vip', JSON.stringify(regrasVIP));
-    
-    // 3. Força a re-renderização da tabela de clientes para aplicar os novos crachás na hora!
-    if(todaABaseDeClientes.length > 0) {
-        renderizarPaginaRelatorio();
-        renderizarGraficoClientes();
-    }
-    
-    // Feedback visual
-    const btn = event.submitter;
-    const textoOriginal = btn.innerHTML;
-    btn.innerHTML = '<i data-lucide="check" style="width:18px; height:18px;"></i> Salvo!';
-    btn.style.backgroundColor = '#10b981';
-    atualizarIcones();
-    setTimeout(() => { btn.innerHTML = textoOriginal; btn.style.backgroundColor = ''; atualizarIcones(); }, 2000);
-}
 
-function carregarMensagensSalvas() {
-    // Carrega mensagens
-    const salvaMsg = localStorage.getItem('waltz_templates_wpp');
-    if (salvaMsg) {
-        const configMsg = JSON.parse(salvaMsg);
-        if(document.getElementById('msg-aprovado')) document.getElementById('msg-aprovado').value = configMsg.aprovado;
-        if(document.getElementById('msg-fabricacao')) document.getElementById('msg-fabricacao').value = configMsg.fabricacao;
-        if(document.getElementById('msg-rastreio')) document.getElementById('msg-rastreio').value = configMsg.rastreio;
-        if(document.getElementById('msg-rota')) document.getElementById('msg-rota').value = configMsg.rota;
-        if(document.getElementById('msg-feedback')) document.getElementById('msg-feedback').value = configMsg.feedback;
+    try {
+        // Envia para a nossa nova API no Node.js
+        const res = await fetch('/api/configuracoes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ templates_wpp, regras_vip })
+        });
+        
+        if (res.ok) {
+            // Atualiza a memória RAM instantaneamente
+            configsGlobais.templates_wpp = templates_wpp;
+            configsGlobais.regras_vip = regras_vip;
+            
+            // Força as tabelas a redesenharem os crachás com as novas regras!
+            if (todaABaseDeClientes && todaABaseDeClientes.length > 0) {
+                renderizarPaginaRelatorio();
+                renderizarGraficoClientes();
+            }
+            
+            btn.innerHTML = '<i data-lucide="check" style="width:18px; height:18px;"></i> Salvo Globalmente!';
+            btn.style.backgroundColor = '#10b981';
+            btn.style.opacity = '1';
+        } else {
+            throw new Error('Falha no backend');
+        }
+    } catch (e) {
+        btn.innerHTML = '❌ Erro de Conexão';
+        btn.style.backgroundColor = '#ef4444';
     }
-    // Carrega Regras VIP na interface
-    const regras = getRegrasVIP();
-    if(document.getElementById('cfg-diamante')) document.getElementById('cfg-diamante').value = regras.diamante;
-    if(document.getElementById('cfg-ouro')) document.getElementById('cfg-ouro').value = regras.ouro;
-    if(document.getElementById('cfg-prata')) document.getElementById('cfg-prata').value = regras.prata;
+    
+    atualizarIcones();
+    setTimeout(() => { btn.innerHTML = textoOriginal; btn.style.backgroundColor = ''; btn.style.opacity = '1'; atualizarIcones(); }, 2500);
 }

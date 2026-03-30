@@ -120,6 +120,66 @@ async function fetchComRetry(url, options, tentativas = 3) {
 }
 
 // ==========================================
+// API DE CONFIGURAÇÕES DO SISTEMA (WPP E RFM)
+// ==========================================
+
+// Função auxiliar para garantir que a tabela existe
+async function inicializarTabelaConfig() {
+    await sql`
+        CREATE TABLE IF NOT EXISTS configuracoes_sistema (
+            chave VARCHAR(50) PRIMARY KEY,
+            valor JSONB NOT NULL
+        );
+    `;
+}
+
+app.get('/api/configuracoes', async (req, res) => {
+    if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        await inicializarTabelaConfig();
+        const { rows } = await sql`SELECT chave, valor FROM configuracoes_sistema;`;
+        
+        // Transforma as linhas num objeto fácil de ler no front-end
+        const config = {};
+        rows.forEach(r => config[r.chave] = r.valor);
+        
+        res.json({ sucesso: true, config });
+    } catch (erro) {
+        res.status(500).json({ sucesso: false, erro: 'Erro ao carregar configurações.' });
+    }
+});
+
+app.post('/api/configuracoes', async (req, res) => {
+    if (!req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        await inicializarTabelaConfig();
+        const { templates_wpp, regras_vip } = req.body;
+        
+        // Grava as mensagens do WPP (se enviadas) fazendo UPSERT
+        if (templates_wpp) {
+            await sql`
+                INSERT INTO configuracoes_sistema (chave, valor) 
+                VALUES ('templates_wpp', ${JSON.stringify(templates_wpp)})
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor;
+            `;
+        }
+        
+        // Grava as regras financeiras VIP (se enviadas) fazendo UPSERT
+        if (regras_vip) {
+            await sql`
+                INSERT INTO configuracoes_sistema (chave, valor) 
+                VALUES ('regras_vip', ${JSON.stringify(regras_vip)})
+                ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor;
+            `;
+        }
+        
+        res.json({ sucesso: true });
+    } catch (erro) {
+        res.status(500).json({ sucesso: false, erro: 'Erro ao salvar configurações no banco.' });
+    }
+});
+
+// ==========================================
 // WEBHOOK: NUVEMSHOP (Com Captura de E-mail)
 // ==========================================
 const pedidosEmProcessamentoNuvem = new Set();
