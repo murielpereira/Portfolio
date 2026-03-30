@@ -84,6 +84,9 @@ function getTemplateLogin() {
     </div>`;
 }
 
+// ============================================================================
+// TEMPLATES HTML
+// ============================================================================
 function getTemplatePainel() {
     return `
     <div class="dashboard-wrapper">
@@ -102,14 +105,14 @@ function getTemplatePainel() {
                 <li><div id="nav-rfm" class="nav-link" onclick="mostrarSubPaginaDash('rfm')"><i data-lucide="bar-chart-2"></i> <span class="nav-text">Matriz RFM</span></div></li>
                 <li><div id="nav-cep" class="nav-link" onclick="mostrarSubPaginaDash('cep')"><i data-lucide="map"></i> <span class="nav-text">Regiões Logísticas</span></div></li>
             </ul>
-            // ... [CÓDIGO ANTERIOR DOS LINKS DO MENU]
             <div class="sidebar-footer">
                 <div class="nav-link" id="nav-config" onclick="mostrarSubPaginaDash('config')"><i data-lucide="settings"></i> <span class="nav-text">Configurações</span></div>
                 <div class="nav-link" id="btn-logout"><i data-lucide="log-out"></i> <span class="nav-text">Sair</span></div>
             </div>
-        </aside> <!-- CORREÇÃO VITAL: Fechamos o painel lateral AQUI! -->
+        </aside>
 
-        <main class="main-content"> <!-- Iniciamos a parte central! -->
+        <main class="main-content">
+            <!-- CABEÇALHO GLOBAL ÚNICO (O erro estava aqui, havia dois!) -->
             <header class="topbar">
                 <div class="page-title-area">
                     <h1 id="dash-page-title">Dashboard</h1>
@@ -120,11 +123,10 @@ function getTemplatePainel() {
 
             <div class="page-content-wrapper" id="dashboard-content-area">
                 
-                <!-- PAINEL DE CONFIGURAÇÕES DE MENSAGENS -->
+                <!-- ABA: CONFIGURAÇÕES -->
                 <div id="sub-config" class="sub-pagina" style="display: none;">
                     <div class="card-table" style="padding: 30px; height: calc(100vh - 220px); overflow-y: auto;">
                         <div style="max-width: 800px; margin: 0 auto;">
-                            <!-- ... TODO O INTERIOR DO FORMULÁRIO FICA AQUI ... -->
                             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
                                 <div style="width: 50px; height: 50px; background: #eff6ff; color: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                                     <i data-lucide="message-circle" style="width: 24px; height: 24px;"></i>
@@ -196,20 +198,8 @@ function getTemplatePainel() {
                         </div>
                     </div>
                 </div>
-            </div>
-        </aside>
 
-        <main class="main-content">
-            <header class="topbar">
-                <div class="page-title-area">
-                    <h1 id="dash-page-title">Dashboard</h1>
-                    <p id="dash-page-subtitle">Visão geral do seu e-commerce</p>
-                </div>
-                <div id="dynamic-top-actions" class="table-top-actions"></div>
-            </header>
-
-            <div class="page-content-wrapper" id="dashboard-content-area">
-                <!-- (DASHBOARD OMITIDO PARA BREVIDADE, MAS INCLUÍDO NO CÓDIGO) -->
+                <!-- ABA: DASHBOARD -->
                 <div id="sub-dash" class="sub-pagina" style="display: none;">
                     <div class="kpi-grid">
                         <div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff; color:#3b82f6;"><i data-lucide="users"></i></div><div class="kpi-info"><h3>Clientes</h3><div class="value">27.935</div></div></div>
@@ -223,6 +213,7 @@ function getTemplatePainel() {
                     </div>
                 </div>
 
+                <!-- ABA: CLIENTES (TINY) -->
                 <div id="sub-tiny" class="sub-pagina" style="display: none;">
                     <div class="card-table">
                         <div class="tabela-responsiva">
@@ -248,6 +239,7 @@ function getTemplatePainel() {
                     </div>
                 </div>
 
+                <!-- ABA: PEDIDOS (NUVEM) -->
                 <div id="sub-nuvem" class="sub-pagina" style="display: none;">
                     <div class="card-table">
                         <div class="tabela-responsiva">
@@ -268,6 +260,7 @@ function getTemplatePainel() {
                     </div>
                 </div>
 
+                <!-- ABA: MATRIZ RFM -->
                 <div id="sub-rfm" class="sub-pagina" style="display: none;">
                     <div class="card-table" style="padding: 30px; text-align: center;">
                         <div style="width: 60px; height: 60px; background: #eff6ff; color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
@@ -312,6 +305,7 @@ function getTemplatePainel() {
                     </div>
                 </div>
 
+                <!-- ABA: CEP -->
                 <div id="sub-cep" class="sub-pagina" style="display: none;">
                     <section id="mapa_brasil_card" class="card" style="display:none; padding: 20px; margin-bottom: 20px; background:white; border-radius:12px; border:1px solid var(--border-color);">
                         <h2 style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 10px;">Visualização Geográfica (Heatmap de Entrega)</h2>
@@ -326,7 +320,8 @@ function getTemplatePainel() {
                         </div>
                     </div>
                 </div>
-            </div>
+
+            </div> <!-- FIM DA ÁREA DE CONTEÚDO -->
 
             <!-- DRAWER DE DETALHES DO PEDIDO -->
             <div class="drawer-overlay" id="drawer-overlay" onclick="fecharDetalhesPedido()"></div>
@@ -683,7 +678,6 @@ function abrirDetalhesPedido(idPedido) {
 
     const conteudo = document.getElementById('drawer-conteudo');
     conteudo.innerHTML = `
-        <!-- ... [A parte inicial do header mantém-se idêntica, fui direto ao miolo] ... -->
         <div class="detail-header-card">
             <div class="detail-avatar"><i data-lucide="user"></i></div>
             <div class="detail-header-info" style="flex:1;">
@@ -707,17 +701,18 @@ function abrirDetalhesPedido(idPedido) {
             </div>
         </div>
 
+        <!-- NOVIDADE: Grelha 2x2 com todas as datas e o tempo logístico! -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; background: #fff; padding: 15px; border-radius: 8px; border: 1px dashed var(--border-color);">
             <div class="detail-group" style="margin-bottom:0;"><label>Data da Compra</label><p>${formatarData(pedido.data_criacao)}</p></div>
             <div class="detail-group" style="margin-bottom:0;"><label>Data de Envio</label><p>${formatarData(pedido.data_envio)}</p></div>
-            <div class="detail-group" style="margin-bottom:0; grid-column: span 2;"><label>Data de Entrega</label><p>${formatarData(pedido.data_entrega)}</p></div>
+            <div class="detail-group" style="margin-bottom:0;"><label>Data de Entrega</label><p>${formatarData(pedido.data_entrega)}</p></div>
+            <div class="detail-group" style="margin-bottom:0;"><label>Tempo Logístico</label><p style="font-weight:600; color:var(--primary);">${tempoTexto}</p></div>
         </div>
 
         <div class="detail-group"><label>Documento (CPF/CNPJ)</label><p>${formatarDocumento(pedido.cpf_cliente || '-')}</p></div>
         <div class="detail-group"><label>Endereço de Entrega</label><p>${pedido.endereco_completo || 'Endereço não capturado'}</p><p style="color:var(--text-muted); font-size:13px; margin-top:2px;">${pedido.cidade || '-'} - ${pedido.estado || '-'} (${pedido.cep || 'Sem CEP'})</p></div>
         <div class="detail-group"><label>Transportadora</label><p>${pedido.transportadora || '-'}</p></div>
-        <div class="detail-group"><label>Código de Rastreio</label>${htmlRastreio}</div>
-        <div class="detail-group"><label>Tempo de Entrega Logístico</label><p>${tempoTexto}</p></div>
+        <div class="detail-group" style="margin-bottom:0;"><label>Código de Rastreio</label>${htmlRastreio}</div>
     `;
 
     document.getElementById('drawer-overlay').classList.add('active');
