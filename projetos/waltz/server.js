@@ -223,22 +223,45 @@ app.post('/api/webhook/nuvemshop', async (req, res) => {
     }
 });
 
-// ==========================================
-// ROBÔ DE RASTREAMENTO: SMARTENVIOS 
-// ==========================================
-app.get('/api/cron/verificar-entregas', async (req, res) => {
+// ============================================================================
+// MÓDULO LOGÍSTICO: MOTOR DE VERIFICAÇÃO DE RASTREIOS (SMARTENVIOS)
+// ============================================================================
+
+/**
+ * Função central para processar rastreios.
+ * @param {number} limite - Quantidade máxima de pedidos para evitar Timeout da Vercel.
+ * @returns {object} - Relatório do processamento.
+ */
+async function processarRastreiosLogistica(limite = 20) {
+    let atualizados = 0;
+    let logProcessamento = [];
+
     try {
+        // 1. Puxa os pedidos pendentes (limitado para não estourar o tempo do servidor)
+        // Verificamos 'Aberto' ou 'Enviado' que tenham código de rastreio
         const { rows: pedidosPendentes } = await sql`
-            SELECT id_pedido, numero_pedido, rastreio FROM pedidos_nuvemshop WHERE rastreio IS NOT NULL AND rastreio != '' AND status_nuvemshop = 'Aberto';
+            SELECT id_pedido, numero_pedido, rastreio 
+            FROM pedidos_nuvemshop
+            WHERE rastreio IS NOT NULL 
+              AND rastreio != '' 
+              AND status_nuvemshop IN ('Aberto', 'Enviado')
+            ORDER BY data_criacao ASC
+            LIMIT ${limite};
         `;
-        let atualizados = 0;
+
+        if (pedidosPendentes.length === 0) {
+            return { sucesso: true, mensagem: "Nenhum pedido pendente de verificação de rastreio no momento.", log: [] };
+        }
+
         const TOKEN_SMART = process.env.SMARTENVIOS_TOKEN;
         const STORE_ID = process.env.NUVEMSHOP_STORE_ID;
         const TOKEN_NUVEM = process.env.NUVEMSHOP_TOKEN;
         const URL_API = "https://api.smartenvios.com/v1/freight-order/tracking";
 
+        // 2. Itera sobre o lote de pedidos
         for (const pedido of pedidosPendentes) {
             try {
+                // Consulta a SmartEnvios
                 const respostaSmart = await fetch(URL_API, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Accept": "application/json", "token": TOKEN_SMART },
@@ -249,14 +272,17 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
                     const jsonSmart = await respostaSmart.json();
                     const resultado = jsonSmart.result;
 
+                    // Se houver eventos de rastreio...
                     if (resultado && resultado.trackings && resultado.trackings.length > 0) {
                         const eventosOrdenados = resultado.trackings.sort((a, b) => new Date(a.date) - new Date(b.date));
                         const ultimoEvento = eventosOrdenados[eventosOrdenados.length - 1];
                         
+                        // SE O STATUS FINAL FOR ENTREGUE...
                         if (ultimoEvento.code.tracking_type === 'DELIVERED') {
                             const dataColetaReal = new Date(eventosOrdenados[0].date);
                             const dataEntregaReal = new Date(ultimoEvento.date);
 
+                            // 1. Atualiza a Nuvemshop (Muda para 'closed' / Arquivado)
                             const respostaNuvem = await fetch(`https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${pedido.id_pedido}`, {
                                 method: "PUT",
                                 headers: { 'Authentication': `bearer ${TOKEN_NUVEM}`, 'Content-Type': 'application/json', 'User-Agent': 'Waltz' },
@@ -264,22 +290,68 @@ app.get('/api/cron/verificar-entregas', async (req, res) => {
                             });
 
                             if (respostaNuvem.ok) {
+                                // 2. Atualiza o banco de dados do Waltz (Unificamos para 'Entregue' conforme solicitado)
                                 await sql`
                                     UPDATE pedidos_nuvemshop 
-                                    SET status_nuvemshop = 'Arquivado', data_envio = ${dataColetaReal}, data_entrega = ${dataEntregaReal}
+                                    SET status_nuvemshop = 'Entregue', 
+                                        data_envio = ${dataColetaReal}, 
+                                        data_entrega = ${dataEntregaReal}
                                     WHERE id_pedido = ${pedido.id_pedido};
                                 `;
                                 atualizados++;
+                                logProcessamento.push(`Pedido #${pedido.numero_pedido} finalizado e entregue.`);
+                            } else {
+                                logProcessamento.push(`⚠️ Falha ao fechar pedido #${pedido.numero_pedido} na Nuvemshop.`);
                             }
                         }
                     }
                 }
-            } catch (erroLoop) {}
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (erroLoop) {
+                logProcessamento.push(`❌ Erro ao verificar pedido #${pedido.numero_pedido}: ${erroLoop.message}`);
+            }
+            
+            // Pausa de 500ms (reduzida) para não sobrecarregar as APIs nem causar Timeout
+            await delay(500);
         }
-        res.json({ sucesso: true, mensagem: `Processo concluído. ${atualizados} pedidos entregues.` });
+
+        return { sucesso: true, mensagem: `Processo concluído. ${atualizados} pedidos foram confirmados como entregues.`, log: logProcessamento };
+
     } catch (erro) {
-        res.status(500).json({ sucesso: false, erro: "Falha na verificação." });
+        console.error("❌ Erro fatal no Motor de Rastreamento:", erro.message);
+        return { sucesso: false, erro: "Falha na verificação geral do banco de dados." };
+    }
+}
+
+// ============================================================================
+// 1. SCRIPT MANUAL: ROTA PARA ATUALIZAR AGORA (Acessar pelo Navegador)
+// ============================================================================
+app.get('/api/script/atualizar-rastreios', async (req, res) => {
+    // Definimos um limite maior para o script manual, assumindo que você tem o navegador aberto a aguardar.
+    res.write("Iniciando verificação manual de rastreios (Lote de 30 pedidos max)...\n\n");
+    
+    const resultado = await processarRastreiosLogistica(30);
+    
+    res.write(`${resultado.mensagem}\n\n`);
+    if (resultado.log && resultado.log.length > 0) {
+        res.write("--- DETALHES DO PROCESSAMENTO ---\n");
+        resultado.log.forEach(linha => res.write(`${linha}\n`));
+    }
+    res.end("\nScript finalizado.");
+});
+
+// ============================================================================
+// 2. ROBÔ AUTOMÁTICO: CRON JOB DA VERCEL
+// ============================================================================
+app.get('/api/cron/verificar-entregas', async (req, res) => {
+    console.log("🤖 Iniciando Cron Job de Rastreios...");
+    // Limite de 15 para garantir que a Vercel Hobby não cancele o processo (Timeout de 10s)
+    const resultado = await processarRastreiosLogistica(15); 
+    
+    if (resultado.sucesso) {
+        console.log("✅ Cron Job finalizado:", resultado.mensagem);
+        res.status(200).json(resultado);
+    } else {
+        res.status(500).json(resultado);
     }
 });
 
