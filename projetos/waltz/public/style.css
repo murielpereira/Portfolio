@@ -110,6 +110,7 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .badge-primeiracompra { background-color: #e0e7ff; color: #4338ca; border-color: #c7d2fe; } 
 .badge-semcompra { background-color: #f3f4f6; color: #9ca3af; border-color: #e5e7eb; } 
 .badge-aberto { background-color: var(--badge-gray-bg); color: var(--badge-gray-text); border-color: var(--border-color); }
+.badge-entregue { background-color: #dcfce3; color: #166534; border-color: #bbf7d0; }
 
 .paginacao-controles { padding: 15px 20px; display: flex; justify-content: flex-end; gap: 5px; background: white; border-top: 1px solid var(--border-color);}
 .btn-pag-num, .btn-pag-nav { background: white; border: 1px solid var(--border-color); border-radius: 6px; padding: 5px 10px; cursor: pointer; color: var(--text-muted); }
@@ -145,3 +146,7 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .detail-group { margin-bottom: 20px; }
 .detail-group label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;}
 .detail-group p { font-size: 14px; color: var(--text-main); font-weight: 500;}
+
+/* RFM CARDS CLICKABLE - Efeito de clique e flutuação */
+.rfm-card-click { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+.rfm-card-click:hover { transform: translateY(-3px); box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-color: var(--primary) !important; }

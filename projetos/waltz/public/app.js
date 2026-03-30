@@ -334,7 +334,6 @@ async function mostrarSubPaginaDash(idAlvo) {
                 <option value="Aberto">Aberto</option>
                 <option value="Enviado">Enviado</option>
                 <option value="Entregue">Entregue</option>
-                <option value="Arquivado">Arquivado</option>
                 <option value="Cancelado">Cancelado</option>
             </select>
             <span id="contador-nuvem" class="contador-badge">0 pedido(s)</span>
@@ -452,12 +451,27 @@ function abrirDetalhesPedido(idPedido) {
     const urlWpp = `https://wa.me/55${telLimpo}`;
 
     // LÓGICA MATEMÁTICA DA BARRA DE PROGRESSO
+    // 4. LÓGICA MATEMÁTICA DO STEPPER VERTICAL
     let step = 0;
     if (pedido.auto_aprovado === true) step = 1;
     if (pedido.auto_fabricacao === true) step = 2;
     if (pedido.auto_rastreio === true) step = 3;
     if (pedido.auto_entrega === true) step = 4;
     if (pedido.status_feedback === 'Enviado') step = 5;
+
+    const createStep = (isDone, title, subtitle) => {
+        const color = isDone ? '#10b981' : '#cbd5e1';
+        const bg = isDone ? '#10b981' : 'white';
+        const icon = isDone ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` : ``;
+        return `
+        <div style="display:flex; gap:12px; align-items:center; z-index:3; position:relative; background:white; padding:4px 0;">
+            <div style="width:24px; height:24px; border-radius:50%; border:2px solid ${color}; background:${bg}; display:flex; align-items:center; justify-content:center;">${icon}</div>
+            <div style="display:flex; flex-direction:column;">
+                <span style="font-size:13px; font-weight:700; color:var(--text-main);">${title}</span>
+                <span style="font-size:11px; color:var(--text-muted);">${subtitle}</span>
+            </div>
+        </div>`;
+    };
 
     // Calcula a porcentagem (0%, 20%, 40%, 60%, 80% ou 100%)
     let progressPct = (step / 5) * 100;
@@ -484,18 +498,18 @@ function abrirDetalhesPedido(idPedido) {
             </a>
         </div>
 
-        <!-- BARRA DE PROGRESSO DAS AUTOMAÇÕES -->
-        <div class="detail-group" style="margin-bottom: 30px;">
+        <!-- STEPPER VERTICAL (LINHA DO TEMPO) -->
+        <div class="detail-group" style="margin-bottom: 30px; background:#f8fafc; padding:20px; border-radius:12px; border:1px solid var(--border-color);">
             <label>Progresso das Automações WPP</label>
-            <div style="background: var(--border-color); border-radius: 999px; height: 8px; width: 100%; margin: 12px 0; overflow: hidden;">
-                <div style="background: #10b981; height: 100%; width: ${progressPct}%; border-radius: 999px; transition: width 0.5s ease;"></div>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: var(--text-muted); text-align: center; text-transform: uppercase;">
-                <span style="color: ${step >= 1 ? '#10b981' : ''}; width: 20%;">Aprovado</span>
-                <span style="color: ${step >= 2 ? '#10b981' : ''}; width: 20%;">Fabrico</span>
-                <span style="color: ${step >= 3 ? '#10b981' : ''}; width: 20%;">Rastreio</span>
-                <span style="color: ${step >= 4 ? '#10b981' : ''}; width: 20%;">Rota</span>
-                <span style="color: ${step >= 5 ? '#10b981' : ''}; width: 20%;">Feedback</span>
+            <div style="position:relative; display:flex; flex-direction:column; gap:15px; margin-top:15px;">
+                <div style="position:absolute; left:11px; top:10px; bottom:10px; width:2px; background:var(--border-color); z-index:1;"></div>
+                <div style="position:absolute; left:11px; top:10px; height:${(step/4)*100}%; max-height:100%; width:2px; background:#10b981; z-index:2; transition:height 0.8s ease-in-out;"></div>
+                
+                ${createStep(step >= 1, "1. Pedido Aprovado", "Confirmação do pagamento")}
+                ${createStep(step >= 2, "2. Em Fabricação", "Peça entrou em produção")}
+                ${createStep(step >= 3, "3. Código de Rastreio", "Envio do link da transportadora")}
+                ${createStep(step >= 4, "4. Rota de Entrega", "Aviso de entrega no dia")}
+                ${createStep(step >= 5, "5. Feedback", "Pesquisa de satisfação")}
             </div>
         </div>
 
@@ -598,12 +612,49 @@ function renderizarGraficoClientes() {
     new google.visualization.PieChart(divGrafico).draw(dataTable, options);
 }
 
+// 6. MATRIZ RFM BASEADA EM SCORE E CLICKABLE
 async function carregarClientesTinyDB() {
     try {
         const resposta = await fetch('/api/relatorios/clientes');
         const data = await resposta.json();
-        if (data.sucesso) { todaABaseDeClientes = data.clientes; resetarEPaginacao(); } 
-    } catch (e) { }
+        if (data.sucesso) { 
+            const hoje = new Date();
+            todaABaseDeClientes = data.clientes.map(c => {
+                let r = 1, f = 1, m = 1;
+                let recenciaDias = 999;
+                
+                // Extrai Recência Real
+                if (c.ultima_compra) recenciaDias = Math.ceil(Math.abs(hoje - new Date(c.ultima_compra)) / (1000 * 60 * 60 * 24));
+                
+                // Pontuação R (1 a 5)
+                if (recenciaDias <= 30) r = 5; else if (recenciaDias <= 90) r = 4; else if (recenciaDias <= 180) r = 3; else if (recenciaDias <= 365) r = 2; else r = 1;
+                // Pontuação F (1 a 5)
+                if (c.total_pedidos >= 5) f = 5; else if (c.total_pedidos >= 3) f = 4; else if (c.total_pedidos === 2) f = 3; else if (c.total_pedidos === 1) f = 1; else f = 0;
+                // Pontuação M (1 a 5)
+                if (c.valor_total >= 3000) m = 5; else if (c.valor_total >= 1000) m = 4; else if (c.valor_total >= 500) m = 3; else if (c.valor_total > 0) m = 2; else m = 0;
+
+                // Classificação Inteligente Prax.ai
+                let segmento = "SEM COMPRAS";
+                if (f > 0) {
+                    if (r >= 4 && f >= 4 && m >= 4) segmento = "CAMPEOES";
+                    else if (r >= 2 && f >= 3) segmento = "FIEIS";
+                    else if (r >= 4 && f <= 2) segmento = "RECENTES";
+                    else segmento = "RISCO";
+                }
+                
+                return { ...c, rfm_score: {r, f, m}, recenciaDias, segmento_rfm: segmento };
+            });
+            resetarEPaginacao(); 
+        } 
+    } catch (e) { console.error("Erro RFM:", e); }
+}
+
+// Interatividade: Redireciona o clique no Card RFM para a aba Clientes filtrada!
+function filtrarTabelaPorRFM(segmento) {
+    mostrarSubPaginaDash('tiny'); 
+    const filtroDropdown = document.getElementById("filtro-grupo");
+    if (filtroDropdown) filtroDropdown.value = segmento;
+    resetarEPaginacao(); 
 }
 
 function classificarClienteVisual(totalPedidos, valorTotal) {
