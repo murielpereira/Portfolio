@@ -16,7 +16,7 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     if (!cpfLimpo) return;
 
     try {
-        await delay(3000); 
+        await delay(500); 
         const respostaBusca = await fetch(`https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`);
         const dadosBusca = await respostaBusca.json();
 
