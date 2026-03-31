@@ -164,23 +164,32 @@ router.get('/api/whatsapp/qrcode', async (req, res) => {
         const baseUrl = (process.env.SERVER_URL || '').replace(/\/$/, ''); 
         const urlConnect = `${baseUrl}/instance/connect/loja_waltz`;
 
-        // Pede o QR Code ao Render usando a nossa chave secreta
+        // 1. Pede o QR Code ao Render
         const resposta = await fetch(urlConnect, {
             headers: { 'apikey': process.env.AUTHENTICATION_API_KEY }
         });
 
+        // 2. Lemos a resposta crua para entender o que o Render está a dizer
         const dados = await resposta.json();
 
-        // A Evolution API devolve o QR Code no atributo "base64"
+        // LOG DE DIAGNÓSTICO: Isto vai aparecer nos logs da Vercel!
+        console.log("🔍 Resposta do Render ao pedir QR Code:", JSON.stringify(dados, null, 2));
+
+        // 3. Analisamos a resposta
         if (dados.base64) {
+            // Sucesso! Temos a imagem.
             return res.json({ sucesso: true, qrcode: dados.base64 });
         } else if (dados.instance?.state === 'open') {
+            // Já está conectado.
             return res.json({ sucesso: false, erro: 'A instância já está conectada!' });
         } else {
-            return res.json({ sucesso: false, erro: 'Não foi possível gerar o QR Code no momento.' });
+            // A MÁGICA AQUI: Vamos enviar o erro REAL do Render para a sua tela!
+            // Ele geralmente vem dentro de "dados.error" ou "dados.message"
+            const erroReal = dados.error || dados.message || 'Erro desconhecido no Render.';
+            return res.json({ sucesso: false, erro: `Falha no Render: ${erroReal}` });
         }
     } catch (erro) {
-        console.error("❌ Erro ao buscar QR Code:", erro.message);
+        console.error("❌ Erro fatal ao buscar QR Code:", erro.message);
         res.status(500).json({ sucesso: false, erro: 'Erro de comunicação com o servidor do WhatsApp.' });
     }
 });
