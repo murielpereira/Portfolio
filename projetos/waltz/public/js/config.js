@@ -6,7 +6,8 @@ import { atualizarIcones } from './utils.js';
 
 export let configsGlobais = {
     templates_wpp: null,
-    regras_vip: { diamante: 6000, ouro: 3000, prata: 1000 }
+    regras_vip: { diamante: 6000, ouro: 3000, prata: 1000 },
+    whatsapp_ativo: false 
 };
 
 export async function carregarConfiguracoesDoBanco() {
@@ -16,6 +17,10 @@ export async function carregarConfiguracoesDoBanco() {
         if (data.sucesso && data.config) {
             if (data.config.templates_wpp) configsGlobais.templates_wpp = data.config.templates_wpp;
             if (data.config.regras_vip) configsGlobais.regras_vip = data.config.regras_vip;
+            // Lê o status do banco (convertendo a string 'true' para booleano)
+            if (data.config.whatsapp_ativo !== undefined) {
+                configsGlobais.whatsapp_ativo = data.config.whatsapp_ativo === 'true';
+            }
         }
     } catch (e) { console.error('Erro config locais'); }
 }
@@ -39,6 +44,9 @@ export function preencherFormularioConfig() {
         if(document.getElementById('cfg-ouro')) document.getElementById('cfg-ouro').value = r.ouro;
         if(document.getElementById('cfg-prata')) document.getElementById('cfg-prata').value = r.prata;
     }
+    if (document.getElementById('cfg-whatsapp-ativo')) {
+        document.getElementById('cfg-whatsapp-ativo').checked = configsGlobais.whatsapp_ativo;
+    }
 }
 
 export async function salvarConfiguracoes(event) {
@@ -48,6 +56,8 @@ export async function salvarConfiguracoes(event) {
     
     btn.innerHTML = 'Salvando no Banco...';
     btn.style.opacity = '0.7';
+
+    const whatsapp_ativo = document.getElementById('cfg-whatsapp-ativo') ? document.getElementById('cfg-whatsapp-ativo').checked : false;
     
     const templates_wpp = {
         aprovado: document.getElementById('msg-aprovado').value,
@@ -67,12 +77,13 @@ export async function salvarConfiguracoes(event) {
         const res = await fetch('/api/configuracoes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ templates_wpp, regras_vip })
+            body: JSON.stringify({ templates_wpp, regras_vip, whatsapp_ativo }) // Adicionado aqui
         });
         
         if (res.ok) {
             configsGlobais.templates_wpp = templates_wpp;
             configsGlobais.regras_vip = regras_vip;
+            configsGlobais.whatsapp_ativo = whatsapp_ativo; // Salva localmente
             
             if (window.renderizarPaginaRelatorio) window.renderizarPaginaRelatorio();
             if (window.renderizarGraficoClientes) window.renderizarGraficoClientes();

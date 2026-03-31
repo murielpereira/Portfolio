@@ -62,6 +62,13 @@ export function getTemplatePainel() {
                 
                 <!-- ABA: CONFIGURAÇÕES -->
                 <div id="sub-config" class="sub-pagina" style="display: none;">
+                    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px;">
+                        <label style="display: flex; align-items: center; cursor: pointer; font-weight: bold;">
+                            <input type="checkbox" id="cfg-whatsapp-ativo" style="margin-right: 10px; width: 20px; height: 20px;">
+                            Ativar Envio Automático de Mensagens no WhatsApp
+                        </label>
+                        <p style="margin-top: 5px; font-size: 12px; color: #666;">Se desmarcado, nenhuma mensagem será enviada aos clientes, mesmo que os pedidos sejam atualizados.</p>
+                    </div>
                     <div class="card-table" style="padding: 30px; height: calc(100vh - 220px); overflow-y: auto;">
                         <div style="max-width: 800px; margin: 0 auto;">
                             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">

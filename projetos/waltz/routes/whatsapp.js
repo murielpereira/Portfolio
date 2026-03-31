@@ -11,26 +11,38 @@ const { sql } = require('@vercel/postgres');
 // ----------------------------------------------------------------------------
 async function agendarMensagemWhatsApp(pedido, etapaLogistica) {
     try {
-        // 1. Limpar e formatar o número do cliente
         let telefoneBase = (pedido.telefone || '').replace(/\D/g, '');
         if (!telefoneBase) return false;
-        if (telefoneBase.length === 10 || telefoneBase.length === 11) {
-            telefoneBase = `55${telefoneBase}`;
-        }
+        if (telefoneBase.length === 10 || telefoneBase.length === 11) telefoneBase = `55${telefoneBase}`;
 
-        // 2. CORREÇÃO: Buscar as configurações da gaveta 'templates_wpp'
-        const { rows } = await sql`SELECT valor FROM configuracoes_sistema WHERE chave = 'templates_wpp' LIMIT 1;`;
-        if (rows.length === 0) return false;
+        // 1. Busca tanto os templates quanto o status do WhatsApp no banco
+        const { rows } = await sql`SELECT chave, valor FROM configuracoes_sistema WHERE chave IN ('templates_wpp', 'whatsapp_ativo');`;
         
-        // 3. Como guardámos em formato JSON, precisamos de desempacotar
-        // O banco de dados pode devolver já como objeto, ou como texto (string). Garantimos a conversão:
-        const config = typeof rows[0].valor === 'string' ? JSON.parse(rows[0].valor) : rows[0].valor;
+        // Agrupa os resultados num objeto mais fácil de ler
+        const configDb = {};
+        rows.forEach(r => configDb[r.chave] = r.valor);
+
+        // ==========================================================
+        // 🛑 A BARREIRA DO BOTÃO MESTRE
+        // ==========================================================
+        // Se a chave não existir no banco (primeira vez), o padrão é false.
+        const isWhatsAppAtivo = configDb.whatsapp_ativo === 'true';
+        
+        if (!isWhatsAppAtivo) {
+            console.log(`⏸️ [WHATSAPP DESATIVADO] Pedido ${pedido.numero_pedido || id_pedido} ignorado.`);
+            return false; // Sai da função, a mensagem não vai para a fila!
+        }
+        // ==========================================================
+
+        if (!configDb.templates_wpp) return false;
+        const configTemplates = typeof configDb.templates_wpp === 'string' ? JSON.parse(configDb.templates_wpp) : configDb.templates_wpp;
+        
         let templateMensagem = "";
 
-        // 4. Escolher o texto correto baseado na etapa (usando os nomes exatos do seu painel)
+        // Continua com o seu switch normal...
         switch (etapaLogistica) {
-            case 'aprovado': templateMensagem = config.aprovado; break;
-            case 'fabricacao': templateMensagem = config.fabricacao; break;
+            case 'aprovado': templateMensagem = configTemplates.aprovado; break;
+            case 'fabricacao': templateMensagem = configTemplates.fabricacao; break;
             case 'rastreio': templateMensagem = config.rastreio; break;
             case 'rota': templateMensagem = config.rota; break;
             case 'feedback': templateMensagem = config.feedback; break;
