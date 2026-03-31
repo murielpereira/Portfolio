@@ -3,12 +3,32 @@ const router = express.Router();
 const { sql } = require('@vercel/postgres');
 const { delay } = require('../utils/helpers');
 
+// Função para avisar a Nuvemshop para arquivar o pedido
+async function atualizarStatusNuvemshop(idPedido, statusEnvio, statusPedido) {
+    const STORE_ID = process.env.NUVEMSHOP_STORE_ID;
+    const TOKEN = process.env.NUVEMSHOP_TOKEN;
+    const url = `https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${idPedido}`;
+
+    try {
+        await fetch(url, {
+            method: 'PUT',
+            headers: { 'Authentication': `bearer ${TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': 'Waltz' },
+            body: JSON.stringify({
+                shipping_status: statusEnvio, 
+                status: statusPedido         
+            })
+        });
+        console.log(`✅ Nuvemshop Atualizada: Pedido #${idPedido} status: ${statusPedido}`);
+    } catch (e) {
+        console.error(`❌ Erro ao avisar Nuvemshop do pedido ${idPedido}:`, e.message);
+    }
+}
+
+// O Robô Principal
 async function processarRastreiosLogistica(limite = 20) {
     let atualizados = 0;
     try {
-        // 1. MUDANÇA CRÍTICA AQUI: O robô agora procura pedidos com rastreio, 
-        // mas que AINDA NÃO TEM a data de entrega preenchida.
-        // Ele não se importa se a Nuvemshop já mudou o status para 'Entregue'.
+        // A BUSCA QUE FALTAVA! Agora ele vai ao banco buscar quem tem rastreio mas não tem entrega.
         const { rows: pedidos } = await sql`
             SELECT id_pedido, numero_pedido, rastreio 
             FROM pedidos_nuvemshop 
@@ -32,16 +52,14 @@ async function processarRastreiosLogistica(limite = 20) {
                     const { result } = await respostaSmart.json();
                     
                     if (result && result.trackings && result.trackings.length > 0) {
-                        // Ordena os eventos do mais antigo para o mais recente
                         const evt = result.trackings.sort((a, b) => new Date(a.date) - new Date(b.date));
                         const statusTransportadora = evt[evt.length - 1].code.tracking_type;
-                        
-                        // Captura a data real de postagem (primeiro evento)
                         const dataPostagemReal = new Date(evt[0].date);
 
                         if (statusTransportadora === 'DELIVERED') {
-                            // Se entregue, grava TUDO: data de envio real, data de entrega e força o status
                             const dataEntregaReal = new Date(evt[evt.length - 1].date);
+                            
+                            // Atualiza o nosso banco
                             await sql`
                                 UPDATE pedidos_nuvemshop 
                                 SET status_nuvemshop = 'Entregue', 
@@ -49,10 +67,12 @@ async function processarRastreiosLogistica(limite = 20) {
                                     data_entrega = ${dataEntregaReal} 
                                 WHERE id_pedido = ${pedido.id_pedido};
                             `;
+                            
+                            // Avisa a Nuvemshop
+                            await atualizarStatusNuvemshop(pedido.id_pedido, 'delivered', 'closed');
                             atualizados++;
                         } else {
-                            // Mesmo que ainda não tenha sido entregue, corrige a data de envio
-                            // caso ela esteja errada no banco
+                            // Corrige a data de envio se a Nuvemshop tiver preenchido errado
                             await sql`
                                 UPDATE pedidos_nuvemshop 
                                 SET data_envio = ${dataPostagemReal} 
@@ -64,7 +84,7 @@ async function processarRastreiosLogistica(limite = 20) {
             } catch (e) {
                 console.error(`Erro ao processar rastreio do pedido ${pedido.numero_pedido}:`, e);
             }
-            await delay(500); // Pausa para não sobrecarregar a API da SmartEnvios
+            await delay(500); 
         }
         return { sucesso: true, mensagem: `Resumo: ${atualizados} pedidos atualizados com sucesso.`, log: [] };
     } catch (erro) { 
@@ -73,6 +93,7 @@ async function processarRastreiosLogistica(limite = 20) {
     }
 }
 
+// Rotas do Módulo
 router.get('/api/script/atualizar-rastreios', async (req, res) => {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.write("Iniciando verificação de rastreios...\n");
@@ -87,55 +108,3 @@ router.get('/api/cron/verificar-entregas', async (req, res) => {
 });
 
 module.exports = router;
-
-// ... (código anterior do logistica.js) ...
-
-async function atualizarStatusNuvemshop(idPedido, statusEnvio, statusPedido) {
-    const STORE_ID = process.env.NUVEMSHOP_STORE_ID;
-    const TOKEN = process.env.NUVEMSHOP_TOKEN;
-    const url = `https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${idPedido}`;
-
-    try {
-        await fetch(url, {
-            method: 'PUT',
-            headers: { 'Authentication': `bearer ${TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': 'Waltz' },
-            body: JSON.stringify({
-                shipping_status: statusEnvio, // 'delivered'
-                status: statusPedido         // 'closed' para arquivar
-            })
-        });
-        console.log(`✅ Nuvemshop Atualizada: Pedido #${idPedido} status: ${statusPedido}`);
-    } catch (e) {
-        console.error(`❌ Erro ao avisar Nuvemshop do pedido ${idPedido}:`, e.message);
-    }
-}
-
-async function processarRastreiosLogistica(limite = 20) {
-    // ... (busca os pedidos no banco como já fazemos) ...
-    
-    for (const pedido of pedidos) {
-        // ... (consulta a SmartEnvios como já fazemos) ...
-
-        if (statusTransportadora === 'DELIVERED') {
-            const dataEntregaReal = new Date(evt[evt.length - 1].date);
-            const dataPostagemReal = new Date(evt[0].date);
-
-            // 1. Atualiza o SEU Banco de Dados (App)
-            await sql`
-                UPDATE pedidos_nuvemshop 
-                SET status_nuvemshop = 'Entregue', 
-                    data_envio = ${dataPostagemReal}, 
-                    data_entrega = ${dataEntregaReal} 
-                WHERE id_pedido = ${pedido.id_pedido};
-            `;
-
-            // 2. Atualiza a Nuvemshop (Marca como Entregue e Arquiva)
-            // 'delivered' marca o transporte como concluído
-            // 'closed' é o comando da Nuvemshop para Arquivar o pedido
-            await atualizarStatusNuvemshop(pedido.id_pedido, 'delivered', 'closed');
-            
-            atualizados++;
-        }
-        // ...
-    }
-}

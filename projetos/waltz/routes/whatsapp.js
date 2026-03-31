@@ -93,30 +93,30 @@ router.get('/teste-whatsapp', async (req, res) => {
 // ----------------------------------------------------------------------------
 router.get('/processar-fila', async (req, res) => {
     try {
-        // 1. Busca mensagens pendentes (máximo 10 por vez)
+        // 1. Busca mensagens pendentes (máximo 5 por vez para ser rápido)
         const { rows: fila } = await sql`
             SELECT * FROM fila_mensagens 
-            WHERE status = 'pendente' AND tentativas < 3 
-            ORDER BY data_criacao ASC LIMIT 10;
+            WHERE status = 'pendente' AND tentativas < 5 
+            ORDER BY data_criacao ASC LIMIT 5;
         `;
 
         if (fila.length === 0) return res.send("Fila vazia. Nada a processar.");
 
-        // 2. Acorda o Render (Evolution API) silenciosamente
+        // 2. Acorda o Render silenciosamente
         fetch(`${process.env.SERVER_URL}/instance/fetchInstances`, { 
             headers: { 'apikey': process.env.AUTHENTICATION_API_KEY } 
         }).catch(() => {}); 
 
         let enviadas = 0;
         const baseUrl = (process.env.SERVER_URL || '').replace(/\/$/, ''); 
-        const URL = `${baseUrl}/message/sendText/loja_waltz`; // Instância fixa
+        const URL = `${baseUrl}/message/sendText/loja_waltz`;
 
-        // 3. Processa cada mensagem da fila
+        // 3. Tenta disparar as mensagens com o ESCUDO DE PROTEÇÃO (Fail Fast)
         for (const item of fila) {
             try {
-                // Timeout de segurança: 3 minutos (180000ms) para evitar que a Vercel trave
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 180000);
+                // LIMITE DE 5 SEGUNDOS: Se o Render não responder rápido, abortamos a tentativa!
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
                 
                 const resposta = await fetch(URL, {
                     method: 'POST',
@@ -141,16 +141,47 @@ router.get('/processar-fila', async (req, res) => {
                     await sql`UPDATE fila_mensagens SET tentativas = tentativas + 1 WHERE id = ${item.id}`;
                 }
             } catch (e) {
-                // Em caso de erro de timeout ou conexão, incrementa a tentativa
-                await sql`UPDATE fila_mensagens SET tentativas = tentativas + 1 WHERE id = ${item.id}`;
+                // A MAGIA ACONTECE AQUI:
+                // Se der timeout de 5 segundos (Render a dormir ou WhatsApp desconectado),
+                // nós PARAMOS O LOOP (break) para devolver uma resposta de Sucesso ao Cronjob 
+                // antes que a Vercel desligue tudo à força! A mensagem fica pendente.
+                console.log("⏳ O Render está lento ou desconectado. Abortando ciclo para proteger o sistema.");
+                break; 
             }
         }
         
-        res.send(`Processamento concluído. Enviadas: ${enviadas}`);
+        // Devolvemos 200 OK para o cron-job.org ficar feliz (verde)
+        res.status(200).send(`Processamento concluído de forma segura. Enviadas: ${enviadas}`);
         
     } catch (erro) {
         console.error("❌ Erro ao processar a fila:", erro.message);
         res.status(500).send("Erro ao processar fila.");
+    }
+});
+
+router.get('/api/whatsapp/qrcode', async (req, res) => {
+    try {
+        const baseUrl = (process.env.SERVER_URL || '').replace(/\/$/, ''); 
+        const urlConnect = `${baseUrl}/instance/connect/loja_waltz`;
+
+        // Pede o QR Code ao Render usando a nossa chave secreta
+        const resposta = await fetch(urlConnect, {
+            headers: { 'apikey': process.env.AUTHENTICATION_API_KEY }
+        });
+
+        const dados = await resposta.json();
+
+        // A Evolution API devolve o QR Code no atributo "base64"
+        if (dados.base64) {
+            return res.json({ sucesso: true, qrcode: dados.base64 });
+        } else if (dados.instance?.state === 'open') {
+            return res.json({ sucesso: false, erro: 'A instância já está conectada!' });
+        } else {
+            return res.json({ sucesso: false, erro: 'Não foi possível gerar o QR Code no momento.' });
+        }
+    } catch (erro) {
+        console.error("❌ Erro ao buscar QR Code:", erro.message);
+        res.status(500).json({ sucesso: false, erro: 'Erro de comunicação com o servidor do WhatsApp.' });
     }
 });
 
