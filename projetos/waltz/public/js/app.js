@@ -1,3 +1,5 @@
+console.log("Arquivo Novo")
+
 // Importações modernas para o Navegador (ES Modules)
 import * as _utils from './utils.js';
 import * as _templates from './templates.js';
@@ -7,6 +9,8 @@ import * as _config from './config.js';
 import './pedidos.js';
 import './clientes.js';
 import './logistica.js';
+
+console.log("Arquivo Novo 2")
 
 inicializarIcones();
 inicializarGoogleCharts();
