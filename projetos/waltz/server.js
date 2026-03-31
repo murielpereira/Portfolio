@@ -21,6 +21,84 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
+// ============================================================================
+// MOTOR DE DISPARO DE WHATSAPP (INTEGRAÇÃO EVOLUTION API)
+// ============================================================================
+async function enviarMensagemWhatsApp(pedido, etapaLogistica) {
+    try {
+        // 1. Limpar e formatar o número do cliente (Adiciona 55 se não tiver, remove pontuação)
+        let telefoneBase = (pedido.telefone || '').replace(/\D/g, '');
+        if (!telefoneBase) {
+            console.log(`⚠️ Pedido #${pedido.numero_pedido}: Sem telefone, disparo cancelado.`);
+            return false;
+        }
+        // Se o número tiver 10 ou 11 dígitos, assumimos que é do Brasil e colocamos o 55
+        if (telefoneBase.length === 10 || telefoneBase.length === 11) {
+            telefoneBase = `55${telefoneBase}`;
+        }
+
+        // 2. Buscar as configurações de mensagens salvas no banco de dados
+        const { rows } = await sql`SELECT msg_aprovado, msg_fabricacao, msg_rastreio, msg_rota, msg_feedback FROM configuracoes_sistema LIMIT 1;`;
+        if (rows.length === 0) {
+            console.log("⚠️ Configurações de mensagem não encontradas no banco.");
+            return false;
+        }
+        
+        const config = rows[0];
+        let templateMensagem = "";
+
+        // 3. Escolher o texto correto baseado na etapa
+        switch (etapaLogistica) {
+            case 'aprovado': templateMensagem = config.msg_aprovado; break;
+            case 'fabricacao': templateMensagem = config.msg_fabricacao; break;
+            case 'rastreio': templateMensagem = config.msg_rastreio; break;
+            case 'rota': templateMensagem = config.msg_rota; break;
+            case 'feedback': templateMensagem = config.msg_feedback; break;
+            default: return false; // Etapa desconhecida
+        }
+
+        if (!templateMensagem || templateMensagem.trim() === "") return false;
+
+        // 4. Substituir as tags dinâmicas pelos dados reais do pedido
+        let mensagemFinal = templateMensagem
+            .replace(/{nome}/g, pedido.nome_cliente ? pedido.nome_cliente.split(' ')[0] : 'Cliente') // Pega só o primeiro nome
+            .replace(/{pedido}/g, pedido.numero_pedido || '')
+            .replace(/{rastreio}/g, pedido.rastreio || 'Aguardando código')
+            .replace(/{link_rastreio}/g, pedido.rastreio ? `https://linkderastreio.com/${pedido.rastreio}` : ''); // Ajuste o link conforme sua transportadora
+
+        // 5. Enviar a requisição para a Evolution API (Render)
+        const URL = `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE_NAME}`;
+        
+        console.log(`💬 Enviando WhatsApp [${etapaLogistica}] para ${telefoneBase}...`);
+        
+        const resposta = await fetch(URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': process.env.EVOLUTION_API_KEY
+            },
+            body: JSON.stringify({
+                number: telefoneBase,
+                text: mensagemFinal
+            })
+        });
+
+        const resultado = await resposta.json();
+
+        if (resposta.ok) {
+            console.log(`✅ WhatsApp enviado com sucesso para #${pedido.numero_pedido}!`);
+            return true;
+        } else {
+            console.error(`❌ Erro da Evolution API no pedido #${pedido.numero_pedido}:`, resultado);
+            return false;
+        }
+
+    } catch (erro) {
+        console.error(`❌ Erro interno ao tentar enviar WhatsApp:`, erro.message);
+        return false;
+    }
+}
+
 // ==========================================
 // FUNÇÃO: ATUALIZAR OBSERVAÇÕES INTERNAS NO TINY ERP
 // ==========================================
@@ -634,6 +712,53 @@ app.get('/api/script/capturar-emails', async (req, res) => {
         }
         res.end(`\nCaptura concluída com sucesso! ${salvos} e-mails atualizados.`);
     } catch (erro) { res.end(`\nFalha ao executar o script: ${erro.message}`); }
+});
+
+// ============================================================================
+// ROTA DE TESTE: DISPARO DE WHATSAPP (SANDBOX)
+// Objetivo: Validar a comunicação com a Evolution API usando dados fictícios.
+// ============================================================================
+app.get('/teste-whatsapp', async (req, res) => {
+    // 1. Capturamos o telefone que será passado na URL
+    const { telefone } = req.query;
+
+    // 2. Validação de segurança: se esquecer de passar o telefone, avisamos
+    if (!telefone) {
+        return res.status(400).json({ 
+            erro: 'Faltou o número! Use o formato: /teste-whatsapp?telefone=55DDD99999999' 
+        });
+    }
+
+    console.log(`🧪 Iniciando teste de WhatsApp para o número: ${telefone}`);
+
+    // 3. Criação do Pedido Falso (Mock Data) para testar a substituição de tags
+    const pedidoFalso = {
+        numero_pedido: 'TESTE-777',
+        nome_cliente: 'Mestre da Programação',
+        telefone: telefone,
+        rastreio: 'BR123456789BR'
+    };
+
+    try {
+        // 4. Chamamos a nossa função principal simulando a etapa de 'aprovado'
+        // Certifique-se de que tem uma mensagem configurada no banco de dados para "msg_aprovado"
+        const sucesso = await enviarMensagemWhatsApp(pedidoFalso, 'aprovado');
+
+        // 5. Devolvemos a resposta para o navegador
+        if (sucesso) {
+            return res.status(200).json({ 
+                sucesso: true, 
+                mensagem: `🎉 Mágica realizada! Mensagem enviada para ${telefone}. Verifique o seu WhatsApp!` 
+            });
+        } else {
+            return res.status(500).json({ 
+                erro: '❌ Falha ao enviar a mensagem. Verifique os logs do console para mais detalhes.' 
+            });
+        }
+    } catch (erro) {
+        console.error("❌ Erro fatal na rota de teste:", erro);
+        return res.status(500).json({ erro: 'Erro interno no servidor.' });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
