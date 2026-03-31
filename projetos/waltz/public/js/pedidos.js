@@ -290,6 +290,10 @@ export function ordenarTabelaNuvem(colIndex) {
     resetarPaginacaoNuvem();
 }
 
+// ==========================================
+// PONTE GLOBAL (Tornando as funções visíveis para o HTML e app.js)
+// ==========================================
+window.todosOsPedidosNuvem = window.todosOsPedidosNuvem || [];
 window.ordenarTabelaNuvem = ordenarTabelaNuvem;
 window.resetarPaginacaoNuvem = resetarPaginacaoNuvem;
 window.irParaPaginaNuvem = irParaPaginaNuvem;

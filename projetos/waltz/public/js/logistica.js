@@ -143,5 +143,8 @@ export function renderizarTabelaCEPs() {
     });
 }
 
+// ==========================================
+// PONTE GLOBAL (Tornando as funções visíveis para o HTML e app.js)
+// ==========================================
 window.ordenarTabelaCep = ordenarTabelaCep;
 window.renderizarTabelaCEPs = renderizarTabelaCEPs;

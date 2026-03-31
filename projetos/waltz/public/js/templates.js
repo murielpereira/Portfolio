@@ -141,6 +141,7 @@ export function getTemplatePainel() {
                             </form>
                         </div>
                     </div>
+                </div>
 
                     <!-- ABA: DASHBOARD -->
                     <div id="sub-dash" class="sub-pagina" style="display: none;">

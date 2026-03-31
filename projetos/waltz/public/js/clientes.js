@@ -222,6 +222,10 @@ export function mudarPagina(delta) { paginaAtualRelatorio += delta; renderizarPa
 export function irParaPagina(pagina) { paginaAtualRelatorio = pagina; renderizarPaginaRelatorio(); }
 export function resetarEPaginacao() { paginaAtualRelatorio = 1; renderizarPaginaRelatorio(); }
 
+// ==========================================
+// PONTE GLOBAL (Tornando as funções visíveis para o HTML e app.js)
+// ==========================================
+window.todaABaseDeClientes = window.todaABaseDeClientes || []; 
 window.ordenarTabela = ordenarTabela;
 window.resetarEPaginacao = resetarEPaginacao;
 window.irParaPagina = irParaPagina;
@@ -230,3 +234,4 @@ window.filtrarTabelaPorRFM = filtrarTabelaPorRFM;
 window.renderizarPaginaRelatorio = renderizarPaginaRelatorio;
 window.renderizarGraficoClientes = renderizarGraficoClientes;
 window.carregarClientesTinyDB = carregarClientesTinyDB;
+window.renderizarMatrizRFM = renderizarMatrizRFM;
