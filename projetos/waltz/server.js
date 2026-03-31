@@ -22,22 +22,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
 // ============================================================================
-// MOTOR DE DISPARO DE WHATSAPP (INTEGRAÇÃO EVOLUTION API)
+// MOTOR DE DISPARO DE WHATSAPP (INTEGRAÇÃO EVOLUTION API) - VERSÃO ATUALIZADA
 // ============================================================================
 async function enviarMensagemWhatsApp(pedido, etapaLogistica) {
     try {
-        // 1. Limpar e formatar o número do cliente (Adiciona 55 se não tiver, remove pontuação)
+        // 1. Limpar e formatar o número do cliente
         let telefoneBase = (pedido.telefone || '').replace(/\D/g, '');
         if (!telefoneBase) {
             console.log(`⚠️ Pedido #${pedido.numero_pedido}: Sem telefone, disparo cancelado.`);
             return false;
         }
-        // Se o número tiver 10 ou 11 dígitos, assumimos que é do Brasil e colocamos o 55
         if (telefoneBase.length === 10 || telefoneBase.length === 11) {
             telefoneBase = `55${telefoneBase}`;
         }
 
-        // 2. Buscar as configurações de mensagens salvas no banco de dados
+        // 2. Buscar as configurações de mensagens no banco de dados Neon
         const { rows } = await sql`SELECT msg_aprovado, msg_fabricacao, msg_rastreio, msg_rota, msg_feedback FROM configuracoes_sistema LIMIT 1;`;
         if (rows.length === 0) {
             console.log("⚠️ Configurações de mensagem não encontradas no banco.");
@@ -54,20 +53,29 @@ async function enviarMensagemWhatsApp(pedido, etapaLogistica) {
             case 'rastreio': templateMensagem = config.msg_rastreio; break;
             case 'rota': templateMensagem = config.msg_rota; break;
             case 'feedback': templateMensagem = config.msg_feedback; break;
-            default: return false; // Etapa desconhecida
+            default: return false; 
         }
 
         if (!templateMensagem || templateMensagem.trim() === "") return false;
 
-        // 4. Substituir as tags dinâmicas pelos dados reais do pedido
+        // 4. Substituir as tags dinâmicas
         let mensagemFinal = templateMensagem
-            .replace(/{nome}/g, pedido.nome_cliente ? pedido.nome_cliente.split(' ')[0] : 'Cliente') // Pega só o primeiro nome
+            .replace(/{nome}/g, pedido.nome_cliente ? pedido.nome_cliente.split(' ')[0] : 'Cliente')
             .replace(/{pedido}/g, pedido.numero_pedido || '')
             .replace(/{rastreio}/g, pedido.rastreio || 'Aguardando código')
-            .replace(/{link_rastreio}/g, pedido.rastreio ? `https://linkderastreio.com/${pedido.rastreio}` : ''); // Ajuste o link conforme sua transportadora
+            .replace(/{link_rastreio}/g, pedido.rastreio ? `https://linkderastreio.com/${pedido.rastreio}` : ''); 
 
-        // 5. Enviar a requisição para a Evolution API (Render)
-        const URL = `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE_NAME}`;
+        // ====================================================================
+        // 5. NOVA CONFIGURAÇÃO DE CONEXÃO COM A EVOLUTION API (RENDER)
+        // Lendo as variáveis exatas que você cadastrou na Vercel
+        // ====================================================================
+        
+        // Remove uma possível barra (/) no final do SERVER_URL para não quebrar o link
+        const baseUrl = (process.env.SERVER_URL || '').replace(/\/$/, ''); 
+        const apiKey = process.env.AUTHENTICATION_API_KEY;
+        const instanceName = "loja_waltz"; // Nome fixo da nossa instância
+
+        const URL = `${baseUrl}/message/sendText/${instanceName}`;
         
         console.log(`💬 Enviando WhatsApp [${etapaLogistica}] para ${telefoneBase}...`);
         
@@ -75,7 +83,7 @@ async function enviarMensagemWhatsApp(pedido, etapaLogistica) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'apikey': process.env.EVOLUTION_API_KEY
+                'apikey': apiKey // Usando a chave correta: Ame@220520
             },
             body: JSON.stringify({
                 number: telefoneBase,
