@@ -87,3 +87,55 @@ router.get('/api/cron/verificar-entregas', async (req, res) => {
 });
 
 module.exports = router;
+
+// ... (código anterior do logistica.js) ...
+
+async function atualizarStatusNuvemshop(idPedido, statusEnvio, statusPedido) {
+    const STORE_ID = process.env.NUVEMSHOP_STORE_ID;
+    const TOKEN = process.env.NUVEMSHOP_TOKEN;
+    const url = `https://api.nuvemshop.com.br/v1/${STORE_ID}/orders/${idPedido}`;
+
+    try {
+        await fetch(url, {
+            method: 'PUT',
+            headers: { 'Authentication': `bearer ${TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': 'Waltz' },
+            body: JSON.stringify({
+                shipping_status: statusEnvio, // 'delivered'
+                status: statusPedido         // 'closed' para arquivar
+            })
+        });
+        console.log(`✅ Nuvemshop Atualizada: Pedido #${idPedido} status: ${statusPedido}`);
+    } catch (e) {
+        console.error(`❌ Erro ao avisar Nuvemshop do pedido ${idPedido}:`, e.message);
+    }
+}
+
+async function processarRastreiosLogistica(limite = 20) {
+    // ... (busca os pedidos no banco como já fazemos) ...
+    
+    for (const pedido of pedidos) {
+        // ... (consulta a SmartEnvios como já fazemos) ...
+
+        if (statusTransportadora === 'DELIVERED') {
+            const dataEntregaReal = new Date(evt[evt.length - 1].date);
+            const dataPostagemReal = new Date(evt[0].date);
+
+            // 1. Atualiza o SEU Banco de Dados (App)
+            await sql`
+                UPDATE pedidos_nuvemshop 
+                SET status_nuvemshop = 'Entregue', 
+                    data_envio = ${dataPostagemReal}, 
+                    data_entrega = ${dataEntregaReal} 
+                WHERE id_pedido = ${pedido.id_pedido};
+            `;
+
+            // 2. Atualiza a Nuvemshop (Marca como Entregue e Arquiva)
+            // 'delivered' marca o transporte como concluído
+            // 'closed' é o comando da Nuvemshop para Arquivar o pedido
+            await atualizarStatusNuvemshop(pedido.id_pedido, 'delivered', 'closed');
+            
+            atualizados++;
+        }
+        // ...
+    }
+}
