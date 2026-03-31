@@ -17,24 +17,36 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
 
     try {
         await delay(500); 
+        
         const respostaBusca = await fetch(`https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`);
         const dadosBusca = await respostaBusca.json();
 
         if (dadosBusca.retorno && dadosBusca.retorno.status === 'OK' && dadosBusca.retorno.pedidos) {
-            const totalPedidos = dadosBusca.retorno.pedidos.length;
-            const valorTotalGasto = dadosBusca.retorno.pedidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
+            const pedidosDoCliente = dadosBusca.retorno.pedidos;
+            const pedidoAtual = pedidosDoCliente[0].pedido;
+
+            if (pedidoAtual.obs_interna && pedidoAtual.obs_interna.includes('⭐ CLASSIFICAÇÃO')) {
+                console.log(`🛡️ Loop evitado: O pedido ${idPedido} já foi classificado anteriormente.`);
+                return; 
+            }
+
+            const totalPedidos = pedidosDoCliente.length;
+            const valorTotalGasto = pedidosDoCliente.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
             
             await sql`
                 INSERT INTO clientes (cpf, nome, total_pedidos, valor_total)
-                VALUES (${cpfLimpo}, ${dadosBusca.retorno.pedidos[0].pedido.nome}, ${totalPedidos}, ${valorTotalGasto})
+                VALUES (${cpfLimpo}, ${pedidoAtual.nome}, ${totalPedidos}, ${valorTotalGasto})
                 ON CONFLICT (cpf) DO UPDATE SET total_pedidos = EXCLUDED.total_pedidos, valor_total = EXCLUDED.valor_total;
             `;
 
             let grupoReal = totalPedidos === 1 ? "PRIMEIRA COMPRA" : (valorTotalGasto <= 1000 ? "BRONZE" : (valorTotalGasto <= 3000 ? "PRATA" : "OURO"));
             const obsInterna = `⭐ CLASSIFICAÇÃO: Cliente ${grupoReal} | Histórico: ${totalPedidos} pedidos | LTV: R$ ${valorTotalGasto.toFixed(2)}`;
+            
             await atualizarObservacaoTiny(idPedido, obsInterna);
         }
-    } catch (erro) {}
+    } catch (erro) {
+        console.error("Erro ao processar cliente do Tiny:", erro);
+    }
 }
 
 router.post('/api/webhook/tiny', async (req, res) => {

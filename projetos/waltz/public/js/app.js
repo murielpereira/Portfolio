@@ -1,8 +1,9 @@
-import { inicializarIcones, atualizarIcones, inicializarGoogleCharts } from './utils.js';
-import { getTemplateLogin, getTemplatePainel } from './templates.js';
-import { carregarConfiguracoesDoBanco, preencherFormularioConfig } from './config.js';
+// Importações modernas para o Navegador (ES Modules)
+import * as _utils from './utils.js';
+import * as _templates from './templates.js';
+import * as _config from './config.js';
 
-// Importando arquivos inteiros para que suas funções "window" sejam ativadas
+// Importações diretas (ficheiros que executam lógica ou adicionam funções ao 'window')
 import './pedidos.js';
 import './clientes.js';
 import './logistica.js';
