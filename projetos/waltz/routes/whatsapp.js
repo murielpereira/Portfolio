@@ -18,26 +18,28 @@ async function agendarMensagemWhatsApp(pedido, etapaLogistica) {
             telefoneBase = `55${telefoneBase}`;
         }
 
-        // 2. Buscar as configurações de mensagens no banco de dados Neon
-        const { rows } = await sql`SELECT msg_aprovado, msg_fabricacao, msg_rastreio, msg_rota, msg_feedback FROM configuracoes_sistema LIMIT 1;`;
+        // 2. CORREÇÃO: Buscar as configurações da gaveta 'templates_wpp'
+        const { rows } = await sql`SELECT valor FROM configuracoes_sistema WHERE chave = 'templates_wpp' LIMIT 1;`;
         if (rows.length === 0) return false;
         
-        const config = rows[0];
+        // 3. Como guardámos em formato JSON, precisamos de desempacotar
+        // O banco de dados pode devolver já como objeto, ou como texto (string). Garantimos a conversão:
+        const config = typeof rows[0].valor === 'string' ? JSON.parse(rows[0].valor) : rows[0].valor;
         let templateMensagem = "";
 
-        // 3. Escolher o texto correto baseado na etapa
+        // 4. Escolher o texto correto baseado na etapa (usando os nomes exatos do seu painel)
         switch (etapaLogistica) {
-            case 'aprovado': templateMensagem = config.msg_aprovado; break;
-            case 'fabricacao': templateMensagem = config.msg_fabricacao; break;
-            case 'rastreio': templateMensagem = config.msg_rastreio; break;
-            case 'rota': templateMensagem = config.msg_rota; break;
-            case 'feedback': templateMensagem = config.msg_feedback; break;
+            case 'aprovado': templateMensagem = config.aprovado; break;
+            case 'fabricacao': templateMensagem = config.fabricacao; break;
+            case 'rastreio': templateMensagem = config.rastreio; break;
+            case 'rota': templateMensagem = config.rota; break;
+            case 'feedback': templateMensagem = config.feedback; break;
             default: return false; 
         }
 
         if (!templateMensagem || templateMensagem.trim() === "") return false;
 
-        // 4. Substituir as tags dinâmicas
+        // 5. Substituir as tags dinâmicas
         let mensagemFinal = templateMensagem
             .replace(/{nome}/g, pedido.nome_cliente ? pedido.nome_cliente.split(' ')[0] : 'Cliente')
             .replace(/{pedido}/g, pedido.numero_pedido || '')
@@ -46,7 +48,7 @@ async function agendarMensagemWhatsApp(pedido, etapaLogistica) {
 
         const idValido = pedido.id_pedido ? pedido.id_pedido : 0; 
         
-        // 5. Inserir na fila de mensagens
+        // 6. Inserir na fila de mensagens
         await sql`
             INSERT INTO fila_mensagens (id_pedido, telefone, mensagem, status)
             VALUES (${idValido}, ${telefoneBase}, ${mensagemFinal}, 'pendente');
