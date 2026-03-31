@@ -1,8 +1,8 @@
-import * as _utils from './utils.js';
-import * as _templates from './templates.js';
-import * as _config from './config.js';
+import { inicializarIcones, inicializarGoogleCharts, atualizarIcones } from './utils.js';
+import { getTemplatePainel, getTemplateLogin } from './templates.js';
+import { carregarConfiguracoesDoBanco, preencherFormularioConfig } from './config.js';
 
-// Importações diretas
+// Importações diretas (ficheiros que executam lógica em segundo plano)
 import './pedidos.js';
 import './clientes.js';
 import './logistica.js';
