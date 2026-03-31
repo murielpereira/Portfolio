@@ -11,17 +11,5 @@
       "src": "/(.*)",
       "dest": "server.js"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/verificar-entregas",
-      "schedule": "0 5,16 * * *"
-    }
-  ],
-  "crons": [
-    {
-      "path": "/processar-fila",
-      "schedule": "*/10 * * * *" 
-    }
   ]
 }
