@@ -8,7 +8,7 @@ const app = express();
 // 1. Configurações Básicas
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+//app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(cookieSession({
     name: 'sessao-automacao',
