@@ -43,7 +43,6 @@ export function renderizarTabelaCEPs() {
     let analiseAgrupadaTabela = {}; 
     let analiseAgrupadaMapaBR = {};
     
-    // ATENÇÃO AQUI: Precisamos buscar os pedidos da window, pois a variável vive lá agora.
     if (!window.todosOsPedidosNuvem) return;
 
     window.todosOsPedidosNuvem.forEach(p => {
@@ -53,7 +52,25 @@ export function renderizarTabelaCEPs() {
         const cepLimpo = (p.cep || '').replace(/\D/g, '');
         const ufStandard = normalizarNomeEstado(p.estado || 'Não Informado');
         if (filtroCepLimpo && !cepLimpo.includes(filtroCepLimpo)) return;
-        const diffDias = Math.ceil(Math.abs(new Date(p.data_entrega) - new Date(p.data_envio)) / (1000 * 60 * 60 * 24));
+        
+        // ========================================================
+        // CORREÇÃO: FILTRO DE ANOMALIAS (OUTLIERS) E DATAS INVÁLIDAS
+        // ========================================================
+        const dataEnvio = new Date(p.data_envio);
+        const dataEntrega = new Date(p.data_entrega);
+        
+        // Subtração simples (sem Math.abs) para detetar datas invertidas
+        const diffTime = dataEntrega.getTime() - dataEnvio.getTime();
+        
+        // Se o tempo for negativo (erro humano na Nuvemshop onde a entrega foi antes do envio) ignoramos.
+        if (diffTime < 0) return;
+        
+        const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        // Se o pedido demorou mais de 60 dias (provavelmente um teste antigo importado),
+        // ignoramos para não estragar a média real da sua logística.
+        if (diffDias > 60) return;
+        // ========================================================
         
         let chaveGrupoTabela = filtroCepLimpo === "" ? ufStandard : `${ufStandard}|${cepLimpo.length >= 5 ? cepLimpo.substring(0, 5) + '-***' : (cepLimpo || 'Sem CEP')}`;
         let textoCepExibicao = filtroCepLimpo === "" ? 'Geral (Todo o Estado)' : (cepLimpo.length >= 5 ? cepLimpo.substring(0, 5) + '-***' : (cepLimpo || 'Sem CEP'));
