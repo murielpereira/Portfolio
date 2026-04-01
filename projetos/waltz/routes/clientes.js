@@ -3,6 +3,12 @@ const router = express.Router();
 const { sql } = require('@vercel/postgres');
 const { delay } = require('../utils/helpers');
 
+// ============================================================================
+// 🛡️ ESCUDOS DE MEMÓRIA (Evita processamento duplicado simultâneo e protege a API)
+// ============================================================================
+const pedidosEmProcessamentoTiny = new Set();
+const cpfsEmProcessamento = new Set();
+
 async function atualizarObservacaoTiny(idPedidoTiny, observacaoInterna) {
     const urlTiny = `https://erp.tiny.com.br/api2/pedido.alterar.php?token=${process.env.TINY_TOKEN}&id=${idPedidoTiny}&formato=JSON`;
     try {
@@ -14,6 +20,13 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const TOKEN = process.env.TINY_TOKEN;
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
     if (!cpfLimpo) return;
+
+    // 🛡️ Se este CPF já está sendo calculado nesta exata fração de segundo, ignora para não duplicar chamadas
+    if (cpfsEmProcessamento.has(cpfLimpo)) {
+        console.log(`🛡️ CPF ${cpfLimpo} ignorado (Já em processamento simultâneo).`);
+        return;
+    }
+    cpfsEmProcessamento.add(cpfLimpo);
 
     try {
         await delay(500); 
@@ -30,7 +43,7 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
                 return; 
             }
 
-            // FIX: Ignora os pedidos Cancelados ou Devolvidos na hora de somar o valor VIP do cliente
+            // Ignora os pedidos Cancelados ou Devolvidos na hora de somar o valor VIP do cliente
             const pedidosValidos = pedidosDoCliente.filter(p => {
                 const situacao = (p.pedido.situacao || '').toLowerCase();
                 return !situacao.includes('cancelad') && !situacao.includes('devolvid') && !situacao.includes('excluíd');
@@ -52,12 +65,25 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
         }
     } catch (erro) {
         console.error("Erro ao processar cliente do Tiny:", erro);
+    } finally {
+        // 🛡️ Remove o CPF do bloqueio após 15 segundos, libertando-o para futuras atualizações reais
+        setTimeout(() => cpfsEmProcessamento.delete(cpfLimpo), 15000);
     }
 }
 
 router.post('/api/webhook/tiny', async (req, res) => {
     try {
         if (req.body && req.body.dados && req.body.dados.id && req.body.dados.cliente) {
+            const idPedidoTiny = req.body.dados.id.toString();
+            
+            // 🛡️ Ignora os ecos de rede (Webhooks idênticos disparados no mesmo segundo)
+            if (pedidosEmProcessamentoTiny.has(idPedidoTiny)) {
+                return res.status(200).send('Eco ignorado');
+            }
+            
+            pedidosEmProcessamentoTiny.add(idPedidoTiny);
+            setTimeout(() => pedidosEmProcessamentoTiny.delete(idPedidoTiny), 15000);
+
             await processarGrupoClienteTiny(req.body.dados.id, req.body.dados.cliente.cpfCnpj);
         }
         res.status(200).send('OK');
