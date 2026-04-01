@@ -20,8 +20,9 @@ export function renderizarPaginaNuvem() {
     const tbody = document.getElementById('corpo-tabela-nuvem');
     if(!tbody) return;
     
-    const termoBusca = (document.getElementById("busca-nuvem")?.value || "").toLowerCase();
-    const filtroStatus = document.getElementById("filtro-status-nuvem")?.value || "TODOS";
+    const termoBusca = (document.getElementById("busca-nuvem-v2")?.value || "").toLowerCase();
+    const filtroStatus = document.getElementById("filtro-status-v2")?.value || "TODOS";
+    const filtroAutomacao = document.getElementById("filtro-automacao-v2")?.value || "TODOS";
     
     let dadosFiltrados = window.todosOsPedidosNuvem.map(p => {
         let pedidoProcessado = { ...p };

@@ -11,9 +11,9 @@ const { sql } = require('@vercel/postgres');
 // Altere estes 3 valores sempre que precisar corrigir um pedido rebelde
 // Formato da Data: 'YYYY-MM-DDTHH:mm:00-03:00' (Ano-Mês-DiaTHora:Minuto:00-03:00)
 // ---------------------------------------------------------
-const NUMERO_PEDIDO = '13183';
-const DATA_ENVIO = '2026-03-27T17:12:00-03:00'; 
-const DATA_ENTREGA = '2026-03-31T17:56:00-03:00';
+const NUMERO_PEDIDO = '11840';
+const DATA_ENVIO = '2026-03-03T17:12:00-03:00'; 
+const DATA_ENTREGA = '2026-03-12T17:56:00-03:00';
 // ---------------------------------------------------------
 
 async function corrigirPedidoManualmente() {

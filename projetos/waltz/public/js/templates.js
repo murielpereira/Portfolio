@@ -27,6 +27,25 @@ export function getTemplateLogin() {
 
 export function getTemplatePainel() {
     return `
+    <style>
+        /* Desativa e esconde os filtros fantasmas injetados pelo app.js no topo */
+        #dynamic-top-actions { display: none !important; }
+        
+        /* Layout super moderno para a barra de controles */
+        .control-bar {
+            background: #ffffff; padding: 16px 20px; border-radius: 12px;
+            border: 1px solid var(--border-color); margin-bottom: 24px;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+        .control-filters { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1; }
+        .control-search { position: relative; flex: 1; min-width: 250px; max-width: 350px; }
+        .control-search i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 18px; height: 18px; }
+        .control-search input { width: 100%; padding-left: 42px !important; }
+        .control-select { min-width: 170px; background-color: #f8fafc; }
+        .control-badge { background: #1e293b; color: #ffffff; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+    </style>
+
     <div class="dashboard-wrapper">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -157,11 +176,13 @@ export function getTemplatePainel() {
 
                 <div id="sub-tiny" class="sub-pagina" style="display: none;">
                     
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                            <input type="text" id="filtro-texto" class="input-modern" placeholder="Nome ou CPF/CNPJ..." onkeyup="resetarEPaginacao()" style="width: 250px;">
-                            
-                            <select id="filtro-grupo" class="input-modern" onchange="resetarEPaginacao()" style="cursor: pointer; min-width: 160px;">
+                    <div class="control-bar">
+                        <div class="control-filters">
+                            <div class="control-search">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="busca-tiny-v2" class="input-modern" placeholder="Nome ou CPF/CNPJ..." onkeyup="resetarEPaginacao()">
+                            </div>
+                            <select id="filtro-grupo-v2" class="input-modern control-select" onchange="resetarEPaginacao()">
                                 <option value="TODOS">Todos os Grupos</option>
                                 <option value="SEM COMPRAS">Sem Compras</option>
                                 <option value="PRIMEIRA COMPRA">1ª Compra</option>
@@ -171,10 +192,7 @@ export function getTemplatePainel() {
                                 <option value="DIAMANTE">Diamante</option>
                             </select>
                         </div>
-                        
-                        <span id="contador-cadastros" style="background: #1e293b; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                            0 cadastro(s)
-                        </span>
+                        <span id="contador-cadastros" class="control-badge">0 cadastro(s)</span>
                     </div>
 
                     <div class="card-table">
@@ -203,11 +221,14 @@ export function getTemplatePainel() {
 
                 <div id="sub-nuvem" class="sub-pagina" style="display: none;">
                     
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                            <input type="text" id="busca-nuvem" class="input-modern" placeholder="Buscar pedido ou cliente..." onkeyup="resetarPaginacaoNuvem()" style="width: 250px;">
+                    <div class="control-bar">
+                        <div class="control-filters">
+                            <div class="control-search">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="busca-nuvem-v2" class="input-modern" placeholder="Buscar pedido ou cliente..." onkeyup="resetarPaginacaoNuvem()">
+                            </div>
                             
-                            <select id="filtro-status-nuvem" class="input-modern" onchange="resetarPaginacaoNuvem()" style="cursor: pointer; min-width: 150px;">
+                            <select id="filtro-status-v2" class="input-modern control-select" onchange="resetarPaginacaoNuvem()">
                                 <option value="TODOS">Todos os Status</option>
                                 <option value="Aberto">Aberto</option>
                                 <option value="Enviado">Enviado</option>
@@ -215,7 +236,7 @@ export function getTemplatePainel() {
                                 <option value="Cancelado">Cancelado</option>
                             </select>
 
-                            <select id="filtro-automacao-nuvem" class="input-modern" onchange="resetarPaginacaoNuvem()" style="cursor: pointer; min-width: 200px;">
+                            <select id="filtro-automacao-v2" class="input-modern control-select" onchange="resetarPaginacaoNuvem()" style="min-width: 220px;">
                                 <option value="TODOS">Todas as Automações</option>
                                 <option value="Aguardando Automação...">Aguardando Automação...</option>
                                 <option value="1. Pedido Aprovado">1. Pedido Aprovado</option>
@@ -225,10 +246,7 @@ export function getTemplatePainel() {
                                 <option value="5. Feedback Concluído">5. Feedback Concluído</option>
                             </select>
                         </div>
-                        
-                        <span id="contador-nuvem" style="background: #1e293b; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                            0 pedido(s)
-                        </span>
+                        <span id="contador-nuvem" class="control-badge">0 pedido(s)</span>
                     </div>
 
                     <div class="card-table">

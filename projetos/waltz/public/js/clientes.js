@@ -146,8 +146,8 @@ export function ordenarTabela(colIndex) {
 export function renderizarPaginaRelatorio() {
     const tbody = document.getElementById('tabela-clientes-body');
     if(!tbody) return;
-    const filtroGrupo = document.getElementById("filtro-grupo")?.value || "TODOS";
-    const termoBusca = (document.getElementById("filtro-texto")?.value || "").toLowerCase();
+    const termoBusca = (document.getElementById("busca-tiny-v2")?.value || "").toLowerCase();
+    const filtroGrupo = document.getElementById("filtro-grupo-v2")?.value || "TODOS";
     
     let dadosFiltrados = window.todaABaseDeClientes.filter(c => {
         const nomeStr = (c.nome || "").toLowerCase(); const cpfStr = (c.cpf || "").toLowerCase();
