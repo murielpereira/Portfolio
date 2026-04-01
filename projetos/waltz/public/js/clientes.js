@@ -188,21 +188,23 @@ export function renderizarPaginaRelatorio() {
             const cpfFormatado = formatarDocumento(cliente.cpf);
             const ticketMedio = parseFloat(cliente.ticket_medio || 0).toFixed(2).replace('.', ',');
             const tempoEntrega = cliente.tempo_medio_entrega_dias > 0 ? `${cliente.tempo_medio_entrega_dias} dias` : '-';
-            
-            const linha = document.createElement('tr');
-            linha.innerHTML = `
-                <td>${cliente.nome}</td>
-                <td style="white-space:nowrap">${wppFormatado}</td>
-                <td style="white-space:nowrap">${cpfFormatado}</td>
-                <td>${cliente.cidade || '-'}</td>
-                <td>${cliente.estado || '-'}</td>
-                <td>${seloHtml}</td>
-                <td style="text-align:center;">${cliente.total_pedidos || 0}</td>
-                <td style="white-space:nowrap">R$ ${ticketMedio}</td>
-                <td style="text-align:center;">${tempoEntrega}</td>
-                <td data-valor="${valTotalNum}" style="white-space:nowrap; font-weight:600;">R$ ${valTotalNum.toFixed(2).replace('.', ',')}</td>
+            const dataUltima = c.ultima_compra_data ? new Date(c.ultima_compra_data).toLocaleDateString('pt-BR') : '-';
+            const pedidoUltimo = c.ultima_compra_pedido ? `#${c.ultima_compra_pedido}` : '';
+
+            const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer'; // Para mostrar que é clicável
+            tr.onclick = () => abrirDetalhesCliente(c.cpf); // Abre o menu lateral
+
+            tr.innerHTML = `
+                <td style="font-weight: 500;">${c.nome || '-'}</td>
+                <td><span class="badge badge-${(c.grupo || '').toLowerCase().replace(' ', '')}">${c.grupo || '-'}</span></td>
+                <td><div style="font-weight:600; color:var(--primary);">${pedidoUltimo}</div><div style="font-size:11px; color:var(--text-muted);">${dataUltima}</div></td>
+                <td>${c.total_pedidos || 0}</td>
+                <td>R$ ${parseFloat(c.ticket_medio || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td>${c.tempo_medio_entrega_dias ? c.tempo_medio_entrega_dias + ' dias' : '-'}</td>
+                <td style="font-weight: bold;">R$ ${parseFloat(c.valor_total || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             `;
-            tbody.appendChild(linha);
+            tbody.appendChild(tr);
         });
     }
     renderizarControlesPaginacao(totalPaginas);
@@ -235,3 +237,34 @@ window.renderizarPaginaRelatorio = renderizarPaginaRelatorio;
 window.renderizarGraficoClientes = renderizarGraficoClientes;
 window.carregarClientesTinyDB = carregarClientesTinyDB;
 window.renderizarMatrizRFM = renderizarMatrizRFM;
+
+window.abrirDetalhesCliente = function(cpf) {
+    const cliente = window.todosOsClientes.find(c => c.cpf === cpf);
+    if (!cliente) return;
+
+    document.getElementById('drawer-titulo').innerText = `Ficha do Cliente`;
+    
+    // Reaproveitamos a estrutura visual do Drawer de pedidos
+    document.getElementById('drawer-conteudo').innerHTML = `
+        <div class="detail-header-card">
+            <div class="detail-avatar"><i data-lucide="user"></i></div>
+            <div class="detail-header-info" style="flex:1;">
+                <h3>${cliente.nome}</h3>
+                <span class="badge badge-${(cliente.grupo || '').toLowerCase().replace(' ', '')}">${cliente.grupo || '-'}</span>
+            </div>
+        </div>
+
+        <div class="detail-group"><label>WhatsApp</label><p style="font-weight:600; color:var(--primary);">${cliente.whatsapp || 'Não informado'}</p></div>
+        <div class="detail-group"><label>Documento (CPF/CNPJ)</label><p>${cliente.cpf || '-'}</p></div>
+        <div class="detail-group"><label>Localização</label><p>${cliente.cidade || '-'} - ${cliente.uf || '-'}</p></div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 25px; background: #fff; padding: 15px; border-radius: 8px; border: 1px dashed var(--border-color);">
+            <div class="detail-group" style="margin-bottom:0;"><label>Última Compra</label><p>${cliente.ultima_compra_data ? new Date(cliente.ultima_compra_data).toLocaleDateString('pt-BR') : '-'}</p></div>
+            <div class="detail-group" style="margin-bottom:0;"><label>Último Pedido</label><p style="font-weight:600;">${cliente.ultima_compra_pedido ? '#' + cliente.ultima_compra_pedido : '-'}</p></div>
+        </div>
+    `;
+
+    document.getElementById('drawer-overlay').classList.add('active');
+    document.getElementById('drawer-pedido').classList.add('active');
+    if (typeof atualizarIcones === 'function') atualizarIcones();
+};
