@@ -178,27 +178,27 @@ export function renderizarPaginaRelatorio() {
     const inicio = (paginaAtualRelatorio - 1) * itensPorPaginaRelatorio;
     const itensDaPagina = dadosFiltrados.slice(inicio, inicio + itensPorPaginaRelatorio);
 
-    tbody.innerHTML = ''; 
-    if (itensDaPagina.length === 0) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 20px;">Nenhum cliente encontrado.</td></tr>';
-    else {
-        itensDaPagina.forEach(cliente => {
-            const valTotalNum = parseFloat(cliente.valor_total || 0);
-            const seloHtml = classificarClienteVisual(cliente.total_pedidos || 0, valTotalNum);
-            const wppFormatado = formatarWhatsAppClicavel(cliente.telefone);
-            const cpfFormatado = formatarDocumento(cliente.cpf);
-            const ticketMedio = parseFloat(cliente.ticket_medio || 0).toFixed(2).replace('.', ',');
-            const tempoEntrega = cliente.tempo_medio_entrega_dias > 0 ? `${cliente.tempo_medio_entrega_dias} dias` : '-';
+    tbody.innerHTML = '';
+    if (itensDaPagina.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px;">Nenhum cliente atende aos filtros.</td></tr>';
+    } else {
+        itensDaPagina.forEach(c => {
+            // Formata as datas para a nova coluna "Último Pedido"
             const dataUltima = c.ultima_compra_data ? new Date(c.ultima_compra_data).toLocaleDateString('pt-BR') : '-';
             const pedidoUltimo = c.ultima_compra_pedido ? `#${c.ultima_compra_pedido}` : '';
 
             const tr = document.createElement('tr');
-            tr.style.cursor = 'pointer'; // Para mostrar que é clicável
+            tr.style.cursor = 'pointer'; 
             tr.onclick = () => abrirDetalhesCliente(c.cpf); // Abre o menu lateral
 
+            // As 7 exatas colunas do nosso novo Design
             tr.innerHTML = `
                 <td style="font-weight: 500;">${c.nome || '-'}</td>
                 <td><span class="badge badge-${(c.grupo || '').toLowerCase().replace(' ', '')}">${c.grupo || '-'}</span></td>
-                <td><div style="font-weight:600; color:var(--primary);">${pedidoUltimo}</div><div style="font-size:11px; color:var(--text-muted);">${dataUltima}</div></td>
+                <td>
+                    <div style="font-weight:600; color:var(--primary);">${pedidoUltimo}</div>
+                    <div style="font-size:11px; color:var(--text-muted);">${dataUltima}</div>
+                </td>
                 <td>${c.total_pedidos || 0}</td>
                 <td>R$ ${parseFloat(c.ticket_medio || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 <td>${c.tempo_medio_entrega_dias ? c.tempo_medio_entrega_dias + ' dias' : '-'}</td>

@@ -161,3 +161,27 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 /* RFM CARDS CLICKABLE - Efeito de clique e flutuação */
 .rfm-card-click { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
 .rfm-card-click:hover { transform: translateY(-3px); box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-color: var(--primary) !important; }
+
+/* =========================================
+   NOVAS BARRAS DE CONTROLE (FILTROS)
+========================================= */
+#dynamic-top-actions { display: none !important; }
+
+.control-bar {
+    background: #ffffff; padding: 12px 16px; border-radius: 8px;
+    border: 1px solid #e2e8f0; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.control-filters { 
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; 
+}
+
+/* Fix da Lupa */
+.control-search { position: relative; width: 280px; } 
+.control-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 16px; height: 16px; pointer-events: none; }
+.control-search input { width: 100%; padding-left: 36px !important; }
+
+.control-select { min-width: 180px; background-color: #f8fafc; }
+.control-badge { background: #1e293b; color: #ffffff; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap; }
