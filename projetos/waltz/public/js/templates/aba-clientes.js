@@ -25,13 +25,13 @@ export function getAbaClientes() {
                 <table class="tabela-dados">
                     <thead>
                         <tr>
-                            <th onclick="ordenarTabelaClientes(0)" style="cursor:pointer">Nome <span class="sort-icon" id="sort-cli-0">↑↓</span></th>
-                            <th onclick="ordenarTabelaClientes(1)" style="cursor:pointer">Grupo <span class="sort-icon" id="sort-cli-1">↑↓</span></th> 
-                            <th>Último Pedido</th>
-                            <th onclick="ordenarTabelaClientes(3)" style="cursor:pointer">Pedidos <span class="sort-icon" id="sort-cli-3">↑↓</span></th>
-                            <th onclick="ordenarTabelaClientes(4)" style="cursor:pointer">Ticket Médio <span class="sort-icon" id="sort-cli-4">↑↓</span></th>
-                            <th onclick="ordenarTabelaClientes(5)" style="cursor:pointer">Entrega Média <span class="sort-icon" id="sort-cli-5">↑↓</span></th>
-                            <th onclick="ordenarTabelaClientes(6)" style="cursor:pointer">Valor Total <span class="sort-icon" id="sort-cli-6">↑↓</span></th>
+                            <th onclick="ordenarTabela(0)" style="cursor:pointer">Nome <span class="sort-icon" id="sort-icon-0">↑↓</span></th>
+                            <th onclick="ordenarTabela(1)" style="cursor:pointer">Grupo <span class="sort-icon" id="sort-icon-1">↑↓</span></th> 
+                            <th onclick="ordenarTabela(2)" style="cursor:pointer">Último Pedido <span class="sort-icon" id="sort-icon-2">↑↓</span></th>
+                            <th onclick="ordenarTabela(3)" style="cursor:pointer">Pedidos <span class="sort-icon" id="sort-icon-3">↑↓</span></th>
+                            <th onclick="ordenarTabela(4)" style="cursor:pointer">Ticket Médio <span class="sort-icon" id="sort-icon-4">↑↓</span></th>
+                            <th onclick="ordenarTabela(5)" style="cursor:pointer">Entrega Média <span class="sort-icon" id="sort-icon-5">↑↓</span></th>
+                            <th onclick="ordenarTabela(6)" style="cursor:pointer">Valor Total <span class="sort-icon" id="sort-icon-6">↑↓</span></th>
                         </tr>
                     </thead>
                     <tbody id="tabela-clientes-body"><tr><td colspan="7" style="text-align:center; padding: 30px;">Carregando...</td></tr></tbody>
