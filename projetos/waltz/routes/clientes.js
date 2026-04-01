@@ -67,7 +67,8 @@ router.get('/api/relatorios/clientes', async (req, res) => {
                 CASE WHEN c.total_pedidos > 0 THEN (c.valor_total / c.total_pedidos) ELSE 0 END AS ticket_medio,
                 ROUND(p.media_dias, 0) AS tempo_medio_entrega_dias,
                 ult.data_criacao AS ultima_compra_data,
-                ult.numero_pedido AS ultima_compra_pedido
+                ult.numero_pedido AS ultima_compra_pedido,
+                ult.telefone AS telefone_nuvem
             FROM clientes c
             LEFT JOIN (
                 SELECT cpf_cliente, AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400)::numeric AS media_dias
@@ -76,9 +77,9 @@ router.get('/api/relatorios/clientes', async (req, res) => {
                 GROUP BY cpf_cliente
             ) p ON c.cpf = p.cpf_cliente
             LEFT JOIN LATERAL (
-                SELECT data_criacao, numero_pedido
+                SELECT data_criacao, numero_pedido, telefone
                 FROM pedidos_nuvemshop
-                WHERE cpf_cliente = c.cpf
+                WHERE cpf_cliente = c.cpf AND telefone IS NOT NULL AND telefone != ''
                 ORDER BY data_criacao DESC
                 LIMIT 1
             ) ult ON true

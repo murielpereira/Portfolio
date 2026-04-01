@@ -40,4 +40,21 @@ router.post('/api/configuracoes', async (req, res) => {
     } catch (erro) { res.status(500).json({ sucesso: false }); }
 });
 
+router.get('/api/relatorios/logistica', async (req, res) => {
+    if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        const { rows } = await sql`
+            SELECT 
+                SUBSTRING(REGEXP_REPLACE(cep, '\\D', '', 'g'), 1, 2) AS prefixo_cep,
+                COUNT(id_pedido) AS volume,
+                ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 0) AS media_dias
+            FROM pedidos_nuvemshop
+            WHERE status_nuvemshop = 'Entregue' AND cep IS NOT NULL AND data_envio IS NOT NULL AND data_entrega IS NOT NULL AND data_entrega >= data_envio
+            GROUP BY SUBSTRING(REGEXP_REPLACE(cep, '\\D', '', 'g'), 1, 2)
+            ORDER BY volume DESC;
+        `;
+        res.json({ sucesso: true, dados: rows });
+    } catch (erro) { res.status(500).json({ sucesso: false }); }
+});
+
 module.exports = router;

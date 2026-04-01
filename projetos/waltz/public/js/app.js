@@ -7,8 +7,6 @@ import './pedidos.js';
 import './clientes.js';
 import './logistica.js';
 
-console.log("Arquivo Novo 2");
-
 inicializarIcones();
 inicializarGoogleCharts();
 
@@ -58,40 +56,29 @@ function toggleSidebar() {
     if (sidebar) sidebar.classList.toggle('collapsed');
 }
 
-// Lógica de navegação principal
+// Lógica de navegação principal (Totalmente Limpa - Sem injeção de HTML fantasma)
 async function mostrarSubPaginaDash(idAlvo) {
     document.querySelectorAll('.sub-pagina').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
     
     const painelAlvo = document.getElementById(`sub-${idAlvo}`);
     const menuAlvo = document.getElementById(`nav-${idAlvo}`);
-    const topActions = document.getElementById('dynamic-top-actions');
     
     if (painelAlvo) painelAlvo.style.display = 'block';
     if (menuAlvo) menuAlvo.classList.add('active');
-    if (topActions) topActions.innerHTML = ''; 
 
     if (idAlvo === 'dash') {
         document.getElementById('dash-page-title').innerText = "Dashboard";
         document.getElementById('dash-page-subtitle').innerText = "Visão geral do seu e-commerce";
-        // As funções abaixo já estão em window graças aos nossos imports
         if (window.todaABaseDeClientes && window.todaABaseDeClientes.length === 0) await window.carregarClientesTinyDB();
         if (window.renderizarGraficoClientes) window.renderizarGraficoClientes(); 
     } else if (idAlvo === 'tiny') {
         document.getElementById('dash-page-title').innerText = "Clientes";
         document.getElementById('dash-page-subtitle').innerText = "Listagem de cadastros";
-        topActions.innerHTML = `
-            <div class="search-bar"><input type="text" id="filtro-texto" placeholder="Buscar por nome ou CPF..." onkeyup="resetarEPaginacao()"></div>
-            <select id="filtro-grupo" class="select-modern" onchange="resetarEPaginacao()"><option value="TODOS">Todos os Grupos</option><option value="DIAMANTE">Diamante</option><option value="OURO">Ouro</option><option value="PRATA">Prata</option><option value="BRONZE">Bronze</option><option value="PRIMEIRA COMPRA">1ª Compra</option><option value="SEM COMPRAS">Sem Compras</option></select>
-            <span id="contador-cadastros" class="contador-badge">0 cadastro(s)</span>`;
         if (window.carregarClientesTinyDB) await window.carregarClientesTinyDB();
     } else if (idAlvo === 'nuvem') {
         document.getElementById('dash-page-title').innerText = "Pedidos";
         document.getElementById('dash-page-subtitle').innerText = "Listagem de vendas";
-        topActions.innerHTML = `
-            <div class="search-bar"><input type="text" id="busca-nuvem" placeholder="Buscar pedido ou cliente..." onkeyup="resetarPaginacaoNuvem()"></div>
-            <select id="filtro-status-nuvem" class="select-modern" onchange="resetarPaginacaoNuvem()"><option value="TODOS">Todos os Status</option><option value="Aberto">Aberto</option><option value="Enviado">Enviado</option><option value="Entregue">Entregue</option><option value="Cancelado">Cancelado</option></select>
-            <span id="contador-nuvem" class="contador-badge">0 pedido(s)</span>`;
         if (window.carregarPedidosNuvemDB) await window.carregarPedidosNuvemDB();
     } else if (idAlvo === 'rfm') {
         document.getElementById('dash-page-title').innerText = "Matriz RFM";
@@ -101,12 +88,15 @@ async function mostrarSubPaginaDash(idAlvo) {
     } else if (idAlvo === 'cep') { 
         document.getElementById('dash-page-title').innerText = "Desempenho Logístico por Região";
         document.getElementById('dash-page-subtitle').innerText = "Análise de tempo de entrega";
-        topActions.innerHTML = `<div class="search-bar"><input type="text" id="busca-cep-analise" placeholder="Filtrar por CEP..." onkeyup="renderizarTabelaCEPs()"></div>`;
         if (window.todosOsPedidosNuvem && window.todosOsPedidosNuvem.length === 0) await window.carregarPedidosNuvemDB(); 
         else if (window.renderizarTabelaCEPs) window.renderizarTabelaCEPs();
+    } else if (idAlvo === 'whatsapp') {
+        document.getElementById('dash-page-title').innerText = "Automações do WhatsApp";
+        document.getElementById('dash-page-subtitle').innerText = "Configuração de mensagens";
+        preencherFormularioConfig();
     } else if (idAlvo === 'config') {
         document.getElementById('dash-page-title').innerText = "Configurações do Sistema";
-        document.getElementById('dash-page-subtitle').innerText = "Personalização de Automações e Variáveis";
+        document.getElementById('dash-page-subtitle').innerText = "Regras VIP e variáveis";
         preencherFormularioConfig();
     }
     atualizarIcones();

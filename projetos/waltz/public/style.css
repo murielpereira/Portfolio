@@ -178,10 +178,9 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap; 
 }
 
-/* Fix da Lupa */
-.control-search { position: relative; width: 280px; } 
+.control-search { position: relative; flex: 2; min-width: 250px; } 
 .control-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; width: 16px; height: 16px; pointer-events: none; }
 .control-search input { width: 100%; padding-left: 36px !important; }
 
-.control-select { min-width: 180px; background-color: #f8fafc; }
-.control-badge { background: #1e293b; color: #ffffff; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+/* Filtros menores (flex: 1 com limite máximo) */
+.control-select { flex: 1; min-width: 140px; max-width: 200px; background-color: #f8fafc; }

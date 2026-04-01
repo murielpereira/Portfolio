@@ -32,11 +32,11 @@ export function getAbaPedidos() {
                 <table class="tabela-dados">
                     <thead>
                         <tr>
-                            <th>Data/Hora <span class="sort-icon">↑↓</span></th>
-                            <th>Pedido <span class="sort-icon">↑↓</span></th>
-                            <th>Cliente <span class="sort-icon">↑↓</span></th>
-                            <th>Status <span class="sort-icon">↑↓</span></th>
-                            <th>Automações (Status WhatsApp)</th>
+                            <th onclick="ordenarTabelaNuvem(0)" style="cursor:pointer">Data/Hora <span class="sort-icon" id="sort-nuvem-0">↑↓</span></th>
+                            <th onclick="ordenarTabelaNuvem(1)" style="cursor:pointer">Pedido <span class="sort-icon" id="sort-nuvem-1">↑↓</span></th>
+                            <th onclick="ordenarTabelaNuvem(2)" style="cursor:pointer">Cliente <span class="sort-icon" id="sort-nuvem-2">↑↓</span></th>
+                            <th onclick="ordenarTabelaNuvem(3)" style="cursor:pointer">Status <span class="sort-icon" id="sort-nuvem-3">↑↓</span></th>
+                            <th>Automações</th>
                         </tr>
                     </thead>
                     <tbody id="corpo-tabela-nuvem"><tr><td colspan="5" style="text-align: center; padding: 30px;">Carregando...</td></tr></tbody>

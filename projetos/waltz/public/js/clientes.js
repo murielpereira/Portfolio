@@ -229,7 +229,9 @@ export function abrirDetalhesCliente(cpf) {
     if (!cliente) return;
 
     document.getElementById('drawer-titulo').innerText = `Ficha do Cliente`;
-    const telLimpo = (cliente.whatsapp || '').replace(/\D/g, '');
+    
+    const telefoneReal = cliente.whatsapp || cliente.telefone_nuvem || '';
+    const telLimpo = telefoneReal.replace(/\D/g, '');
     
     document.getElementById('drawer-conteudo').innerHTML = `
         <div class="detail-header-card">
@@ -241,7 +243,7 @@ export function abrirDetalhesCliente(cpf) {
         </div>
 
         <div class="detail-group"><label>WhatsApp</label><p>
-            ${telLimpo ? `<a href="https://wa.me/55${telLimpo}" target="_blank" style="color: #10b981; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;"><i data-lucide="message-circle" style="width:14px; height:14px;"></i> ${cliente.whatsapp}</a>` : `<span style="color: var(--text-muted);"><i data-lucide="phone" style="width:12px; height:12px;"></i> Não informado</span>`}
+            ${telLimpo ? `<a href="https://wa.me/55${telLimpo}" target="_blank" style="color: #10b981; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;"><i data-lucide="message-circle" style="width:14px; height:14px;"></i> ${telefoneReal}</a>` : `<span style="color: var(--text-muted);"><i data-lucide="phone" style="width:12px; height:12px;"></i> Não informado</span>`}
         </p></div>
         <div class="detail-group"><label>Documento (CPF/CNPJ)</label><p>${formatarDocumento(cliente.cpf || '-')}</p></div>
         <div class="detail-group"><label>Localização</label><p>${cliente.cidade || '-'} - ${cliente.uf || '-'}</p></div>

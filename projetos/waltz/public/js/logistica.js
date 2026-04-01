@@ -143,6 +143,50 @@ export function renderizarTabelaCEPs() {
     });
 }
 
+export async function carregarDadosLogistica() {
+    const tbody = document.getElementById('corpo-tabela-ceps');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px;">Calculando médias logísticas...</td></tr>';
+    
+    // Dicionário de prefixos de CEP do Correios
+    const mapaEstados = {
+        "01": "São Paulo (Capital)", "02": "São Paulo (Capital)", "03": "São Paulo (Capital)", "04": "São Paulo (Capital)", "05": "São Paulo (Capital)",
+        "06": "São Paulo (RMS)", "07": "São Paulo (RMS)", "08": "São Paulo (RMS)", "09": "São Paulo (RMS)", "11": "São Paulo (Litoral)",
+        "12": "São Paulo (Interior)", "13": "São Paulo (Interior)", "14": "São Paulo (Interior)", "15": "São Paulo (Interior)", "16": "São Paulo (Interior)",
+        "20": "Rio de Janeiro", "21": "Rio de Janeiro", "22": "Rio de Janeiro", "23": "Rio de Janeiro", "29": "Espírito Santo",
+        "30": "Minas Gerais", "31": "Minas Gerais", "40": "Bahia", "49": "Sergipe", "50": "Pernambuco", "57": "Alagoas",
+        "58": "Alagoas/Paraíba", "59": "Rio Grande do Norte", "60": "Ceará", "64": "Piauí", "65": "Maranhão", "66": "Maranhão/Pará",
+        "68": "Pará/Amapá", "69": "Amapá/Amazonas/Roraima", "70": "Distrito Federal", "71": "Distrito Federal", "72": "Distrito Federal",
+        "74": "Goiás", "76": "Goiás/Tocantins", "77": "Tocantins", "78": "Mato Grosso", "79": "Mato Grosso do Sul",
+        "80": "Paraná", "81": "Paraná", "88": "Santa Catarina", "89": "Santa Catarina", "90": "Rio Grande do Sul", "99": "Rio Grande do Sul"
+    };
+
+    try {
+        const res = await fetch('/api/relatorios/logistica');
+        const json = await res.json();
+        
+        if (json.sucesso && json.dados.length > 0) {
+            tbody.innerHTML = '';
+            json.dados.forEach(item => {
+                const prefixo = item.prefixo_cep;
+                const estado = mapaEstados[prefixo] || `Região (CEP ${prefixo}.XXX)`;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight:600;">${estado}</td>
+                    <td>Geral (Faixa ${prefixo})</td>
+                    <td style="font-weight:bold; color: var(--primary);">${item.media_dias} dias</td>
+                    <td>${item.volume} entregas mapeadas</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px;">Nenhuma entrega mapeada ainda.</td></tr>';
+        }
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Erro ao carregar dados.</td></tr>';
+    }
+}
+
 // ==========================================
 // PONTE GLOBAL (Tornando as funções visíveis para o HTML e app.js)
 // ==========================================
