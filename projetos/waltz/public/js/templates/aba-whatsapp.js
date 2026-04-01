@@ -20,7 +20,7 @@ export function getAbaWhatsapp() {
                     </div>
                 </div>
                 <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 25px; font-size: 13px; color: var(--text-muted);">
-                    <strong>Variáveis:</strong> <span class="var-tag">{nome}</span>, <span class="var-tag">{pedido}</span>, <span class="var-tag">{rastreio}</span>, <span class="var-tag">{link_rastreio}</span>.
+                    <strong>Variáveis:</strong> <span class="var-tag">{nome}</span>, <span class="var-tag">{pedido}</span>, <span class="var-tag">{rastreio}</span>, <span class="var-tag">{link_rastreio}</span>, <span class="var-tag">{produtos}</span>.
                 </div>
                 <form id="form-config-msg" onsubmit="salvarConfiguracoes(event)">
                     <div class="detail-group"><label>1. Pedido Aprovado</label><textarea id="msg-aprovado" class="textarea-modern">Olá {nome}! Seu pedido #{pedido} foi aprovado com sucesso! 🐶💙</textarea></div>

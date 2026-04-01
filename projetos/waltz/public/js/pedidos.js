@@ -5,6 +5,9 @@ window.todosOsPedidosNuvem = [];
 let paginaAtualNuvem = 1;
 const itensPorPaginaNuvem = 50;
 
+let colunaOrdenacaoNuvem = -1;
+let ordemCrescenteNuvem = true;
+
 export async function carregarPedidosNuvemDB() {
     const tbody = document.getElementById('corpo-tabela-nuvem');
     if(!tbody) return;
@@ -157,11 +160,12 @@ export function abrirDetalhesPedido(idPedido) {
 
     const gerarLinkWpp = (templateText) => {
         if (!telLimpo) return '#'; 
-        let textoFinal = templateText.replace(/{nome}/g, primeiroNome).replace(/{pedido}/g, pedido.numero_pedido).replace(/{rastreio}/g, trackCode).replace(/{link_rastreio}/g, urlRastreioBase);
+        // FIX: Variável {produtos} adicionada
+        let textoFinal = templateText.replace(/{nome}/g, primeiroNome).replace(/{pedido}/g, pedido.numero_pedido).replace(/{rastreio}/g, trackCode).replace(/{link_rastreio}/g, urlRastreioBase).replace(/{produtos}/g, pedido.produtos || 'seus itens');
         return `https://wa.me/55${telLimpo}?text=${encodeURIComponent(textoFinal)}`;
     };
 
-    // LÓGICA DE STEPPER ESTRITAMENTE BASEADA NOS DISPAROS REAIS
+    // LÓGICA DE STEPPER
     let isAprovadoDone = pedido.auto_aprovado === true;
     let isFabDone = pedido.auto_fabricacao === true;
     let isRastreioDone = pedido.auto_rastreio === true;
@@ -177,7 +181,8 @@ export function abrirDetalhesPedido(idPedido) {
 
     const createStep = (isDone, title, subtitle, msgTemplate) => {
         const color = isDone ? '#10b981' : '#cbd5e1';
-        const bg = isDone ? '#10b981' : 'transparent';
+        // FIX: Fundo #f8fafc ao invés de transparent para tapar a linha de fundo
+        const bg = isDone ? '#10b981' : '#f8fafc';
         const icon = isDone ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` : ``;
         const linkWpp = gerarLinkWpp(msgTemplate);
         const btnWppHtml = telLimpo ? `<a href="${linkWpp}" target="_blank" style="margin-left: auto; background: #25d366; color: white; padding: 4px 10px; border-radius: 6px; text-decoration: none; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 4px; transition: opacity 0.2s;" title="Enviar mensagem desta etapa"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> Enviar</a>` : ``;

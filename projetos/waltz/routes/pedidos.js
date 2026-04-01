@@ -5,13 +5,11 @@ const { fetchComRetry } = require('../utils/helpers');
 
 const pedidosEmProcessamentoNuvem = new Set();
 
-// ============================================================================
-// ROTAS DE CONSULTA E PAINEL
-// ============================================================================
 router.get('/api/pedidos', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
-        const { rows: pedidos } = await sql`SELECT * FROM pedidos_nuvemshop WHERE status_nuvemshop != 'Cancelado' ORDER BY data_criacao DESC;`;
+        // FIX: Removemos o WHERE status != 'Cancelado' para que você possa ver e filtrar os pedidos Cancelados na tela
+        const { rows: pedidos } = await sql`SELECT * FROM pedidos_nuvemshop ORDER BY data_criacao DESC LIMIT 1500;`;
         res.json(pedidos);
     } catch (erro) { res.status(500).json({ erro: 'Erro interno' }); }
 });
@@ -25,9 +23,6 @@ router.post('/api/pedidos/marcar-feedback', async (req, res) => {
     } catch (erro) { res.status(500).json({ sucesso: false }); }
 });
 
-// ============================================================================
-// O WEBHOOK INTELIGENTE (À PROVA DE BUGS DA NUVEMSHOP)
-// ============================================================================
 router.post('/api/webhook/nuvemshop', async (req, res) => {
     const payload = req.body;
     if (!payload || !payload.id) return res.status(200).send('Ignorado'); 
@@ -49,6 +44,9 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
         const email_cliente = dadosPedido.customer && dadosPedido.customer.email ? dadosPedido.customer.email : '';
         const telefone = dadosPedido.customer && dadosPedido.customer.phone ? dadosPedido.customer.phone : '';
         
+        // FIX: Extraímos os nomes dos produtos para usar na variável do WhatsApp
+        const nomesProdutos = dadosPedido.products ? dadosPedido.products.map(p => p.name).join(', ') : '';
+
         let status = 'Aberto';
         const statusPrincipal = (dadosPedido.status || '').toLowerCase();
         const statusEnvio = (dadosPedido.shipping_status || '').toLowerCase();
@@ -59,9 +57,6 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
 
         const rastreio = dadosPedido.shipping_tracking_number || '';
         
-        // ==============================================================
-        // LÓGICA DE CRUZAMENTO DE DATAS (O Cérebro da Automação)
-        // ==============================================================
         let dataEnvioFinal = dadosPedido.shipped_at ? new Date(dadosPedido.shipped_at) : null;
         let dataEntregaFinal = null;
         let dataEnvioBackupSmart = null;
@@ -80,12 +75,10 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
                         const eventos = jsonSmart.result.trackings.sort((a, b) => new Date(a.date) - new Date(b.date));
                         const ultimoEvento = eventos[eventos.length - 1];
 
-                        // Captura a data de entrega
                         if (ultimoEvento.code && ultimoEvento.code.tracking_type === 'DELIVERED') {
                             dataEntregaFinal = new Date(ultimoEvento.date);
                         }
 
-                        // Procura o primeiro bipe físico como backup (Ignorando criações de etiqueta)
                         const bipeFisico = eventos.find(e => 
                             e.code &&
                             e.code.tracking_type !== 'CREATED' && 
@@ -98,19 +91,13 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
                         }
                     }
                 }
-            } catch (err) { 
-                console.error("⚠️ Falha ao buscar dados na SmartEnvios via Webhook"); 
-            }
+            } catch (err) {}
         }
 
-        // 🛡️ O ESCUDO: Se a Nuvemshop sobrescrever o envio com a entrega (ou enviar vazio), usamos a SmartEnvios
         if (!dataEnvioFinal || (dataEntregaFinal && dataEnvioFinal.toISOString().substring(0,10) === dataEntregaFinal.toISOString().substring(0,10))) {
-            if (dataEnvioBackupSmart) {
-                dataEnvioFinal = dataEnvioBackupSmart;
-            }
+            if (dataEnvioBackupSmart) dataEnvioFinal = dataEnvioBackupSmart;
         }
 
-        // Fallbacks Finais de Segurança
         if (!dataEnvioFinal && (status === 'Enviado' || status === 'Entregue')) {
             dataEnvioFinal = new Date(dadosPedido.created_at);
         }
@@ -118,25 +105,26 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
             dataEntregaFinal = dadosPedido.finished_at ? new Date(dadosPedido.finished_at) : new Date(dadosPedido.updated_at);
         }
 
-        // ==============================================================
-        // GRAVAÇÃO NO BANCO DE DADOS
-        // ==============================================================
         const envioDB = dataEnvioFinal ? dataEnvioFinal.toISOString() : null;
         const entregaDB = dataEntregaFinal ? dataEntregaFinal.toISOString() : null;
+
+        // FIX de Segurança: Cria a coluna de produtos caso ela ainda não exista no seu banco de dados
+        try { await sql`ALTER TABLE pedidos_nuvemshop ADD COLUMN IF NOT EXISTS produtos TEXT;`; } catch(e) {}
 
         await sql`
             INSERT INTO pedidos_nuvemshop (
                 id_pedido, numero_pedido, data_criacao, nome_cliente, cpf_cliente, telefone, email_cliente,
-                status_nuvemshop, rastreio, cep, data_envio, data_entrega
+                status_nuvemshop, rastreio, cep, data_envio, data_entrega, produtos
             )
             VALUES (
                 ${dadosPedido.id}, ${dadosPedido.number}, ${new Date(dadosPedido.created_at).toISOString()}, ${cliente}, ${cpf}, ${telefone}, ${email_cliente},
                 ${status}, ${rastreio}, ${dadosPedido.shipping_address ? dadosPedido.shipping_address.zipcode : ''},
-                ${envioDB}, ${entregaDB}
+                ${envioDB}, ${entregaDB}, ${nomesProdutos}
             )
             ON CONFLICT (id_pedido) DO UPDATE SET 
                 status_nuvemshop = EXCLUDED.status_nuvemshop,
                 rastreio = EXCLUDED.rastreio,
+                produtos = EXCLUDED.produtos,
                 data_envio = CASE WHEN EXCLUDED.data_envio IS NOT NULL THEN EXCLUDED.data_envio ELSE pedidos_nuvemshop.data_envio END,
                 data_entrega = CASE WHEN EXCLUDED.data_entrega IS NOT NULL THEN EXCLUDED.data_entrega ELSE pedidos_nuvemshop.data_entrega END;
         `;

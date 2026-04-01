@@ -47,30 +47,24 @@ export function renderizarTabelaCEPs() {
 
     window.todosOsPedidosNuvem.forEach(p => {
         if (!p.data_envio || !p.data_entrega) return;
+        
+        // FIX: Lemos vários tipos de status fechados/entregues em português e inglês
         const status = (p.status_nuvemshop || '').toUpperCase();
-        if (status !== 'ENTREGUE' && status !== 'ARQUIVADO') return;
+        if (status !== 'ENTREGUE' && status !== 'ARQUIVADO' && status !== 'CLOSED' && status !== 'DELIVERED') return;
+        
         const cepLimpo = (p.cep || '').replace(/\D/g, '');
         const ufStandard = normalizarNomeEstado(p.estado || 'Não Informado');
+        
+        // FIX: Se o usuário filtrou, mas o CEP não contém os números, salta este pedido!
         if (filtroCepLimpo && !cepLimpo.includes(filtroCepLimpo)) return;
         
-        // ========================================================
-        // CORREÇÃO: FILTRO DE ANOMALIAS (OUTLIERS) E DATAS INVÁLIDAS
-        // ========================================================
         const dataEnvio = new Date(p.data_envio);
         const dataEntrega = new Date(p.data_entrega);
-        
-        // Subtração simples (sem Math.abs) para detetar datas invertidas
         const diffTime = dataEntrega.getTime() - dataEnvio.getTime();
         
-        // Se o tempo for negativo (erro humano na Nuvemshop onde a entrega foi antes do envio) ignoramos.
         if (diffTime < 0) return;
-        
         const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        // Se o pedido demorou mais de 60 dias (provavelmente um teste antigo importado),
-        // ignoramos para não estragar a média real da sua logística.
         if (diffDias > 60) return;
-        // ========================================================
         
         let chaveGrupoTabela = filtroCepLimpo === "" ? ufStandard : `${ufStandard}|${cepLimpo.length >= 5 ? cepLimpo.substring(0, 5) + '-***' : (cepLimpo || 'Sem CEP')}`;
         let textoCepExibicao = filtroCepLimpo === "" ? 'Geral (Todo o Estado)' : (cepLimpo.length >= 5 ? cepLimpo.substring(0, 5) + '-***' : (cepLimpo || 'Sem CEP'));

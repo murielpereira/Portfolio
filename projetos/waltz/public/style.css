@@ -184,3 +184,4 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 
 /* Filtros menores (flex: 1 com limite máximo) */
 .control-select { flex: 1; min-width: 140px; max-width: 200px; background-color: #f8fafc; }
+select.input-modern, select.control-select { padding-right: 32px !important; }

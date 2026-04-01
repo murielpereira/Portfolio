@@ -30,8 +30,14 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
                 return; 
             }
 
-            const totalPedidos = pedidosDoCliente.length;
-            const valorTotalGasto = pedidosDoCliente.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
+            // FIX: Ignora os pedidos Cancelados ou Devolvidos na hora de somar o valor VIP do cliente
+            const pedidosValidos = pedidosDoCliente.filter(p => {
+                const situacao = (p.pedido.situacao || '').toLowerCase();
+                return !situacao.includes('cancelad') && !situacao.includes('devolvid') && !situacao.includes('excluíd');
+            });
+
+            const totalPedidos = pedidosValidos.length;
+            const valorTotalGasto = pedidosValidos.reduce((acc, p) => acc + parseFloat(p.pedido.valor || 0), 0);
             
             await sql`
                 INSERT INTO clientes (cpf, nome, total_pedidos, valor_total)
