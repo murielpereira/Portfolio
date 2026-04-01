@@ -8,7 +8,7 @@ import { getAbaClientes } from './templates/aba-clientes.js';
 import { getAbaPedidos } from './templates/aba-pedidos.js';
 import { getAbaRfm } from './templates/aba-rfm.js';
 import { getAbaCep } from './templates/aba-cep.js';
-
+import { getAbaWhatsapp } from './templates/aba-whatsapp.js';
 // Exportamos o Login para o app.js conseguir usá-lo
 export { getTemplateLogin };
 
@@ -25,6 +25,7 @@ export function getTemplatePainel() {
                 ${getAbaDash()}
                 ${getAbaClientes()}
                 ${getAbaPedidos()}
+                ${getAbaWhatsapp()}
                 ${getAbaRfm()}
                 ${getAbaCep()}
             </div>

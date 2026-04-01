@@ -1,13 +1,12 @@
 export function getAbaPedidos() {
     return `
     <div id="sub-nuvem" class="sub-pagina" style="display: none;">
-        <div class="control-bar">
-            <div class="control-filters">
+        <div class="control-bar" style="flex-wrap: nowrap;">
+            <div class="control-filters" style="flex-wrap: nowrap; flex: 1;">
                 <div class="control-search">
                     <i data-lucide="search"></i>
                     <input type="text" id="busca-nuvem-v2" class="input-modern" placeholder="Buscar pedido..." onkeyup="resetarPaginacaoNuvem()">
                 </div>
-                
                 <select id="filtro-status-v2" class="input-modern control-select" onchange="resetarPaginacaoNuvem()">
                     <option value="TODOS">Todos os Status</option>
                     <option value="Aberto">Aberto</option>
@@ -15,7 +14,6 @@ export function getAbaPedidos() {
                     <option value="Entregue">Entregue</option>
                     <option value="Cancelado">Cancelado</option>
                 </select>
-
                 <select id="filtro-automacao-v2" class="input-modern control-select" onchange="resetarPaginacaoNuvem()">
                     <option value="TODOS">Todas as Automações</option>
                     <option value="Aguardando Automação...">Aguardando Automação...</option>
