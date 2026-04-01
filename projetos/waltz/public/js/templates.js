@@ -60,7 +60,6 @@ export function getTemplatePainel() {
 
             <div class="page-content-wrapper" id="dashboard-content-area">
                 
-                <!-- ABA: CONFIGURAÇÕES -->
                 <div id="sub-config" class="sub-pagina" style="display: none;">
                     <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px;">
                         <label style="display: flex; align-items: center; cursor: pointer; font-weight: bold;">
@@ -143,142 +142,183 @@ export function getTemplatePainel() {
                     </div>
                 </div>
 
-                    <!-- ABA: DASHBOARD -->
-                    <div id="sub-dash" class="sub-pagina" style="display: none;">
-                        <div class="kpi-grid">
-                            <div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff; color:#3b82f6;"><i data-lucide="users"></i></div><div class="kpi-info"><h3>Clientes</h3><div class="value">27.935</div></div></div>
-                            <div class="kpi-card"><div class="kpi-icon" style="background:#ecfdf5; color:#10b981;"><i data-lucide="shopping-cart"></i></div><div class="kpi-info"><h3>Pedidos</h3><div class="value">7.485</div></div></div>
-                            <div class="kpi-card"><div class="kpi-icon" style="background:#fffbeb; color:#f59e0b;"><i data-lucide="truck"></i></div><div class="kpi-info"><h3>Entregas Pendentes</h3><div class="value">342</div></div></div>
-                            <div class="kpi-card"><div class="kpi-icon" style="background:#fef2f2; color:#ef4444;"><i data-lucide="mail"></i></div><div class="kpi-info"><h3>E-mails Enviados</h3><div class="value">1.204</div></div></div>
-                        </div>
-                        <div class="charts-grid">
-                            <div class="chart-card" id="grafico-clientes-div" style="padding: 20px; align-items: center;">Carregando gráfico...</div>
-                            <div class="chart-card">Desempenho logístico — em breve</div>
-                        </div>
+                <div id="sub-dash" class="sub-pagina" style="display: none;">
+                    <div class="kpi-grid">
+                        <div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff; color:#3b82f6;"><i data-lucide="users"></i></div><div class="kpi-info"><h3>Clientes</h3><div class="value">27.935</div></div></div>
+                        <div class="kpi-card"><div class="kpi-icon" style="background:#ecfdf5; color:#10b981;"><i data-lucide="shopping-cart"></i></div><div class="kpi-info"><h3>Pedidos</h3><div class="value">7.485</div></div></div>
+                        <div class="kpi-card"><div class="kpi-icon" style="background:#fffbeb; color:#f59e0b;"><i data-lucide="truck"></i></div><div class="kpi-info"><h3>Entregas Pendentes</h3><div class="value">342</div></div></div>
+                        <div class="kpi-card"><div class="kpi-icon" style="background:#fef2f2; color:#ef4444;"><i data-lucide="mail"></i></div><div class="kpi-info"><h3>E-mails Enviados</h3><div class="value">1.204</div></div></div>
                     </div>
-
-                    <!-- ABA: CLIENTES (TINY) -->
-                    <div id="sub-tiny" class="sub-pagina" style="display: none;">
-                        <div class="card-table">
-                            <div class="tabela-responsiva">
-                                <table class="tabela-dados">
-                                <thead>
-                                        <tr>
-                                            <th onclick="ordenarTabela(0)">Nome <span class="sort-icon" id="sort-icon-0">↑↓</span></th>
-                                            <th onclick="ordenarTabela(1)">WhatsApp <span class="sort-icon" id="sort-icon-1">↑↓</span></th>
-                                            <th onclick="ordenarTabela(2)">CPF/CNPJ <span class="sort-icon" id="sort-icon-2">↑↓</span></th>
-                                            <th onclick="ordenarTabela(3)">Cidade <span class="sort-icon" id="sort-icon-3">↑↓</span></th>
-                                            <th onclick="ordenarTabela(4)">UF <span class="sort-icon" id="sort-icon-4">↑↓</span></th>
-                                            <th onclick="ordenarTabela(5)">Grupo <span class="sort-icon" id="sort-icon-5">↑↓</span></th> 
-                                            <th onclick="ordenarTabela(6)">Pedidos <span class="sort-icon" id="sort-icon-6">↑↓</span></th>
-                                            <th onclick="ordenarTabela(7)">Ticket Médio <span class="sort-icon" id="sort-icon-7">↑↓</span></th>
-                                            <th onclick="ordenarTabela(8)">Entrega <span class="sort-icon" id="sort-icon-8">↑↓</span></th>
-                                            <th onclick="ordenarTabela(9)">Valor Total <span class="sort-icon" id="sort-icon-9">↑↓</span></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tabela-clientes-body"><tr><td colspan="10" style="text-align:center; padding: 30px;">Carregando...</td></tr></tbody>
-                                </table>
-                            </div>
-                            <div class="paginacao-controles" id="paginacao-ltv"></div>
-                        </div>
-                    </div>
-
-                    <!-- ABA: PEDIDOS (NUVEM) -->
-                    <div id="sub-nuvem" class="sub-pagina" style="display: none;">
-                        <div class="card-table">
-                            <div class="tabela-responsiva">
-                                <table class="tabela-dados">
-                                    <thead>
-                                        <tr>
-                                            <th>Data/Hora <span class="sort-icon">↑↓</span></th>
-                                            <th>Pedido <span class="sort-icon">↑↓</span></th>
-                                            <th>Cliente <span class="sort-icon">↑↓</span></th>
-                                            <th>Status <span class="sort-icon">↑↓</span></th>
-                                            <th>Automações (Status WhatsApp)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="corpo-tabela-nuvem"><tr><td colspan="5" style="text-align: center; padding: 30px;">Carregando...</td></tr></tbody>
-                                </table>
-                            </div>
-                            <div class="paginacao-controles" id="paginacao-nuvem"></div>
-                        </div>
-                    </div>
-
-                    <!-- ABA: MATRIZ RFM -->
-                    <div id="sub-rfm" class="sub-pagina" style="display: none;">
-                        <div class="card-table" style="padding: 30px; text-align: center;">
-                            <div style="width: 60px; height: 60px; background: #eff6ff; color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-                                <i data-lucide="target" style="width: 30px; height: 30px;"></i>
-                            </div>
-                            <h2 style="font-size: 20px; color: var(--text-main); margin-bottom: 10px;">Matriz RFM Inteligente</h2>
-                            <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto 30px;">
-                                A análise de <b>Recência</b> (tempo desde a última compra), <b>Frequência</b> (quantidade de compras) e <b>Monetário</b> (valor gasto) divide a sua base para ações de marketing precisas.
-                            </p>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; max-width: 800px; margin: 0 auto 30px;">
-                                <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                    <div style="font-size: 24px; font-weight: bold; color: var(--primary);" id="rfm-r-avg">-</div>
-                                    <b>Recência Média</b> <br><span style="font-size:12px; color:var(--text-muted)">Dias desde a última compra</span>
-                                </div>
-                                <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                    <div style="font-size: 24px; font-weight: bold; color: #10b981;" id="rfm-f-avg">-</div>
-                                    <b>Frequência Média</b> <br><span style="font-size:12px; color:var(--text-muted)">Total de pedidos por cliente</span>
-                                </div>
-                                <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                    <div style="font-size: 24px; font-weight: bold; color: #f59e0b;" id="rfm-m-avg">-</div>
-                                    <b>LTV Médio</b> <br><span style="font-size:12px; color:var(--text-muted)">Gasto total por cliente</span>
-                                </div>
-                            </div>
-                            <div style="max-width: 800px; margin: 0 auto; text-align: left;" id="rfm-segmentos">
-                                <div style="padding: 15px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-                                    <div><span class="badge badge-diamante">Campeões</span> <span style="font-size:13px; color:var(--text-muted); margin-left:10px;">Compraram recentemente, compram com frequência e gastam muito.</span></div>
-                                    <strong id="rfm-campeoes">0 clientes</strong>
-                                </div>
-                                <div style="padding: 15px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-                                    <div><span class="badge badge-ouro">Fiéis</span> <span style="font-size:13px; color:var(--text-muted); margin-left:10px;">Compram com frequência regular na sua loja.</span></div>
-                                    <strong id="rfm-fieis">0 clientes</strong>
-                                </div>
-                                <div style="padding: 15px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-                                    <div><span class="badge badge-primeiracompra">Recentes</span> <span style="font-size:13px; color:var(--text-muted); margin-left:10px;">Fizeram a primeira compra nos últimos 30 dias.</span></div>
-                                    <strong id="rfm-recentes">0 clientes</strong>
-                                </div>
-                                <div style="padding: 15px; display:flex; justify-content:space-between; align-items:center;">
-                                    <div><span class="badge badge-bronze">Em Risco</span> <span style="font-size:13px; color:var(--text-muted); margin-left:10px;">Compraram no passado, mas estão sumidos há muito tempo.</span></div>
-                                    <strong id="rfm-emrisco">0 clientes</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ABA: CEP -->
-                    <div id="sub-cep" class="sub-pagina" style="display: none;">
-                        <section id="mapa_brasil_card" class="card" style="display:none; padding: 20px; margin-bottom: 20px; background:white; border-radius:12px; border:1px solid var(--border-color);">
-                            <h2 style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 10px;">Visualização Geográfica (Heatmap de Entrega)</h2>
-                            <div style="display: flex; justify-content: center; align-items: center; background: #f8fafc; border-radius: 8px; padding: 10px;"><div id="mapa_brasil_div" style="width: 100%; max-width: 650px; height: 350px;"></div></div>
-                        </section>
-                        <div class="card-table">
-                            <div class="tabela-responsiva">
-                                <table class="tabela-dados">
-                                    <thead><tr><th>Estado (UF)</th><th>CEP Base</th><th>Média de Tempo de Entrega</th><th>Volume (Qtd de Pedidos)</th></tr></thead>
-                                    <tbody id="corpo-tabela-ceps"><tr><td colspan="4" style="text-align: center; padding: 30px;">Aguardando processamento...</td></tr></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                </div> <!-- FIM DA ÁREA DE CONTEÚDO -->
-
-                <!-- DRAWER DE DETALHES DO PEDIDO -->
-                <div class="drawer-overlay" id="drawer-overlay" onclick="fecharDetalhesPedido()"></div>
-                <div class="drawer-panel" id="drawer-pedido">
-                    <div class="drawer-header">
-                        <h2 id="drawer-titulo">Detalhes do Pedido</h2>
-                        <button class="btn-close-drawer" onclick="fecharDetalhesPedido()"><i data-lucide="x"></i></button>
-                    </div>
-                    <div class="drawer-body" id="drawer-conteudo">
-                        <!-- Conteúdo injetado pelo JavaScript -->
+                    <div class="charts-grid">
+                        <div class="chart-card" id="grafico-clientes-div" style="padding: 20px; align-items: center;">Carregando gráfico...</div>
+                        <div class="chart-card">Desempenho logístico — em breve</div>
                     </div>
                 </div>
 
-            </main>
-        </div>`;
+                <div id="sub-tiny" class="sub-pagina" style="display: none;">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="text" id="filtro-texto" class="input-modern" placeholder="Nome ou CPF/CNPJ..." onkeyup="resetarEPaginacao()" style="width: 250px;">
+                            
+                            <select id="filtro-grupo" class="input-modern" onchange="resetarEPaginacao()" style="cursor: pointer; min-width: 160px;">
+                                <option value="TODOS">Todos os Grupos</option>
+                                <option value="SEM COMPRAS">Sem Compras</option>
+                                <option value="PRIMEIRA COMPRA">1ª Compra</option>
+                                <option value="BRONZE">Bronze</option>
+                                <option value="PRATA">Prata</option>
+                                <option value="OURO">Ouro</option>
+                                <option value="DIAMANTE">Diamante</option>
+                            </select>
+                        </div>
+                        
+                        <span id="contador-cadastros" style="background: #1e293b; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                            0 cadastro(s)
+                        </span>
+                    </div>
+
+                    <div class="card-table">
+                        <div class="tabela-responsiva">
+                            <table class="tabela-dados">
+                            <thead>
+                                    <tr>
+                                        <th onclick="ordenarTabela(0)">Nome <span class="sort-icon" id="sort-icon-0">↑↓</span></th>
+                                        <th onclick="ordenarTabela(1)">WhatsApp <span class="sort-icon" id="sort-icon-1">↑↓</span></th>
+                                        <th onclick="ordenarTabela(2)">CPF/CNPJ <span class="sort-icon" id="sort-icon-2">↑↓</span></th>
+                                        <th onclick="ordenarTabela(3)">Cidade <span class="sort-icon" id="sort-icon-3">↑↓</span></th>
+                                        <th onclick="ordenarTabela(4)">UF <span class="sort-icon" id="sort-icon-4">↑↓</span></th>
+                                        <th onclick="ordenarTabela(5)">Grupo <span class="sort-icon" id="sort-icon-5">↑↓</span></th> 
+                                        <th onclick="ordenarTabela(6)">Pedidos <span class="sort-icon" id="sort-icon-6">↑↓</span></th>
+                                        <th onclick="ordenarTabela(7)">Ticket Médio <span class="sort-icon" id="sort-icon-7">↑↓</span></th>
+                                        <th onclick="ordenarTabela(8)">Entrega <span class="sort-icon" id="sort-icon-8">↑↓</span></th>
+                                        <th onclick="ordenarTabela(9)">Valor Total <span class="sort-icon" id="sort-icon-9">↑↓</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-clientes-body"><tr><td colspan="10" style="text-align:center; padding: 30px;">Carregando...</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="paginacao-controles" id="paginacao-ltv"></div>
+                    </div>
+                </div>
+
+                <div id="sub-nuvem" class="sub-pagina" style="display: none;">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="text" id="busca-nuvem" class="input-modern" placeholder="Buscar pedido ou cliente..." onkeyup="resetarPaginacaoNuvem()" style="width: 250px;">
+                            
+                            <select id="filtro-status-nuvem" class="input-modern" onchange="resetarPaginacaoNuvem()" style="cursor: pointer; min-width: 150px;">
+                                <option value="TODOS">Todos os Status</option>
+                                <option value="Aberto">Aberto</option>
+                                <option value="Enviado">Enviado</option>
+                                <option value="Entregue">Entregue</option>
+                                <option value="Cancelado">Cancelado</option>
+                            </select>
+
+                            <select id="filtro-automacao-nuvem" class="input-modern" onchange="resetarPaginacaoNuvem()" style="cursor: pointer; min-width: 200px;">
+                                <option value="TODOS">Todas as Automações</option>
+                                <option value="Aguardando Automação...">Aguardando Automação...</option>
+                                <option value="1. Pedido Aprovado">1. Pedido Aprovado</option>
+                                <option value="2. Em Fabricação">2. Em Fabricação</option>
+                                <option value="3. Rastreio Enviado">3. Rastreio Enviado</option>
+                                <option value="4. Em Rota / Entregue">4. Em Rota / Entregue</option>
+                                <option value="5. Feedback Concluído">5. Feedback Concluído</option>
+                            </select>
+                        </div>
+                        
+                        <span id="contador-nuvem" style="background: #1e293b; color: white; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                            0 pedido(s)
+                        </span>
+                    </div>
+
+                    <div class="card-table">
+                        <div class="tabela-responsiva">
+                            <table class="tabela-dados">
+                                <thead>
+                                    <tr>
+                                        <th>Data/Hora <span class="sort-icon">↑↓</span></th>
+                                        <th>Pedido <span class="sort-icon">↑↓</span></th>
+                                        <th>Cliente <span class="sort-icon">↑↓</span></th>
+                                        <th>Status <span class="sort-icon">↑↓</span></th>
+                                        <th>Automações (Status WhatsApp)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpo-tabela-nuvem"><tr><td colspan="5" style="text-align: center; padding: 30px;">Carregando...</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="paginacao-controles" id="paginacao-nuvem"></div>
+                    </div>
+                </div>
+
+                <div id="sub-rfm" class="sub-pagina" style="display: none;">
+                    <div class="card-table" style="padding: 30px; text-align: center;">
+                        <div style="width: 60px; height: 60px; background: #eff6ff; color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                            <i data-lucide="target" style="width: 30px; height: 30px;"></i>
+                        </div>
+                        <h2 style="font-size: 20px; color: var(--text-main); margin-bottom: 10px;">Matriz RFM Inteligente</h2>
+                        <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto 30px;">
+                            A análise de <b>Recência</b> (tempo desde a última compra), <b>Frequência</b> (quantidade de compras) e <b>Monetário</b> (valor gasto) divide a sua base para ações de marketing precisas.
+                        </p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; max-width: 800px; margin: 0 auto 30px;">
+                            <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <div style="font-size: 24px; font-weight: bold; color: var(--primary);" id="rfm-r-avg">-</div>
+                                <b>Recência Média</b> <br><span style="font-size:12px; color:var(--text-muted)">Dias desde a última compra</span>
+                            </div>
+                            <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <div style="font-size: 24px; font-weight: bold; color: #10b981;" id="rfm-f-avg">-</div>
+                                <b>Frequência Média</b> <br><span style="font-size:12px; color:var(--text-muted)">Total de pedidos por cliente</span>
+                            </div>
+                            <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <div style="font-size: 24px; font-weight: bold; color: #f59e0b;" id="rfm-m-avg">-</div>
+                                <b>LTV Médio</b> <br><span style="font-size:12px; color:var(--text-muted)">Gasto total por cliente</span>
+                            </div>
+                        </div>
+                        <div style="max-width: 800px; margin: 0 auto; text-align: left;" id="rfm-segmentos">
+                            <div style="padding: 15px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                                <div><span class="badge badge-diamante">Campeões</span> <span style="font-size:13px; color:var(--text-muted); margin-left:10px;">Compraram recentemente, compram com frequência e gastam muito.</span></div>
+                                <strong id="rfm-campeoes">0 clientes</strong>
+                            </div>
+                            <div style="padding: 15px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                                <div><span class="badge badge-ouro">Fiéis</span> <span style="font-size:13px; color:var(--text-muted); margin-left:10px;">Compram com frequência regular na sua loja.</span></div>
+                                <strong id="rfm-fieis">0 clientes</strong>
+                            </div>
+                            <div style="padding: 15px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                                <div><span class="badge badge-primeiracompra">Recentes</span> <span style="font-size:13px; color:var(--text-muted); margin-left:10px;">Fizeram a primeira compra nos últimos 30 dias.</span></div>
+                                <strong id="rfm-recentes">0 clientes</strong>
+                            </div>
+                            <div style="padding: 15px; display:flex; justify-content:space-between; align-items:center;">
+                                <div><span class="badge badge-bronze">Em Risco</span> <span style="font-size:13px; color:var(--text-muted); margin-left:10px;">Compraram no passado, mas estão sumidos há muito tempo.</span></div>
+                                <strong id="rfm-emrisco">0 clientes</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sub-cep" class="sub-pagina" style="display: none;">
+                    <section id="mapa_brasil_card" class="card" style="display:none; padding: 20px; margin-bottom: 20px; background:white; border-radius:12px; border:1px solid var(--border-color);">
+                        <h2 style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 10px;">Visualização Geográfica (Heatmap de Entrega)</h2>
+                        <div style="display: flex; justify-content: center; align-items: center; background: #f8fafc; border-radius: 8px; padding: 10px;"><div id="mapa_brasil_div" style="width: 100%; max-width: 650px; height: 350px;"></div></div>
+                    </section>
+                    <div class="card-table">
+                        <div class="tabela-responsiva">
+                            <table class="tabela-dados">
+                                <thead><tr><th>Estado (UF)</th><th>CEP Base</th><th>Média de Tempo de Entrega</th><th>Volume (Qtd de Pedidos)</th></tr></thead>
+                                <tbody id="corpo-tabela-ceps"><tr><td colspan="4" style="text-align: center; padding: 30px;">Aguardando processamento...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <div class="drawer-overlay" id="drawer-overlay" onclick="fecharDetalhesPedido()"></div>
+            <div class="drawer-panel" id="drawer-pedido">
+                <div class="drawer-header">
+                    <h2 id="drawer-titulo">Detalhes do Pedido</h2>
+                    <button class="btn-close-drawer" onclick="fecharDetalhesPedido()"><i data-lucide="x"></i></button>
+                </div>
+                <div class="drawer-body" id="drawer-conteudo">
+                    </div>
+            </div>
+
+        </main>
+    </div>`;
 }

@@ -70,20 +70,15 @@ export function renderizarPaginaNuvem() {
             
             const stNuvem = p.status_nuvemshop.toUpperCase();
             
-            let checkAprovado = true; 
-            let checkFab = stNuvem !== 'ABERTO' && stNuvem !== 'CANCELADO';
-            let checkRastreio = p.rastreio && p.rastreio.trim() !== '' ? true : false;
-            let checkRota = stNuvem === 'ENTREGUE' || stNuvem === 'ARQUIVADO';
-            let checkFeedback = p.status_feedback === 'Enviado';
-
+            // LÓGICA DE TEXTO DA TABELA ESTRITAMENTE BASEADA NOS DISPAROS
             let step = 0;
             let ultimoStatusTexto = "Aguardando Automação...";
             
-            if (p.auto_aprovado === true || checkAprovado) { step = 1; ultimoStatusTexto = "1. Pedido Aprovado"; }
-            if (p.auto_fabricacao === true || checkFab) { step = 2; ultimoStatusTexto = "2. Em Fabricação"; }
-            if (p.auto_rastreio === true || checkRastreio) { step = 3; ultimoStatusTexto = "3. Rastreio Enviado"; }
-            if (p.auto_entrega === true || checkRota) { step = 4; ultimoStatusTexto = "4. Em Rota / Entregue"; }
-            if (p.status_feedback === 'Enviado' || checkFeedback) { step = 5; ultimoStatusTexto = "5. Feedback Concluído"; }
+            if (p.auto_aprovado === true) { step = 1; ultimoStatusTexto = "1. Pedido Aprovado"; }
+            if (p.auto_fabricacao === true) { step = 2; ultimoStatusTexto = "2. Em Fabricação"; }
+            if (p.auto_rastreio === true) { step = 3; ultimoStatusTexto = "3. Rastreio Enviado"; }
+            if (p.auto_entrega === true) { step = 4; ultimoStatusTexto = "4. Em Rota / Entregue"; }
+            if (p.status_feedback === 'Enviado') { step = 5; ultimoStatusTexto = "5. Feedback Concluído"; }
 
             let corTexto = step > 0 ? 'var(--primary)' : 'var(--text-muted)';
             let acaoComunicacao = `<span style="font-size: 13px; font-weight: 600; color: ${corTexto};">${ultimoStatusTexto}</span>`;
@@ -165,18 +160,19 @@ export function abrirDetalhesPedido(idPedido) {
         return `https://wa.me/55${telLimpo}?text=${encodeURIComponent(textoFinal)}`;
     };
 
-    let checkAprovado = true; 
-    let checkFab = stNuvem !== 'ABERTO' && stNuvem !== 'CANCELADO';
-    let checkRastreio = pedido.rastreio && pedido.rastreio.trim() !== '' ? true : false;
-    let checkRota = stNuvem === 'ENTREGUE' || stNuvem === 'ARQUIVADO';
-    let checkFeedback = pedido.status_feedback === 'Enviado';
+    // LÓGICA DE STEPPER ESTRITAMENTE BASEADA NOS DISPAROS REAIS
+    let isAprovadoDone = pedido.auto_aprovado === true;
+    let isFabDone = pedido.auto_fabricacao === true;
+    let isRastreioDone = pedido.auto_rastreio === true;
+    let isRotaDone = pedido.auto_entrega === true;
+    let isFeedbackDone = pedido.status_feedback === 'Enviado';
 
-    let step = 0;
-    if (pedido.auto_aprovado === true || checkAprovado) step = 1;
-    if (pedido.auto_fabricacao === true || checkFab) step = 2;
-    if (pedido.auto_rastreio === true || checkRastreio) step = 3;
-    if (pedido.auto_entrega === true || checkRota) step = 4;
-    if (pedido.status_feedback === 'Enviado' || checkFeedback) step = 5;
+    let lastCompletedStep = 0;
+    if (isAprovadoDone) lastCompletedStep = 1;
+    if (isFabDone) lastCompletedStep = 2;
+    if (isRastreioDone) lastCompletedStep = 3;
+    if (isRotaDone) lastCompletedStep = 4;
+    if (isFeedbackDone) lastCompletedStep = 5;
 
     const createStep = (isDone, title, subtitle, msgTemplate) => {
         const color = isDone ? '#10b981' : '#cbd5e1';
@@ -210,14 +206,15 @@ export function abrirDetalhesPedido(idPedido) {
         <div class="detail-group" style="margin-bottom: 30px; background:#f8fafc; padding:20px; border-radius:12px; border:1px solid var(--border-color);">
             <label>Progresso das Automações</label>
             <div style="position:relative; display:flex; flex-direction:column; gap:15px; margin-top:15px;">
-                <div style="position:absolute; left:11px; top:10px; bottom:10px; width:2px; background:var(--border-color); z-index:1;"></div>
-                <div style="position:absolute; left:11px; top:10px; height:${(step/4)*100}%; max-height:100%; width:2px; background:#10b981; z-index:2; transition:height 0.8s ease-in-out;"></div>
+                <div style="position:absolute; left:11px; top:12px; bottom:12px; width:2px; background:var(--border-color); z-index:1;"></div>
                 
-                ${createStep(step >= 1, "1. Pedido Aprovado", "Confirmação do pagamento", templates.aprovado)}
-                ${createStep(step >= 2, "2. Em Fabricação", "Peça entrou em produção", templates.fabricacao)}
-                ${createStep(step >= 3, "3. Código de Rastreio", "Envio do link da transportadora", templates.rastreio)}
-                ${createStep(step >= 4, "4. Rota de Entrega", "Aviso de entrega no dia", templates.rota)}
-                ${createStep(step >= 5, "5. Feedback", "Pesquisa de satisfação", templates.feedback)}
+                <div style="position:absolute; left:11px; top:12px; height:calc(${(Math.max(0, lastCompletedStep - 1) / 4)} * (100% - 24px)); width:2px; background:#10b981; z-index:2; transition:height 0.8s ease-in-out;"></div>
+                
+                ${createStep(isAprovadoDone, "1. Pedido Aprovado", "Confirmação do pagamento", templates.aprovado)}
+                ${createStep(isFabDone, "2. Em Fabricação", "Peça entrou em produção", templates.fabricacao)}
+                ${createStep(isRastreioDone, "3. Código de Rastreio", "Envio do link da transportadora", templates.rastreio)}
+                ${createStep(isRotaDone, "4. Rota de Entrega", "Aviso de entrega no dia", templates.rota)}
+                ${createStep(isFeedbackDone, "5. Feedback", "Pesquisa de satisfação", templates.feedback)}
             </div>
         </div>
 
@@ -290,14 +287,12 @@ export function ordenarTabelaNuvem(colIndex) {
     resetarPaginacaoNuvem();
 }
 
-// ==========================================
-// PONTE GLOBAL (Tornando as funções visíveis para o HTML e app.js)
-// ==========================================
-window.todosOsPedidosNuvem = window.todosOsPedidosNuvem || [];
 window.ordenarTabelaNuvem = ordenarTabelaNuvem;
 window.resetarPaginacaoNuvem = resetarPaginacaoNuvem;
 window.irParaPaginaNuvem = irParaPaginaNuvem;
 window.mudarPaginaNuvem = mudarPaginaNuvem;
 window.abrirDetalhesPedido = abrirDetalhesPedido;
 window.fecharDetalhesPedido = fecharDetalhesPedido;
+window.carregarPedidosNuvemDB = carregarPedidosNuvemDB;
+window.todosOsPedidosNuvem = window.todosOsPedidosNuvem || [];
 window.carregarPedidosNuvemDB = carregarPedidosNuvemDB;

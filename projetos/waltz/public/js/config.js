@@ -22,7 +22,7 @@ export async function carregarConfiguracoesDoBanco() {
                 configsGlobais.whatsapp_ativo = data.config.whatsapp_ativo === 'true';
             }
         }
-    } catch (e) { console.error('Erro config locais'); }
+    } catch (e) { console.error('Erro config locais:', e); }
 }
 
 export function getRegrasVIP() {

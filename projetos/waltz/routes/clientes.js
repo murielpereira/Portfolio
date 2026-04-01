@@ -61,9 +61,34 @@ router.post('/api/webhook/tiny', async (req, res) => {
 router.get('/api/relatorios/clientes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
-        const { rows } = await sql`SELECT * FROM clientes ORDER BY valor_total DESC;`;
+        // A Mágica do SQL: Calcula o ticket médio e junta com a média de entrega das encomendas
+        const { rows } = await sql`
+            SELECT 
+                c.*,
+                CASE 
+                    WHEN c.total_pedidos > 0 THEN (c.valor_total / c.total_pedidos) 
+                    ELSE 0 
+                END AS ticket_medio,
+                ROUND(p.media_dias, 0) AS tempo_medio_entrega_dias
+            FROM clientes c
+            LEFT JOIN (
+                SELECT 
+                    cpf_cliente,
+                    AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400)::numeric AS media_dias
+                FROM pedidos_nuvemshop
+                WHERE status_nuvemshop = 'Entregue' 
+                  AND data_envio IS NOT NULL 
+                  AND data_entrega IS NOT NULL
+                  AND data_entrega >= data_envio
+                GROUP BY cpf_cliente
+            ) p ON c.cpf = p.cpf_cliente
+            ORDER BY c.valor_total DESC;
+        `;
         res.json({ sucesso: true, clientes: rows });
-    } catch (erro) { res.status(500).json({ sucesso: false }); }
+    } catch (erro) { 
+        console.error("Erro ao gerar relatório de clientes:", erro);
+        res.status(500).json({ sucesso: false }); 
+    }
 });
 
 router.post('/api/relatorios/sincronizar-contatos', async (req, res) => {
