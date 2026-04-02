@@ -14,6 +14,7 @@ export function getSidebar() {
             <li onclick="mostrarSubPaginaDash('whatsapp')"><div class="nav-link"><i data-lucide="message-circle"></i> <span class="nav-text">WhatsApp</span></div></li>
             <li><div id="nav-rfm" class="nav-link" onclick="mostrarSubPaginaDash('rfm')"><i data-lucide="bar-chart-2"></i> <span class="nav-text">Matriz RFM</span></div></li>
             <li><div id="nav-cep" class="nav-link" onclick="mostrarSubPaginaDash('cep')"><i data-lucide="map"></i> <span class="nav-text">Regiões Logísticas</span></div></li>
+            <li><div id="nav-trocas" class="nav-link" onclick="mostrarSubPaginaDash('trocas')"><i data-lucide="refresh-cw"></i> <span class="nav-text">Trocas</span></div></li>
         </ul>
         <div class="sidebar-footer">
             <div class="nav-link" id="nav-config" onclick="mostrarSubPaginaDash('config')"><i data-lucide="settings"></i> <span class="nav-text">Configurações</span></div>

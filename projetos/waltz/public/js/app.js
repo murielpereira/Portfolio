@@ -6,6 +6,9 @@ import { carregarConfiguracoesDoBanco, preencherFormularioConfig } from './confi
 import './pedidos.js';
 import './clientes.js';
 import './logistica.js';
+import './trocas.js';
+import './config.js';
+
 
 inicializarIcones();
 inicializarGoogleCharts();
@@ -105,6 +108,10 @@ async function mostrarSubPaginaDash(idAlvo) {
     } else if (idAlvo === 'email') {
         document.getElementById('dash-page-title').innerText = "E-mail Marketing";
         document.getElementById('dash-page-subtitle').innerText = "Gestão de campanhas e automações";
+    } else if (idAlvo === 'trocas') {
+        document.getElementById('dash-page-title').innerText = "Trocas e Devoluções";
+        document.getElementById('dash-page-subtitle').innerText = "Gestão de logística reversa e defeitos";
+        if (window.carregarTrocasDB) await window.carregarTrocasDB();
     }
     atualizarIcones();
 }

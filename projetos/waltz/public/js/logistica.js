@@ -1,3 +1,5 @@
+import { isGoogleChartsReady } from './utils.js';
+
 export function mapEstadoParaISO(estado) {
     if (!estado) return null; const uf = estado.trim().toUpperCase();
     const map = { 'AC': 'BR-AC', 'ACRE': 'BR-AC', 'AL': 'BR-AL', 'ALAGOAS': 'BR-AL', 'AP': 'BR-AP', 'AMAPÁ': 'BR-AP', 'AMAPA': 'BR-AP', 'AM': 'BR-AM', 'AMAZONAS': 'BR-AM', 'BA': 'BR-BA', 'BAHIA': 'BR-BA', 'CE': 'BR-CE', 'CEARÁ': 'BR-CE', 'CEARA': 'BR-CE', 'DF': 'BR-DF', 'DISTRITO FEDERAL': 'BR-DF', 'BRASÍLIA': 'BR-DF', 'ES': 'BR-ES', 'ESPÍRITO SANTO': 'BR-ES', 'ESPIRITO SANTO': 'BR-ES', 'GO': 'BR-GO', 'GOIÁS': 'BR-GO', 'GOIAS': 'BR-GO', 'MA': 'BR-MA', 'MARANHÃO': 'BR-MA', 'MARANHAO': 'BR-MA', 'MT': 'BR-MT', 'MATO GROSSO': 'BR-MT', 'MS': 'BR-MS', 'MATO GROSSO DO SUL': 'BR-MS', 'MG': 'BR-MG', 'MINAS GERAIS': 'BR-MG', 'PA': 'BR-PA', 'PARÁ': 'BR-PA', 'PARA': 'BR-PA', 'PB': 'BR-PB', 'PARAÍBA': 'BR-PB', 'PARAIBA': 'BR-PB', 'PR': 'BR-PR', 'PARANÁ': 'BR-PR', 'PARANA': 'BR-PR', 'PE': 'BR-PE', 'PERNAMBUCO': 'BR-PE', 'PI': 'BR-PI', 'PIAUÍ': 'BR-PI', 'PIAUI': 'BR-PI', 'RJ': 'BR-RJ', 'RIO DE JANEIRO': 'BR-RJ', 'RN': 'BR-RN', 'RIO GRANDE DO NORTE': 'BR-RN', 'RS': 'BR-RS', 'RIO GRANDE DO SUL': 'BR-RS', 'RO': 'BR-RO', 'RONDÔNIA': 'BR-RO', 'RONDONIA': 'BR-RO', 'RR': 'BR-RR', 'RORAIMA': 'BR-RR', 'SC': 'BR-SC', 'SANTA CATARINA': 'BR-SC', 'SP': 'BR-SP', 'SÃO PAULO': 'BR-SP', 'SAO PAULO': 'BR-SP', 'SE': 'BR-SE', 'SERGIPE': 'BR-SE', 'TO': 'BR-TO', 'TOCANTINS': 'BR-TO' };
@@ -19,6 +21,11 @@ const mapaEstados = {
 window.dadosLogisticaBackend = [];
 let colunaOrdenacaoCep = -1;
 let ordemCrescenteCep = true;
+
+// Garante o carregamento do Google GeoChart
+if (typeof google !== 'undefined' && google.charts) {
+    google.charts.load('current', { 'packages': ['geochart'] });
+}
 
 export async function carregarDadosLogistica() {
     const tbody = document.getElementById('corpo-tabela-ceps');
@@ -46,8 +53,8 @@ export function renderizarTabelaCEPs() {
     const divMapaCanvas = document.getElementById('mapa_brasil_div');
     if (!tbody) return;
     
-    const buscaElement = document.getElementById("busca-cep-analise");
-    const filtroCepLimpo = (buscaElement?.value || "").replace(/\D/g, '');
+    const buscaRaw = (document.getElementById("busca-cep-analise")?.value || "").toLowerCase().trim();
+    const buscaApenasNumeros = buscaRaw.replace(/\D/g, '');
     
     if (!window.dadosLogisticaBackend || window.dadosLogisticaBackend.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Sem dados disponíveis para cálculo.</td></tr>`;
@@ -58,27 +65,28 @@ export function renderizarTabelaCEPs() {
     let resultadosTabela = [];
     let analiseAgrupadaMapaBR = {}; 
 
-    if (filtroCepLimpo.length > 0) {
-        // FIX: Forçamos a leitura como texto e usamos "includes" para ser imune a falhas
+    // MODO ESPECÍFICO: Usuário digitou um número de CEP
+    if (buscaApenasNumeros.length > 0) {
         const filtrados = window.dadosLogisticaBackend.filter(d => {
             const prefixoStr = String(d.cep_prefixo || "");
-            return prefixoStr.includes(filtroCepLimpo);
+            return prefixoStr.includes(buscaApenasNumeros);
         });
         
         resultadosTabela = filtrados.map(item => {
             const prefixo2 = String(item.cep_prefixo).substring(0, 2);
             return {
                 estado: mapaEstados[prefixo2] || 'Região Desconhecida',
-                cep: item.cep_prefixo + '-***',
+                cep: item.cep_prefixo + (String(item.cep_prefixo).length === 5 ? '-***' : ''),
                 mediaDias: item.media_dias,
                 quantidade: item.volume
             };
         });
         
-        if (divMapaCard) divMapaCard.style.display = 'none'; // Esconde o mapa ao buscar específico
+        // Esconde o mapa propositadamente no modo CEP Específico
+        if (divMapaCard) divMapaCard.style.display = 'none'; 
         
     } else {
-        // MODO GERAL (Agrupa todos os 5 dígitos no seu Estado (2 dígitos))
+        // MODO GERAL: Agrupa tudo por Estado (Média Macro)
         let agrupado = {};
         window.dadosLogisticaBackend.forEach(item => {
             if (!item.cep_prefixo) return;
@@ -94,6 +102,7 @@ export function renderizarTabelaCEPs() {
             const med = Math.round(agrupado[pref].somaDiasVolume / vol);
             const nomeEstado = mapaEstados[pref] || `Região ${pref}`;
             
+            // Prepara os dados para desenhar o Mapa
             const isoCode = mapEstadoParaISO(nomeEstado.split(' (')[0]); 
             if (isoCode) {
                 if (!analiseAgrupadaMapaBR[isoCode]) analiseAgrupadaMapaBR[isoCode] = { somaDias: 0, quantidade: 0 };
@@ -101,15 +110,15 @@ export function renderizarTabelaCEPs() {
                 analiseAgrupadaMapaBR[isoCode].quantidade += vol;
             }
 
-            return {
-                estado: nomeEstado,
-                cep: `Geral (Faixa ${pref})`,
-                mediaDias: med,
-                quantidade: vol
-            };
+            return { estado: nomeEstado, cep: `Geral (Faixa ${pref})`, mediaDias: med, quantidade: vol };
         });
 
-        // FIX: Função autônoma que tenta desenhar o mapa até o Google estar pronto
+        // Se o usuário digitou letras (ex: "Bahia"), filtramos a tabela sem apagar o mapa
+        if (buscaRaw.length > 0) {
+            resultadosTabela = resultadosTabela.filter(r => r.estado.toLowerCase().includes(buscaRaw));
+        }
+
+        // Função resiliente para desenhar o Mapa
         const desenharMapaInteligente = () => {
             if (divMapaCanvas && divMapaCard && window.google && google.visualization && google.visualization.GeoChart) {
                 try {
@@ -124,17 +133,19 @@ export function renderizarTabelaCEPs() {
                     divMapaCard.style.display = 'none'; 
                 }
             } else if (divMapaCard) {
-                // Tenta novamente em 300ms
+                // Tenta novamente em 300ms caso o Google ainda esteja a carregar
                 setTimeout(desenharMapaInteligente, 300);
             }
         };
 
         if (Object.keys(analiseAgrupadaMapaBR).length > 0) {
             desenharMapaInteligente();
+        } else if (divMapaCard) {
+            divMapaCard.style.display = 'none';
         }
     }
 
-    // ORDENAÇÃO
+    // ORDENAÇÃO DA TABELA
     if (colunaOrdenacaoCep !== -1) {
         resultadosTabela.sort((a, b) => {
             let valA, valB;
@@ -149,12 +160,12 @@ export function renderizarTabelaCEPs() {
             return 0;
         });
     } else {
-        resultadosTabela.sort((a, b) => b.quantidade - a.quantidade);
+        resultadosTabela.sort((a, b) => b.quantidade - a.quantidade); // Default decrescente por volume
     }
     
     tbody.innerHTML = '';
     if (resultadosTabela.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico encontrado para este CEP.</td></tr>`; 
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico encontrado com esse critério.</td></tr>`; 
         return;
     }
     

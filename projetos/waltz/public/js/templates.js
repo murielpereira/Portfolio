@@ -8,6 +8,7 @@ import { getAbaRfm } from './templates/aba-rfm.js';
 import { getAbaCep } from './templates/aba-cep.js';
 import { getAbaWhatsapp } from './templates/aba-whatsapp.js';
 import { getAbaEmail } from './templates/aba-email.js';
+import { getAbaTrocas } from './templates/aba-trocas.js';
 
 export { getTemplateLogin };
 
@@ -28,6 +29,7 @@ export function getTemplatePainel() {
                 ${getAbaWhatsapp()}
                 ${getAbaRfm()}
                 ${getAbaCep()}
+                ${getAbaTrocas()}
             </div>
             
             ${getDrawer()}

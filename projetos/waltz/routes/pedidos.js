@@ -19,9 +19,10 @@ router.get('/api/pedidos', async (req, res) => {
 router.get('/api/relatorios/logistica', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
+        // Substituímos o Regex por REPLACE nativo, garantindo que o CEP seja lido corretamente
         const { rows } = await sql`
             SELECT 
-                SUBSTRING(REGEXP_REPLACE(cep, '\\D', '', 'g'), 1, 5) AS cep_prefixo,
+                LEFT(REPLACE(cep, '-', ''), 5) AS cep_prefixo,
                 COUNT(id_pedido)::int AS volume,
                 ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 0)::int AS media_dias
             FROM pedidos_nuvemshop
@@ -29,11 +30,12 @@ router.get('/api/relatorios/logistica', async (req, res) => {
               AND cep IS NOT NULL AND cep != ''
               AND data_envio IS NOT NULL AND data_entrega IS NOT NULL AND data_entrega >= data_envio
               AND EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400 <= 60
-            GROUP BY SUBSTRING(REGEXP_REPLACE(cep, '\\D', '', 'g'), 1, 5)
+            GROUP BY LEFT(REPLACE(cep, '-', ''), 5)
             ORDER BY volume DESC;
         `;
         res.json({ sucesso: true, dados: rows });
     } catch (erro) { 
+        console.error("Erro na rota logística:", erro);
         res.status(500).json({ sucesso: false }); 
     }
 });

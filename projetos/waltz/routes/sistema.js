@@ -90,4 +90,53 @@ router.get('/api/relatorios/logistica', async (req, res) => {
     } catch (erro) { res.status(500).json({ sucesso: false }); }
 });
 
+// =========================================================
+// ROTAS DE TROCAS E DEVOLUÇÕES
+// =========================================================
+router.get('/api/trocas', async (req, res) => {
+    if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        // Cria a tabela automaticamente se não existir
+        await sql`
+            CREATE TABLE IF NOT EXISTS trocas_devolucoes (
+                id SERIAL PRIMARY KEY,
+                data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                numero_pedido VARCHAR(50),
+                nome_cliente VARCHAR(150),
+                estado VARCHAR(50),
+                qtd_pecas INT,
+                modelo VARCHAR(150),
+                valor_pecas NUMERIC,
+                valor_frete NUMERIC,
+                frete_pago_por VARCHAR(50),
+                motivo VARCHAR(255),
+                canal VARCHAR(50)
+            );
+        `;
+        const { rows } = await sql`SELECT * FROM trocas_devolucoes ORDER BY data_registro DESC;`;
+        res.json({ sucesso: true, dados: rows });
+    } catch (erro) {
+        res.status(500).json({ sucesso: false });
+    }
+});
+
+router.post('/api/trocas', async (req, res) => {
+    if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        const d = req.body;
+        await sql`
+            INSERT INTO trocas_devolucoes (
+                numero_pedido, nome_cliente, estado, qtd_pecas, modelo, 
+                valor_pecas, valor_frete, frete_pago_por, motivo, canal
+            ) VALUES (
+                ${d.numero_pedido}, ${d.nome_cliente}, ${d.estado}, ${d.qtd_pecas}, ${d.modelo},
+                ${d.valor_pecas}, ${d.valor_frete}, ${d.frete_pago_por}, ${d.motivo}, ${d.canal}
+            );
+        `;
+        res.json({ sucesso: true });
+    } catch (erro) {
+        res.status(500).json({ sucesso: false });
+    }
+});
+
 module.exports = router;
