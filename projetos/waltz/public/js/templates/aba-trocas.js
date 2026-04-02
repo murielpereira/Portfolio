@@ -93,10 +93,11 @@ export function getAbaTrocas() {
                     </div>
 
                     <div class="detail-group">
-                        <label>Produto com Problema (Listado do Pedido)</label>
-                        <select id="tr-modelo" class="input-modern control-select" required>
-                            <option value="">Busque um pedido primeiro para listar os produtos...</option>
-                        </select>
+                        <label>Produtos Envolvidos (Selecione um ou mais)</label>
+                        <div id="tr-modelos-container" style="border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; max-height: 150px; overflow-y: auto; background: white;">
+                            <div style="color: var(--text-muted); font-size: 13px;">Busque um pedido primeiro para listar os produtos...</div>
+                        </div>
+                        <input type="hidden" id="tr-modelo" required>
                     </div>
 
                     <div id="box-extravio" style="display:none; background:#fef2f2; padding:15px; border-radius:8px; border:1px solid #fca5a5; margin-bottom:15px;">

@@ -17,21 +17,8 @@ router.get('/api/logout', (req, res) => {
     req.session = null; res.json({ sucesso: true }); 
 });
 
-router.get('/api/configuracoes', async (req, res) => {
-    if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
-    try {
-        // Busca a configuração (supondo que esteja na tabela configuracoes com id = 1)
-        const { rows } = await sql`SELECT * FROM configuracoes WHERE id = 1;`;
-        const config = rows[0] || {};
-        res.json({ sucesso: true, config });
-    } catch (erro) {
-        console.error("Erro ao buscar configurações:", erro);
-        res.status(500).json({ sucesso: false });
-    }
-});
-
 // =========================================================
-// ROTA DE CONFIGURAÇÕES
+// ROTA DE CONFIGURAÇÕES (Limpa e Única)
 // =========================================================
 router.get('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });

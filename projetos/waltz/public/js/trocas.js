@@ -1,4 +1,5 @@
 import { atualizarIcones } from './utils.js';
+import { obterEstadoPorCep } from './logistica.js';
 
 window.listaTrocas = [];
 
@@ -28,7 +29,6 @@ function renderizarTrocas() {
     window.listaTrocas.forEach(t => {
         const dataFormatada = new Date(t.data_registro).toLocaleDateString('pt-BR');
         let corPagador = t.frete_pago_por === 'Âme' ? 'badge-semcompra' : (t.frete_pago_por === 'Cliente' ? 'badge-entregue' : 'badge-ouro');
-        
         let tipoBadge = t.tipo_ocorrencia === 'Extravio' ? `<span class="badge" style="background:#fef2f2; color:#ef4444; border-color:#fca5a5; margin-bottom:5px;">🚨 EXTRAVIO</span><br>` : '';
         
         let statusFinanceiro = `<span class="badge ${corPagador}">Frete pago por: ${t.frete_pago_por}</span><br><span style="font-size:11px; color:var(--text-muted);">Canal: ${t.canal}</span>`;
@@ -57,7 +57,6 @@ function renderizarTrocas() {
 
 function calcularKPIsTrocas() {
     if (window.listaTrocas.length === 0) return;
-
     document.getElementById('kpi-trocas-qtd').innerText = window.listaTrocas.length;
 
     const custoAme = window.listaTrocas.filter(t => t.frete_pago_por === 'Âme').reduce((acc, t) => acc + parseFloat(t.valor_frete || 0), 0);
@@ -72,7 +71,6 @@ function calcularKPIsTrocas() {
     });
 
     const produtoProblema = Object.keys(contagemProdutos).length > 0 ? Object.keys(contagemProdutos).reduce((a, b) => contagemProdutos[a] > contagemProdutos[b] ? a : b) : '-';
-
     document.getElementById('kpi-trocas-produto').innerText = produtoProblema;
     document.getElementById('kpi-trocas-extravio').innerText = pendentesRessarcimento;
 }
@@ -80,7 +78,8 @@ function calcularKPIsTrocas() {
 export function abrirModalTroca() {
     document.getElementById('form-nova-troca').reset();
     document.getElementById('tr-aviso-pedido').style.display = 'none';
-    document.getElementById('tr-modelo').innerHTML = '<option value="">Busque um pedido primeiro para listar os produtos...</option>';
+    document.getElementById('tr-modelos-container').innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">Busque um pedido primeiro para listar os produtos...</div>';
+    document.getElementById('tr-modelo').value = '';
     toggleCamposExtravio();
     document.getElementById('modal-troca').classList.add('active');
 }
@@ -93,12 +92,16 @@ export function toggleCamposExtravio() {
     if (tipo === 'Extravio') {
         box.style.display = 'block';
         document.getElementById('tr-pagador').value = 'Transportadora'; 
-    } else {
-        box.style.display = 'none';
-    }
+    } else { box.style.display = 'none'; }
 }
 
-// Mágica 2.0: Popula os produtos do pedido
+// FIX: Atualiza o input escondido sempre que o usuário clica num Checkbox
+function atualizarInputModeloEscondido() {
+    const checkboxes = document.querySelectorAll('.chk-produto-troca:checked');
+    const values = Array.from(checkboxes).map(cb => cb.value);
+    document.getElementById('tr-modelo').value = values.join(' + '); // Une os produtos com um " + "
+}
+
 export async function preencherDadosPedidoTroca() {
     const numPedido = document.getElementById('tr-pedido').value;
     const aviso = document.getElementById('tr-aviso-pedido');
@@ -111,43 +114,70 @@ export async function preencherDadosPedidoTroca() {
     const pedidoEncontrado = window.todosOsPedidosNuvem.find(p => p.numero_pedido == numPedido);
 
     if (pedidoEncontrado) {
+        // FIX: Se a API não mandou o estado, nós deduzimos usando o CEP do pedido!
         document.getElementById('tr-cliente').value = pedidoEncontrado.nome_cliente || 'Desconhecido';
-        document.getElementById('tr-estado').value = pedidoEncontrado.estado || 'ND';
+        document.getElementById('tr-estado').value = pedidoEncontrado.estado || obterEstadoPorCep(pedidoEncontrado.cep) || 'ND';
         aviso.style.display = 'none';
 
-        const selectModelo = document.getElementById('tr-modelo');
-        selectModelo.innerHTML = ''; 
+        const containerModelos = document.getElementById('tr-modelos-container');
+        containerModelos.innerHTML = ''; 
 
         if (pedidoEncontrado.produtos && pedidoEncontrado.produtos.trim() !== '') {
-            const produtos = pedidoEncontrado.produtos.split(',');
-            produtos.forEach(prod => {
-                const opt = document.createElement('option');
-                opt.value = prod.trim();
-                opt.innerText = prod.trim();
-                selectModelo.appendChild(opt);
+            const arrProds = pedidoEncontrado.produtos.split(/,\s+/);
+            
+            // Cria um checkbox para cada pedaço do produto
+            arrProds.forEach((prod) => {
+                if(!prod.trim()) return;
+                const label = document.createElement('label');
+                label.style.display = 'flex'; label.style.alignItems = 'center'; label.style.gap = '8px'; label.style.marginBottom = '6px'; label.style.cursor = 'pointer'; label.style.fontSize = '13px';
+                
+                const cb = document.createElement('input');
+                cb.type = 'checkbox'; cb.value = prod.trim(); cb.className = 'chk-produto-troca';
+                cb.onchange = atualizarInputModeloEscondido;
+                
+                label.appendChild(cb); label.appendChild(document.createTextNode(prod.trim()));
+                containerModelos.appendChild(label);
             });
-            const optAll = document.createElement('option');
-            optAll.value = "Pedido Completo (Todos os itens)";
-            optAll.innerText = "⭐ Pedido Completo (Todos os itens)";
-            selectModelo.appendChild(optAll);
+            
+            const hr = document.createElement('hr'); hr.style.margin = '10px 0'; hr.style.borderColor = 'var(--border-color)';
+            containerModelos.appendChild(hr);
+            
+            // Opção "Pedido Completo"
+            const labelAll = document.createElement('label');
+            labelAll.style.display = 'flex'; labelAll.style.alignItems = 'center'; labelAll.style.gap = '8px'; labelAll.style.cursor = 'pointer'; labelAll.style.fontSize = '13px'; labelAll.style.fontWeight = 'bold';
+            const cbAll = document.createElement('input');
+            cbAll.type = 'checkbox'; cbAll.value = "Pedido Completo"; cbAll.className = 'chk-produto-troca'; cbAll.onchange = atualizarInputModeloEscondido;
+            labelAll.appendChild(cbAll); labelAll.appendChild(document.createTextNode("⭐ Pedido Completo (Todos os itens)"));
+            containerModelos.appendChild(labelAll);
+
         } else {
-            selectModelo.innerHTML = '<option value="Produto não especificado via API">Produto não especificado via API</option>';
+            containerModelos.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">Produto não especificado via API. Descreva no motivo.</div>';
         }
+        document.getElementById('tr-modelo').value = ""; 
     } else {
         document.getElementById('tr-cliente').value = '';
         document.getElementById('tr-estado').value = '';
-        document.getElementById('tr-modelo').innerHTML = '<option value="Avulso / Não listado">Avulso / Digite manualmente na observação</option>';
+        document.getElementById('tr-modelos-container').innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">Avulso / Digite manualmente na observação</div>';
+        document.getElementById('tr-modelo').value = "Não listado / Avulso";
         aviso.style.display = 'block';
     }
 }
 
 export async function salvarNovaTroca(event) {
     event.preventDefault();
+    
+    // Proteção: Impede de salvar se o usuário não selecionou nenhum checkbox
+    const modeloSelecionado = document.getElementById('tr-modelo').value;
+    if (!modeloSelecionado || modeloSelecionado.trim() === '') {
+        alert("Por favor, selecione pelo menos um item da lista de produtos!");
+        return;
+    }
+
     const dados = {
         numero_pedido: document.getElementById('tr-pedido').value,
         nome_cliente: document.getElementById('tr-cliente').value || 'Avulso',
         estado: document.getElementById('tr-estado').value || 'ND',
-        modelo: document.getElementById('tr-modelo').value,
+        modelo: modeloSelecionado,
         qtd_pecas: document.getElementById('tr-qtd').value,
         valor_pecas: document.getElementById('tr-valor').value,
         valor_frete: document.getElementById('tr-frete').value || 0,
