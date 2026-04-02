@@ -18,15 +18,31 @@ router.get('/api/logout', (req, res) => {
 });
 
 // =========================================================
-// ROTA DE CONFIGURAÇÕES (Limpa e Única)
+// ROTA DE CONFIGURAÇÕES (Blindada contra erro 500)
 // =========================================================
 router.get('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
-        // Lendo os dados com o nome correto da tabela do seu DB
+        // Tenta criar a tabela se ela não existir para blindar contra erros 500
+        await sql`
+            CREATE TABLE IF NOT EXISTS configuracoes_sistema (
+                id SERIAL PRIMARY KEY,
+                wpp_ativo BOOLEAN DEFAULT false,
+                msg_aprovado TEXT,
+                msg_fabricacao TEXT,
+                msg_rastreio TEXT,
+                msg_rota TEXT,
+                msg_feedback TEXT,
+                vip_diamante NUMERIC DEFAULT 6000,
+                vip_ouro NUMERIC DEFAULT 3000,
+                vip_prata NUMERIC DEFAULT 1000
+            );
+        `;
+        // Insere linha padrão caso esteja vazia, para não devolver dados nulos
+        await sql`INSERT INTO configuracoes_sistema (id) VALUES (1) ON CONFLICT DO NOTHING;`;
+
+        // Lendo os dados com o nome correto
         const { rows } = await sql`SELECT * FROM configuracoes_sistema WHERE id = 1;`;
-        
-        // Se a tabela estiver vazia, devolvemos um objeto vazio para não quebrar o Front-end
         res.json({ sucesso: true, config: rows[0] || {} });
     } catch (erro) {
         console.error("Erro ao buscar configurações:", erro);
@@ -38,8 +54,6 @@ router.post('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
         const c = req.body;
-        
-        // Salvando os dados com o nome correto da tabela do seu DB
         await sql`
             UPDATE configuracoes_sistema SET
                 wpp_ativo = ${c.wpp_ativo},
@@ -82,7 +96,6 @@ router.get('/api/trocas', async (req, res) => {
                 canal VARCHAR(50)
             );
         `;
-        // Adiciona as novas colunas de Extravio à tabela existente dinamicamente
         try {
             await sql`ALTER TABLE trocas_devolucoes ADD COLUMN IF NOT EXISTS tipo_ocorrencia VARCHAR(50) DEFAULT 'Troca/Devolução';`;
             await sql`ALTER TABLE trocas_devolucoes ADD COLUMN IF NOT EXISTS ressarcido VARCHAR(20) DEFAULT 'Nao';`;

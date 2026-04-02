@@ -185,3 +185,18 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 /* Filtros menores (flex: 1 com limite máximo) */
 .control-select { flex: 1; min-width: 140px; max-width: 200px; background-color: #f8fafc; }
 select.input-modern, select.control-select { padding-right: 32px !important; }
+
+/* Efeito de Carregamento (Skeleton Pulse) para os KPIs */
+.loading-pulse {
+    display: inline-block;
+    width: 60px;
+    height: 24px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+@keyframes pulse {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+}

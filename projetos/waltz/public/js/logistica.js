@@ -1,8 +1,10 @@
 import { isGoogleChartsReady } from './utils.js';
 
+// FIX 1: Função blindada contra acentos (Pará -> PARA -> BR-PA)
 export function mapEstadoParaISO(estado) {
-    if (!estado) return null; const uf = estado.trim().toUpperCase();
-    const map = { 'AC': 'BR-AC', 'AL': 'BR-AL', 'AP': 'BR-AP', 'AM': 'BR-AM', 'BA': 'BR-BA', 'CE': 'BR-CE', 'DF': 'BR-DF', 'DISTRITO FEDERAL': 'BR-DF', 'BRASÍLIA': 'BR-DF', 'ES': 'BR-ES', 'ESPÍRITO SANTO': 'BR-ES', 'GO': 'BR-GO', 'GOIÁS': 'BR-GO', 'MA': 'BR-MA', 'MARANHÃO': 'BR-MA', 'MT': 'BR-MT', 'MATO GROSSO': 'BR-MT', 'MS': 'BR-MS', 'MATO GROSSO DO SUL': 'BR-MS', 'MG': 'BR-MG', 'MINAS GERAIS': 'BR-MG', 'PA': 'BR-PA', 'PARÁ': 'BR-PA', 'PB': 'BR-PB', 'PARAÍBA': 'BR-PB', 'PR': 'BR-PR', 'PARANÁ': 'BR-PR', 'PE': 'BR-PE', 'PERNAMBUCO': 'BR-PE', 'PI': 'BR-PI', 'PIAUÍ': 'BR-PI', 'RJ': 'BR-RJ', 'RIO DE JANEIRO': 'BR-RJ', 'RN': 'BR-RN', 'RIO GRANDE DO NORTE': 'BR-RN', 'RS': 'BR-RS', 'RIO GRANDE DO SUL': 'BR-RS', 'RO': 'BR-RO', 'RONDÔNIA': 'BR-RO', 'RR': 'BR-RR', 'RORAIMA': 'BR-RR', 'SC': 'BR-SC', 'SANTA CATARINA': 'BR-SC', 'SP': 'BR-SP', 'SÃO PAULO': 'BR-SP', 'SE': 'BR-SE', 'SERGIPE': 'BR-SE', 'TO': 'BR-TO', 'TOCANTINS': 'BR-TO' };
+    if (!estado) return null; 
+    const uf = estado.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const map = { 'AC': 'BR-AC', 'ACRE': 'BR-AC', 'AL': 'BR-AL', 'ALAGOAS': 'BR-AL', 'AP': 'BR-AP', 'AMAPA': 'BR-AP', 'AM': 'BR-AM', 'AMAZONAS': 'BR-AM', 'BA': 'BR-BA', 'BAHIA': 'BR-BA', 'CE': 'BR-CE', 'CEARA': 'BR-CE', 'DF': 'BR-DF', 'DISTRITO FEDERAL': 'BR-DF', 'BRASILIA': 'BR-DF', 'ES': 'BR-ES', 'ESPIRITO SANTO': 'BR-ES', 'GO': 'BR-GO', 'GOIAS': 'BR-GO', 'MA': 'BR-MA', 'MARANHAO': 'BR-MA', 'MT': 'BR-MT', 'MATO GROSSO': 'BR-MT', 'MS': 'BR-MS', 'MATO GROSSO DO SUL': 'BR-MS', 'MG': 'BR-MG', 'MINAS GERAIS': 'BR-MG', 'PA': 'BR-PA', 'PARA': 'BR-PA', 'PB': 'BR-PB', 'PARAIBA': 'BR-PB', 'PR': 'BR-PR', 'PARANA': 'BR-PR', 'PE': 'BR-PE', 'PERNAMBUCO': 'BR-PE', 'PI': 'BR-PI', 'PIAUI': 'BR-PI', 'RJ': 'BR-RJ', 'RIO DE JANEIRO': 'BR-RJ', 'RN': 'BR-RN', 'RIO GRANDE DO NORTE': 'BR-RN', 'RS': 'BR-RS', 'RIO GRANDE DO SUL': 'BR-RS', 'RO': 'BR-RO', 'RONDONIA': 'BR-RO', 'RR': 'BR-RR', 'RORAIMA': 'BR-RR', 'SC': 'BR-SC', 'SANTA CATARINA': 'BR-SC', 'SP': 'BR-SP', 'SAO PAULO': 'BR-SP', 'SE': 'BR-SE', 'SERGIPE': 'BR-SE', 'TO': 'BR-TO', 'TOCANTINS': 'BR-TO' };
     return map[uf] || null;
 }
 
@@ -45,6 +47,18 @@ export function obterEstadoPorCep(cep) {
     return 'Desconhecido';
 }
 
+const mapaEstados = {
+    "01": "São Paulo (Capital)", "02": "São Paulo (Capital)", "03": "São Paulo (Capital)", "04": "São Paulo (Capital)", "05": "São Paulo (Capital)",
+    "06": "São Paulo (RMS)", "07": "São Paulo (RMS)", "08": "São Paulo (RMS)", "09": "São Paulo (RMS)", "11": "São Paulo (Litoral)",
+    "12": "São Paulo (Interior)", "13": "São Paulo (Interior)", "14": "São Paulo (Interior)", "15": "São Paulo (Interior)", "16": "São Paulo (Interior)",
+    "20": "Rio de Janeiro", "21": "Rio de Janeiro", "22": "Rio de Janeiro", "23": "Rio de Janeiro", "29": "Espírito Santo",
+    "30": "Minas Gerais", "31": "Minas Gerais", "40": "Bahia", "49": "Sergipe", "50": "Pernambuco", "57": "Alagoas",
+    "58": "Alagoas/Paraíba", "59": "Rio Grande do Norte", "60": "Ceará", "64": "Piauí", "65": "Maranhão", "66": "Maranhão/Pará",
+    "68": "Pará/Amapá", "69": "Amapá/Amazonas/Roraima", "70": "Distrito Federal", "71": "Distrito Federal", "72": "Distrito Federal",
+    "74": "Goiás", "76": "Goiás/Tocantins", "77": "Tocantins", "78": "Mato Grosso", "79": "Mato Grosso do Sul",
+    "80": "Paraná", "81": "Paraná", "88": "Santa Catarina", "89": "Santa Catarina", "90": "Rio Grande do Sul", "99": "Rio Grande do Sul"
+};
+
 window.dadosLogisticaBackend = [];
 let colunaOrdenacaoCep = -1;
 let ordemCrescenteCep = true;
@@ -82,9 +96,8 @@ export function renderizarTabelaCEPs() {
     let resultadosTabela = [];
     let analiseAgrupadaMapaBR = {}; 
 
-    // FIX 3: Enriquecer a base colocando o Estado Real em todos os itens
     const dadosEnriquecidos = window.dadosLogisticaBackend.map(d => {
-        const cepLimpo = String(d.cep_prefixo || "");
+        const cepLimpo = String(d.cep_prefixo || d.prefixo_cep || "");
         const estadoReal = obterEstadoPorCep(cepLimpo + '000'); 
         return { ...d, cepLimpo, estadoReal };
     });
@@ -93,7 +106,6 @@ export function renderizarTabelaCEPs() {
     const isBuscandoNumero = buscaApenasNumeros.length > 0;
 
     if (isBuscandoNumero || isBuscandoTexto) {
-        // MODO DETALHADO: Mostra os 5 dígitos
         let filtrados = [];
         if (isBuscandoNumero) {
             filtrados = dadosEnriquecidos.filter(d => d.cepLimpo.includes(buscaApenasNumeros));
@@ -125,7 +137,6 @@ export function renderizarTabelaCEPs() {
         }
 
     } else {
-        // MODO GERAL: Agrupa tudo no Estado
         let agrupado = {};
         dadosEnriquecidos.forEach(item => {
             const est = item.estadoReal;
@@ -163,6 +174,7 @@ export function renderizarTabelaCEPs() {
     if (Object.keys(analiseAgrupadaMapaBR).length > 0) desenharMapaInteligente();
     else if (divMapaCard) divMapaCard.style.display = 'none';
 
+    // FIX 2: Ordenação Alfabética Padrão
     if (colunaOrdenacaoCep !== -1) {
         resultadosTabela.sort((a, b) => {
             let valA, valB;
@@ -177,7 +189,8 @@ export function renderizarTabelaCEPs() {
             return 0;
         });
     } else {
-        resultadosTabela.sort((a, b) => b.quantidade - a.quantidade);
+        // Por padrão, organiza de A a Z pelo nome do Estado
+        resultadosTabela.sort((a, b) => a.estado.localeCompare(b.estado));
     }
     
     tbody.innerHTML = '';
