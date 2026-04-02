@@ -5,10 +5,12 @@ const { fetchComRetry } = require('../utils/helpers');
 
 const pedidosEmProcessamentoNuvem = new Set();
 
+// ============================================================================
+// ROTAS DE CONSULTA E PAINEL
+// ============================================================================
 router.get('/api/pedidos', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
-        // FIX: Removemos o WHERE status != 'Cancelado' para que você possa ver e filtrar os pedidos Cancelados na tela
         const { rows: pedidos } = await sql`SELECT * FROM pedidos_nuvemshop ORDER BY data_criacao DESC LIMIT 1500;`;
         res.json(pedidos);
     } catch (erro) { res.status(500).json({ erro: 'Erro interno' }); }
@@ -45,6 +47,9 @@ router.post('/api/pedidos/marcar-feedback', async (req, res) => {
     } catch (erro) { res.status(500).json({ sucesso: false }); }
 });
 
+// ============================================================================
+// O WEBHOOK INTELIGENTE (À PROVA DE BUGS DA NUVEMSHOP)
+// ============================================================================
 router.post('/api/webhook/nuvemshop', async (req, res) => {
     const payload = req.body;
     if (!payload || !payload.id) return res.status(200).send('Ignorado'); 
@@ -65,10 +70,8 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
         const cpf = dadosPedido.customer && dadosPedido.customer.identification ? dadosPedido.customer.identification.replace(/\D/g, '') : '';
         const email_cliente = dadosPedido.customer && dadosPedido.customer.email ? dadosPedido.customer.email : '';
         const telefone = dadosPedido.customer && dadosPedido.customer.phone ? dadosPedido.customer.phone : '';
-        
-        // FIX: Extraímos os nomes dos produtos para usar na variável do WhatsApp
         const nomesProdutos = dadosPedido.products ? dadosPedido.products.map(p => p.name).join(', ') : '';
-
+        
         let status = 'Aberto';
         const statusPrincipal = (dadosPedido.status || '').toLowerCase();
         const statusEnvio = (dadosPedido.shipping_status || '').toLowerCase();
@@ -79,6 +82,9 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
 
         const rastreio = dadosPedido.shipping_tracking_number || '';
         
+        // ==============================================================
+        // LÓGICA DE CRUZAMENTO DE DATAS (O Cérebro da Automação)
+        // ==============================================================
         let dataEnvioFinal = dadosPedido.shipped_at ? new Date(dadosPedido.shipped_at) : null;
         let dataEntregaFinal = null;
         let dataEnvioBackupSmart = null;
@@ -95,10 +101,11 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
                     const jsonSmart = await respostaSmart.json();
                     if (jsonSmart.result && jsonSmart.result.trackings && jsonSmart.result.trackings.length > 0) {
                         const eventos = jsonSmart.result.trackings.sort((a, b) => new Date(a.date) - new Date(b.date));
-                        const ultimoEvento = eventos[eventos.length - 1];
 
-                        if (ultimoEvento.code && ultimoEvento.code.tracking_type === 'DELIVERED') {
-                            dataEntregaFinal = new Date(ultimoEvento.date);
+                        // FIX 1: Procurar exatamente pelo evento de entrega, não apenas assumir que é o último
+                        const eventoEntrega = eventos.find(e => e.code && e.code.tracking_type === 'DELIVERED');
+                        if (eventoEntrega) {
+                            dataEntregaFinal = new Date(eventoEntrega.date);
                         }
 
                         const bipeFisico = eventos.find(e => 
@@ -113,11 +120,19 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
                         }
                     }
                 }
-            } catch (err) {}
+            } catch (err) { 
+                console.error("⚠️ Falha ao buscar dados na SmartEnvios via Webhook"); 
+            }
         }
 
-        if (!dataEnvioFinal || (dataEntregaFinal && dataEnvioFinal.toISOString().substring(0,10) === dataEntregaFinal.toISOString().substring(0,10))) {
-            if (dataEnvioBackupSmart) dataEnvioFinal = dataEnvioBackupSmart;
+        // 🛡️ FIX 2: O ESCUDO JS - Ativa se a Nuvemshop mandar uma data de envio MAIOR ou IGUAL à data de entrega
+        if (!dataEnvioFinal || 
+            (dataEntregaFinal && dataEnvioFinal >= dataEntregaFinal) || 
+            (dataEntregaFinal && dataEnvioFinal.toISOString().substring(0,10) === dataEntregaFinal.toISOString().substring(0,10))
+        ) {
+            if (dataEnvioBackupSmart) {
+                dataEnvioFinal = dataEnvioBackupSmart;
+            }
         }
 
         if (!dataEnvioFinal && (status === 'Enviado' || status === 'Entregue')) {
@@ -127,10 +142,12 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
             dataEntregaFinal = dadosPedido.finished_at ? new Date(dadosPedido.finished_at) : new Date(dadosPedido.updated_at);
         }
 
+        // ==============================================================
+        // 🛡️ FIX 3: A MURALHA DE AÇO (GRAVAÇÃO NO BANCO DE DADOS)
+        // ==============================================================
         const envioDB = dataEnvioFinal ? dataEnvioFinal.toISOString() : null;
         const entregaDB = dataEntregaFinal ? dataEntregaFinal.toISOString() : null;
 
-        // FIX de Segurança: Cria a coluna de produtos caso ela ainda não exista no seu banco de dados
         try { await sql`ALTER TABLE pedidos_nuvemshop ADD COLUMN IF NOT EXISTS produtos TEXT;`; } catch(e) {}
 
         await sql`
@@ -146,9 +163,22 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
             ON CONFLICT (id_pedido) DO UPDATE SET 
                 status_nuvemshop = EXCLUDED.status_nuvemshop,
                 rastreio = EXCLUDED.rastreio,
-                produtos = EXCLUDED.produtos,
-                data_envio = CASE WHEN EXCLUDED.data_envio IS NOT NULL THEN EXCLUDED.data_envio ELSE pedidos_nuvemshop.data_envio END,
-                data_entrega = CASE WHEN EXCLUDED.data_entrega IS NOT NULL THEN EXCLUDED.data_entrega ELSE pedidos_nuvemshop.data_entrega END;
+                produtos = CASE WHEN EXCLUDED.produtos IS NOT NULL AND EXCLUDED.produtos != '' THEN EXCLUDED.produtos ELSE pedidos_nuvemshop.produtos END,
+
+                -- REGRA DE OURO LOGÍSTICA:
+                -- Nunca sobrescrever uma data de envio antiga válida com uma data mais recente (evita o bug Nuvemshop).
+                data_envio = CASE 
+                    WHEN pedidos_nuvemshop.data_envio IS NULL THEN EXCLUDED.data_envio
+                    WHEN EXCLUDED.data_envio IS NOT NULL AND EXCLUDED.data_envio < pedidos_nuvemshop.data_envio THEN EXCLUDED.data_envio
+                    ELSE pedidos_nuvemshop.data_envio
+                END,
+                
+                -- Mantém a primeira data de entrega recebida, a menos que chegue um bipe de entrega mais antigo (correção de delay).
+                data_entrega = CASE 
+                    WHEN pedidos_nuvemshop.data_entrega IS NULL THEN EXCLUDED.data_entrega
+                    WHEN EXCLUDED.data_entrega IS NOT NULL AND EXCLUDED.data_entrega < pedidos_nuvemshop.data_entrega THEN EXCLUDED.data_entrega
+                    ELSE pedidos_nuvemshop.data_entrega
+                END;
         `;
         res.status(200).send('Processado e salvo com sucesso');
     } catch (erro) { res.status(200).send('Falha interna'); }

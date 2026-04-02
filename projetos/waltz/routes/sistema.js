@@ -30,14 +30,47 @@ router.get('/api/configuracoes', async (req, res) => {
     }
 });
 
+// =========================================================
+// ROTA DE CONFIGURAÇÕES
+// =========================================================
+router.get('/api/configuracoes', async (req, res) => {
+    if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        // Lendo os dados com o nome correto da tabela do seu DB
+        const { rows } = await sql`SELECT * FROM configuracoes_sistema WHERE id = 1;`;
+        
+        // Se a tabela estiver vazia, devolvemos um objeto vazio para não quebrar o Front-end
+        res.json({ sucesso: true, config: rows[0] || {} });
+    } catch (erro) {
+        console.error("Erro ao buscar configurações:", erro);
+        res.status(500).json({ sucesso: false });
+    }
+});
+
 router.post('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
-        const { templates_wpp, regras_vip } = req.body;
-        if (templates_wpp) await sql`INSERT INTO configuracoes_sistema (chave, valor) VALUES ('templates_wpp', ${JSON.stringify(templates_wpp)}) ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor;`;
-        if (regras_vip) await sql`INSERT INTO configuracoes_sistema (chave, valor) VALUES ('regras_vip', ${JSON.stringify(regras_vip)}) ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor;`;
+        const c = req.body;
+        
+        // Salvando os dados com o nome correto da tabela do seu DB
+        await sql`
+            UPDATE configuracoes_sistema SET
+                wpp_ativo = ${c.wpp_ativo},
+                msg_aprovado = ${c.msg_aprovado},
+                msg_fabricacao = ${c.msg_fabricacao},
+                msg_rastreio = ${c.msg_rastreio},
+                msg_rota = ${c.msg_rota},
+                msg_feedback = ${c.msg_feedback},
+                vip_diamante = ${c.vip_diamante},
+                vip_ouro = ${c.vip_ouro},
+                vip_prata = ${c.vip_prata}
+            WHERE id = 1;
+        `;
         res.json({ sucesso: true });
-    } catch (erro) { res.status(500).json({ sucesso: false }); }
+    } catch (erro) {
+        console.error("Erro ao salvar config:", erro);
+        res.status(500).json({ sucesso: false });
+    }
 });
 
 router.get('/api/relatorios/logistica', async (req, res) => {

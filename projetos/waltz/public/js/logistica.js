@@ -1,4 +1,8 @@
-import { isGoogleChartsReady } from './utils.js';
+export function mapEstadoParaISO(estado) {
+    if (!estado) return null; const uf = estado.trim().toUpperCase();
+    const map = { 'AC': 'BR-AC', 'ACRE': 'BR-AC', 'AL': 'BR-AL', 'ALAGOAS': 'BR-AL', 'AP': 'BR-AP', 'AMAPÁ': 'BR-AP', 'AMAPA': 'BR-AP', 'AM': 'BR-AM', 'AMAZONAS': 'BR-AM', 'BA': 'BR-BA', 'BAHIA': 'BR-BA', 'CE': 'BR-CE', 'CEARÁ': 'BR-CE', 'CEARA': 'BR-CE', 'DF': 'BR-DF', 'DISTRITO FEDERAL': 'BR-DF', 'BRASÍLIA': 'BR-DF', 'ES': 'BR-ES', 'ESPÍRITO SANTO': 'BR-ES', 'ESPIRITO SANTO': 'BR-ES', 'GO': 'BR-GO', 'GOIÁS': 'BR-GO', 'GOIAS': 'BR-GO', 'MA': 'BR-MA', 'MARANHÃO': 'BR-MA', 'MARANHAO': 'BR-MA', 'MT': 'BR-MT', 'MATO GROSSO': 'BR-MT', 'MS': 'BR-MS', 'MATO GROSSO DO SUL': 'BR-MS', 'MG': 'BR-MG', 'MINAS GERAIS': 'BR-MG', 'PA': 'BR-PA', 'PARÁ': 'BR-PA', 'PARA': 'BR-PA', 'PB': 'BR-PB', 'PARAÍBA': 'BR-PB', 'PARAIBA': 'BR-PB', 'PR': 'BR-PR', 'PARANÁ': 'BR-PR', 'PARANA': 'BR-PR', 'PE': 'BR-PE', 'PERNAMBUCO': 'BR-PE', 'PI': 'BR-PI', 'PIAUÍ': 'BR-PI', 'PIAUI': 'BR-PI', 'RJ': 'BR-RJ', 'RIO DE JANEIRO': 'BR-RJ', 'RN': 'BR-RN', 'RIO GRANDE DO NORTE': 'BR-RN', 'RS': 'BR-RS', 'RIO GRANDE DO SUL': 'BR-RS', 'RO': 'BR-RO', 'RONDÔNIA': 'BR-RO', 'RONDONIA': 'BR-RO', 'RR': 'BR-RR', 'RORAIMA': 'BR-RR', 'SC': 'BR-SC', 'SANTA CATARINA': 'BR-SC', 'SP': 'BR-SP', 'SÃO PAULO': 'BR-SP', 'SAO PAULO': 'BR-SP', 'SE': 'BR-SE', 'SERGIPE': 'BR-SE', 'TO': 'BR-TO', 'TOCANTINS': 'BR-TO' };
+    return map[uf] || null;
+}
 
 const mapaEstados = {
     "01": "São Paulo (Capital)", "02": "São Paulo (Capital)", "03": "São Paulo (Capital)", "04": "São Paulo (Capital)", "05": "São Paulo (Capital)",
@@ -11,12 +15,6 @@ const mapaEstados = {
     "74": "Goiás", "76": "Goiás/Tocantins", "77": "Tocantins", "78": "Mato Grosso", "79": "Mato Grosso do Sul",
     "80": "Paraná", "81": "Paraná", "88": "Santa Catarina", "89": "Santa Catarina", "90": "Rio Grande do Sul", "99": "Rio Grande do Sul"
 };
-
-export function mapEstadoParaISO(estado) {
-    if (!estado) return null; const uf = estado.trim().toUpperCase();
-    const map = { 'AC': 'BR-AC', 'ACRE': 'BR-AC', 'AL': 'BR-AL', 'ALAGOAS': 'BR-AL', 'AP': 'BR-AP', 'AMAPÁ': 'BR-AP', 'AMAPA': 'BR-AP', 'AM': 'BR-AM', 'AMAZONAS': 'BR-AM', 'BA': 'BR-BA', 'BAHIA': 'BR-BA', 'CE': 'BR-CE', 'CEARÁ': 'BR-CE', 'CEARA': 'BR-CE', 'DF': 'BR-DF', 'DISTRITO FEDERAL': 'BR-DF', 'BRASÍLIA': 'BR-DF', 'ES': 'BR-ES', 'ESPÍRITO SANTO': 'BR-ES', 'ESPIRITO SANTO': 'BR-ES', 'GO': 'BR-GO', 'GOIÁS': 'BR-GO', 'GOIAS': 'BR-GO', 'MA': 'BR-MA', 'MARANHÃO': 'BR-MA', 'MARANHAO': 'BR-MA', 'MT': 'BR-MT', 'MATO GROSSO': 'BR-MT', 'MS': 'BR-MS', 'MATO GROSSO DO SUL': 'BR-MS', 'MG': 'BR-MG', 'MINAS GERAIS': 'BR-MG', 'PA': 'BR-PA', 'PARÁ': 'BR-PA', 'PARA': 'BR-PA', 'PB': 'BR-PB', 'PARAÍBA': 'BR-PB', 'PARAIBA': 'BR-PB', 'PR': 'BR-PR', 'PARANÁ': 'BR-PR', 'PARANA': 'BR-PR', 'PE': 'BR-PE', 'PERNAMBUCO': 'BR-PE', 'PI': 'BR-PI', 'PIAUÍ': 'BR-PI', 'PIAUI': 'BR-PI', 'RJ': 'BR-RJ', 'RIO DE JANEIRO': 'BR-RJ', 'RN': 'BR-RN', 'RIO GRANDE DO NORTE': 'BR-RN', 'RS': 'BR-RS', 'RIO GRANDE DO SUL': 'BR-RS', 'RO': 'BR-RO', 'RONDÔNIA': 'BR-RO', 'RONDONIA': 'BR-RO', 'RR': 'BR-RR', 'RORAIMA': 'BR-RR', 'SC': 'BR-SC', 'SANTA CATARINA': 'BR-SC', 'SP': 'BR-SP', 'SÃO PAULO': 'BR-SP', 'SAO PAULO': 'BR-SP', 'SE': 'BR-SE', 'SERGIPE': 'BR-SE', 'TO': 'BR-TO', 'TOCANTINS': 'BR-TO' };
-    return map[uf] || null;
-}
 
 window.dadosLogisticaBackend = [];
 let colunaOrdenacaoCep = -1;
@@ -48,21 +46,27 @@ export function renderizarTabelaCEPs() {
     const divMapaCanvas = document.getElementById('mapa_brasil_div');
     if (!tbody) return;
     
-    // Agora o ID está certo e sem duplicatas no HTML!
     const buscaElement = document.getElementById("busca-cep-analise");
     const filtroCepLimpo = (buscaElement?.value || "").replace(/\D/g, '');
     
-    if (!window.dadosLogisticaBackend || window.dadosLogisticaBackend.length === 0) return;
+    if (!window.dadosLogisticaBackend || window.dadosLogisticaBackend.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Sem dados disponíveis para cálculo.</td></tr>`;
+        if(divMapaCard) divMapaCard.style.display = 'none';
+        return;
+    }
 
     let resultadosTabela = [];
     let analiseAgrupadaMapaBR = {}; 
 
     if (filtroCepLimpo.length > 0) {
-        // MODO ESPECÍFICO (Filtrou por CEP: Traz as regiões menores dos 5 dígitos)
-        const filtrados = window.dadosLogisticaBackend.filter(d => d.cep_prefixo && d.cep_prefixo.startsWith(filtroCepLimpo));
+        // FIX: Forçamos a leitura como texto e usamos "includes" para ser imune a falhas
+        const filtrados = window.dadosLogisticaBackend.filter(d => {
+            const prefixoStr = String(d.cep_prefixo || "");
+            return prefixoStr.includes(filtroCepLimpo);
+        });
         
         resultadosTabela = filtrados.map(item => {
-            const prefixo2 = item.cep_prefixo.substring(0, 2);
+            const prefixo2 = String(item.cep_prefixo).substring(0, 2);
             return {
                 estado: mapaEstados[prefixo2] || 'Região Desconhecida',
                 cep: item.cep_prefixo + '-***',
@@ -78,7 +82,7 @@ export function renderizarTabelaCEPs() {
         let agrupado = {};
         window.dadosLogisticaBackend.forEach(item => {
             if (!item.cep_prefixo) return;
-            const prefixo2 = item.cep_prefixo.substring(0, 2);
+            const prefixo2 = String(item.cep_prefixo).substring(0, 2);
             if (!agrupado[prefixo2]) agrupado[prefixo2] = { somaDiasVolume: 0, volumeTotal: 0 };
             
             agrupado[prefixo2].somaDiasVolume += (item.media_dias * item.volume);
@@ -90,7 +94,6 @@ export function renderizarTabelaCEPs() {
             const med = Math.round(agrupado[pref].somaDiasVolume / vol);
             const nomeEstado = mapaEstados[pref] || `Região ${pref}`;
             
-            // Prepara dados pro Mapa
             const isoCode = mapEstadoParaISO(nomeEstado.split(' (')[0]); 
             if (isoCode) {
                 if (!analiseAgrupadaMapaBR[isoCode]) analiseAgrupadaMapaBR[isoCode] = { somaDias: 0, quantidade: 0 };
@@ -106,17 +109,28 @@ export function renderizarTabelaCEPs() {
             };
         });
 
-        // Desenhar Mapa com as médias macro
-        if (Object.keys(analiseAgrupadaMapaBR).length > 0 && divMapaCanvas && divMapaCard && isGoogleChartsReady && typeof google !== 'undefined' && google.visualization) {
-            try {
-                let dadosMapa = [ ["Region", "Média de Dias", "Quantidade"] ];
-                Object.entries(analiseAgrupadaMapaBR).forEach(([iso, dados]) => {
-                    dadosMapa.push([ iso, Math.round(dados.somaDias / dados.quantidade), dados.quantidade ]);
-                });
-                const options = { region: 'BR', resolution: 'provinces', displayMode: 'regions', colorAxis: { colors: ['#a7f3d0', '#fef08a', '#fca5a5'] }, backgroundColor: 'transparent', datalessRegionColor: '#f1f5f9', legend: { textStyle: { color: '#475569', fontSize: 11 } } };
-                new google.visualization.GeoChart(divMapaCanvas).draw(google.visualization.arrayToDataTable(dadosMapa), options);
-                divMapaCard.style.display = 'block';
-            } catch(mapErro) { divMapaCard.style.display = 'none'; }
+        // FIX: Função autônoma que tenta desenhar o mapa até o Google estar pronto
+        const desenharMapaInteligente = () => {
+            if (divMapaCanvas && divMapaCard && window.google && google.visualization && google.visualization.GeoChart) {
+                try {
+                    let dadosMapa = [ ["Region", "Média de Dias", "Quantidade"] ];
+                    Object.entries(analiseAgrupadaMapaBR).forEach(([iso, dados]) => {
+                        dadosMapa.push([ iso, Math.round(dados.somaDias / dados.quantidade), dados.quantidade ]);
+                    });
+                    const options = { region: 'BR', resolution: 'provinces', displayMode: 'regions', colorAxis: { colors: ['#a7f3d0', '#fef08a', '#fca5a5'] }, backgroundColor: 'transparent', datalessRegionColor: '#f1f5f9', legend: { textStyle: { color: '#475569', fontSize: 11 } } };
+                    new google.visualization.GeoChart(divMapaCanvas).draw(google.visualization.arrayToDataTable(dadosMapa), options);
+                    divMapaCard.style.display = 'block';
+                } catch(mapErro) { 
+                    divMapaCard.style.display = 'none'; 
+                }
+            } else if (divMapaCard) {
+                // Tenta novamente em 300ms
+                setTimeout(desenharMapaInteligente, 300);
+            }
+        };
+
+        if (Object.keys(analiseAgrupadaMapaBR).length > 0) {
+            desenharMapaInteligente();
         }
     }
 
@@ -135,7 +149,7 @@ export function renderizarTabelaCEPs() {
             return 0;
         });
     } else {
-        resultadosTabela.sort((a, b) => b.quantidade - a.quantidade); // Default decrescente por volume
+        resultadosTabela.sort((a, b) => b.quantidade - a.quantidade);
     }
     
     tbody.innerHTML = '';

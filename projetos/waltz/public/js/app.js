@@ -102,6 +102,9 @@ async function mostrarSubPaginaDash(idAlvo) {
         document.getElementById('dash-page-title').innerText = "Automações do WhatsApp";
         document.getElementById('dash-page-subtitle').innerText = "Configuração de mensagens";
         preencherFormularioConfig();
+    } else if (idAlvo === 'email') {
+        document.getElementById('dash-page-title').innerText = "E-mail Marketing";
+        document.getElementById('dash-page-subtitle').innerText = "Gestão de campanhas e automações";
     }
     atualizarIcones();
 }
