@@ -95,11 +95,10 @@ export function toggleCamposExtravio() {
     } else { box.style.display = 'none'; }
 }
 
-// FIX: Atualiza o input escondido sempre que o usuário clica num Checkbox
 function atualizarInputModeloEscondido() {
     const checkboxes = document.querySelectorAll('.chk-produto-troca:checked');
     const values = Array.from(checkboxes).map(cb => cb.value);
-    document.getElementById('tr-modelo').value = values.join(' + '); // Une os produtos com um " + "
+    document.getElementById('tr-modelo').value = values.join(' + ');
 }
 
 export async function preencherDadosPedidoTroca() {
@@ -114,7 +113,6 @@ export async function preencherDadosPedidoTroca() {
     const pedidoEncontrado = window.todosOsPedidosNuvem.find(p => p.numero_pedido == numPedido);
 
     if (pedidoEncontrado) {
-        // FIX: Se a API não mandou o estado, nós deduzimos usando o CEP do pedido!
         document.getElementById('tr-cliente').value = pedidoEncontrado.nome_cliente || 'Desconhecido';
         document.getElementById('tr-estado').value = pedidoEncontrado.estado || obterEstadoPorCep(pedidoEncontrado.cep) || 'ND';
         aviso.style.display = 'none';
@@ -123,9 +121,10 @@ export async function preencherDadosPedidoTroca() {
         containerModelos.innerHTML = ''; 
 
         if (pedidoEncontrado.produtos && pedidoEncontrado.produtos.trim() !== '') {
-            const arrProds = pedidoEncontrado.produtos.split(/,\s+/);
+            // FIX: Identifica qual separador o sistema usou (o novo ' || ' ou o antigo ', ')
+            const separador = pedidoEncontrado.produtos.includes(' || ') ? ' || ' : (pedidoEncontrado.produtos.includes(', ') ? ', ' : ',');
+            const arrProds = pedidoEncontrado.produtos.split(separador);
             
-            // Cria um checkbox para cada pedaço do produto
             arrProds.forEach((prod) => {
                 if(!prod.trim()) return;
                 const label = document.createElement('label');
@@ -142,7 +141,6 @@ export async function preencherDadosPedidoTroca() {
             const hr = document.createElement('hr'); hr.style.margin = '10px 0'; hr.style.borderColor = 'var(--border-color)';
             containerModelos.appendChild(hr);
             
-            // Opção "Pedido Completo"
             const labelAll = document.createElement('label');
             labelAll.style.display = 'flex'; labelAll.style.alignItems = 'center'; labelAll.style.gap = '8px'; labelAll.style.cursor = 'pointer'; labelAll.style.fontSize = '13px'; labelAll.style.fontWeight = 'bold';
             const cbAll = document.createElement('input');
@@ -166,7 +164,6 @@ export async function preencherDadosPedidoTroca() {
 export async function salvarNovaTroca(event) {
     event.preventDefault();
     
-    // Proteção: Impede de salvar se o usuário não selecionou nenhum checkbox
     const modeloSelecionado = document.getElementById('tr-modelo').value;
     if (!modeloSelecionado || modeloSelecionado.trim() === '') {
         alert("Por favor, selecione pelo menos um item da lista de produtos!");

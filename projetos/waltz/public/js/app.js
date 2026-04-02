@@ -8,6 +8,7 @@ import './clientes.js';
 import './logistica.js';
 import './trocas.js';
 import './config.js';
+import './entregas.js';
 
 
 inicializarIcones();
@@ -65,7 +66,7 @@ async function mostrarSubPaginaDash(idAlvoOriginal) {
     
     if (idAlvo === 'clientes') idAlvo = 'tiny';
     if (idAlvo === 'pedidos') idAlvo = 'nuvem';
-    if (idAlvo === 'entregas' || idAlvo === 'logistica' || idAlvo === 'regioes') idAlvo = 'cep';
+    if (idAlvo === 'logistica' || idAlvo === 'regioes') idAlvo = 'cep';
 
     document.querySelectorAll('.sub-pagina').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
@@ -117,6 +118,10 @@ async function mostrarSubPaginaDash(idAlvoOriginal) {
         document.getElementById('dash-page-title').innerText = "Trocas e Devoluções";
         document.getElementById('dash-page-subtitle').innerText = "Gestão de logística reversa e defeitos";
         if (window.carregarTrocasDB) await window.carregarTrocasDB();
+    } else if (idAlvo === 'entregas') {
+    document.getElementById('dash-page-title').innerText = "Entregas";
+    document.getElementById('dash-page-subtitle').innerText = "Análise de Transportadoras";
+    if (window.carregarDadosEntregas) await window.carregarDadosEntregas();
     }
     atualizarIcones();
 }

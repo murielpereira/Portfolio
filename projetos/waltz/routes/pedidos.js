@@ -6,7 +6,7 @@ const { fetchComRetry } = require('../utils/helpers');
 const pedidosEmProcessamentoNuvem = new Set();
 
 // ============================================================================
-// ROTAS DE CONSULTA E PAINEL
+// ROTAS DE CONSULTA, PAINEL E ENTREGAS
 // ============================================================================
 router.get('/api/pedidos', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
@@ -38,6 +38,23 @@ router.get('/api/relatorios/logistica', async (req, res) => {
         console.error("Erro na rota logística:", erro);
         res.status(500).json({ sucesso: false }); 
     }
+});
+
+router.get('/api/relatorios/entregas', async (req, res) => {
+    if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        const geral = await sql`
+            SELECT transportadora, COUNT(id_pedido)::int AS envios, ROUND(AVG(valor_frete), 2)::numeric AS media_frete, ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 1)::numeric AS media_dias
+            FROM pedidos_nuvemshop WHERE transportadora IS NOT NULL AND transportadora != ''
+            GROUP BY transportadora ORDER BY envios DESC;
+        `;
+        const estados = await sql`
+            SELECT estado, transportadora, COUNT(id_pedido)::int AS envios, ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 1)::numeric AS media_dias
+            FROM pedidos_nuvemshop WHERE estado IS NOT NULL AND estado != '' AND transportadora IS NOT NULL AND transportadora != '' AND data_entrega IS NOT NULL AND data_envio IS NOT NULL
+            GROUP BY estado, transportadora ORDER BY estado ASC, envios DESC;
+        `;
+        res.json({ sucesso: true, geral: geral.rows, estados: estados.rows });
+    } catch (erro) { res.status(500).json({ sucesso: false }); }
 });
 
 router.post('/api/pedidos/marcar-feedback', async (req, res) => {
@@ -72,8 +89,16 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
         const cpf = dadosPedido.customer && dadosPedido.customer.identification ? dadosPedido.customer.identification.replace(/\D/g, '') : '';
         const email_cliente = dadosPedido.customer && dadosPedido.customer.email ? dadosPedido.customer.email : '';
         const telefone = dadosPedido.customer && dadosPedido.customer.phone ? dadosPedido.customer.phone : '';
-        const nomesProdutos = dadosPedido.products ? dadosPedido.products.map(p => p.name).join(', ') : '';
         
+        // FIX: Usar ' || ' em vez de vírgula para não fatiar os produtos erradamente
+        const nomesProdutos = dadosPedido.products ? dadosPedido.products.map(p => p.name).join(' || ') : '';
+        
+        // FIX: Captura de Endereço, Transportadora e Custo
+        const cidade = dadosPedido.shipping_address ? dadosPedido.shipping_address.city : '';
+        const estado = dadosPedido.shipping_address ? dadosPedido.shipping_address.province : '';
+        const transportadora = dadosPedido.shipping_option || '';
+        const valor_frete = dadosPedido.shipping_cost || 0;
+
         let status = 'Aberto';
         const statusPrincipal = (dadosPedido.status || '').toLowerCase();
         const statusEnvio = (dadosPedido.shipping_status || '').toLowerCase();
@@ -104,7 +129,6 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
                     if (jsonSmart.result && jsonSmart.result.trackings && jsonSmart.result.trackings.length > 0) {
                         const eventos = jsonSmart.result.trackings.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                        // FIX 1: Procurar exatamente pelo evento de entrega, não apenas assumir que é o último
                         const eventoEntrega = eventos.find(e => e.code && e.code.tracking_type === 'DELIVERED');
                         if (eventoEntrega) {
                             dataEntregaFinal = new Date(eventoEntrega.date);
@@ -127,7 +151,7 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
             }
         }
 
-        // 🛡️ FIX 2: O ESCUDO JS - Ativa se a Nuvemshop mandar uma data de envio MAIOR ou IGUAL à data de entrega
+        // 🛡️ O ESCUDO JS - Ativa se a Nuvemshop mandar uma data de envio MAIOR ou IGUAL à data de entrega
         if (!dataEnvioFinal || 
             (dataEntregaFinal && dataEnvioFinal >= dataEntregaFinal) || 
             (dataEntregaFinal && dataEnvioFinal.toISOString().substring(0,10) === dataEntregaFinal.toISOString().substring(0,10))
@@ -145,37 +169,41 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
         }
 
         // ==============================================================
-        // 🛡️ FIX 3: A MURALHA DE AÇO (GRAVAÇÃO NO BANCO DE DADOS)
+        // 🛡️ A MURALHA DE AÇO E NOVAS COLUNAS
         // ==============================================================
+        try { await sql`ALTER TABLE pedidos_nuvemshop ADD COLUMN IF NOT EXISTS produtos TEXT;`; } catch(e) {}
+        try { await sql`ALTER TABLE pedidos_nuvemshop ADD COLUMN IF NOT EXISTS cidade VARCHAR(150);`; } catch(e) {}
+        try { await sql`ALTER TABLE pedidos_nuvemshop ADD COLUMN IF NOT EXISTS estado VARCHAR(100);`; } catch(e) {}
+        try { await sql`ALTER TABLE pedidos_nuvemshop ADD COLUMN IF NOT EXISTS transportadora VARCHAR(150);`; } catch(e) {}
+        try { await sql`ALTER TABLE pedidos_nuvemshop ADD COLUMN IF NOT EXISTS valor_frete NUMERIC;`; } catch(e) {}
+
         const envioDB = dataEnvioFinal ? dataEnvioFinal.toISOString() : null;
         const entregaDB = dataEntregaFinal ? dataEntregaFinal.toISOString() : null;
-
-        try { await sql`ALTER TABLE pedidos_nuvemshop ADD COLUMN IF NOT EXISTS produtos TEXT;`; } catch(e) {}
 
         await sql`
             INSERT INTO pedidos_nuvemshop (
                 id_pedido, numero_pedido, data_criacao, nome_cliente, cpf_cliente, telefone, email_cliente,
-                status_nuvemshop, rastreio, cep, data_envio, data_entrega, produtos
+                status_nuvemshop, rastreio, cep, data_envio, data_entrega, produtos, cidade, estado, transportadora, valor_frete
             )
             VALUES (
                 ${dadosPedido.id}, ${dadosPedido.number}, ${new Date(dadosPedido.created_at).toISOString()}, ${cliente}, ${cpf}, ${telefone}, ${email_cliente},
                 ${status}, ${rastreio}, ${dadosPedido.shipping_address ? dadosPedido.shipping_address.zipcode : ''},
-                ${envioDB}, ${entregaDB}, ${nomesProdutos}
+                ${envioDB}, ${entregaDB}, ${nomesProdutos}, ${cidade}, ${estado}, ${transportadora}, ${valor_frete}
             )
             ON CONFLICT (id_pedido) DO UPDATE SET 
                 status_nuvemshop = EXCLUDED.status_nuvemshop,
                 rastreio = EXCLUDED.rastreio,
                 produtos = CASE WHEN EXCLUDED.produtos IS NOT NULL AND EXCLUDED.produtos != '' THEN EXCLUDED.produtos ELSE pedidos_nuvemshop.produtos END,
-
+                cidade = CASE WHEN EXCLUDED.cidade IS NOT NULL AND EXCLUDED.cidade != '' THEN EXCLUDED.cidade ELSE pedidos_nuvemshop.cidade END,
+                estado = CASE WHEN EXCLUDED.estado IS NOT NULL AND EXCLUDED.estado != '' THEN EXCLUDED.estado ELSE pedidos_nuvemshop.estado END,
+                transportadora = CASE WHEN EXCLUDED.transportadora IS NOT NULL AND EXCLUDED.transportadora != '' THEN EXCLUDED.transportadora ELSE pedidos_nuvemshop.transportadora END,
+                valor_frete = EXCLUDED.valor_frete,
                 -- REGRA DE OURO LOGÍSTICA:
-                -- Nunca sobrescrever uma data de envio antiga válida com uma data mais recente (evita o bug Nuvemshop).
                 data_envio = CASE 
                     WHEN pedidos_nuvemshop.data_envio IS NULL THEN EXCLUDED.data_envio
                     WHEN EXCLUDED.data_envio IS NOT NULL AND EXCLUDED.data_envio < pedidos_nuvemshop.data_envio THEN EXCLUDED.data_envio
                     ELSE pedidos_nuvemshop.data_envio
                 END,
-                
-                -- Mantém a primeira data de entrega recebida, a menos que chegue um bipe de entrega mais antigo (correção de delay).
                 data_entrega = CASE 
                     WHEN pedidos_nuvemshop.data_entrega IS NULL THEN EXCLUDED.data_entrega
                     WHEN EXCLUDED.data_entrega IS NOT NULL AND EXCLUDED.data_entrega < pedidos_nuvemshop.data_entrega THEN EXCLUDED.data_entrega

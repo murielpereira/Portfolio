@@ -87,8 +87,15 @@ export function renderizarTabelaCEPs() {
     const divMapaCard = document.getElementById('mapa_brasil_card'); 
     const divMapaCanvas = document.getElementById('mapa_brasil_div');
     if (!tbody) return;
+
+    // FIX: Garante que o input pesquisa vai disparar (resolve o problema de digitar e nada acontecer)
+    const inputBusca = document.getElementById("busca-cep-analise");
+    if (inputBusca && !inputBusca.dataset.listenerAtivo) {
+        inputBusca.addEventListener('input', renderizarTabelaCEPs);
+        inputBusca.dataset.listenerAtivo = 'true';
+    }
     
-    const buscaRaw = (document.getElementById("busca-cep-analise")?.value || "").toLowerCase().trim();
+    const buscaRaw = (inputBusca?.value || "").toLowerCase().trim();
     const buscaApenasNumeros = buscaRaw.replace(/\D/g, '');
     
     if (!window.dadosLogisticaBackend || window.dadosLogisticaBackend.length === 0) return;
@@ -174,7 +181,6 @@ export function renderizarTabelaCEPs() {
     if (Object.keys(analiseAgrupadaMapaBR).length > 0) desenharMapaInteligente();
     else if (divMapaCard) divMapaCard.style.display = 'none';
 
-    // FIX 2: Ordenação Alfabética Padrão
     if (colunaOrdenacaoCep !== -1) {
         resultadosTabela.sort((a, b) => {
             let valA, valB;
@@ -189,7 +195,6 @@ export function renderizarTabelaCEPs() {
             return 0;
         });
     } else {
-        // Por padrão, organiza de A a Z pelo nome do Estado
         resultadosTabela.sort((a, b) => a.estado.localeCompare(b.estado));
     }
     

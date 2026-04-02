@@ -9,6 +9,7 @@ import { getAbaCep } from './templates/aba-cep.js';
 import { getAbaWhatsapp } from './templates/aba-whatsapp.js';
 import { getAbaEmail } from './templates/aba-email.js';
 import { getAbaTrocas } from './templates/aba-trocas.js';
+import { getAbaEntregas } from './templates/aba-entregas.js';
 
 export { getTemplateLogin };
 
@@ -21,15 +22,16 @@ export function getTemplatePainel() {
             ${getTopbar()}
 
             <div class="page-content-wrapper" id="dashboard-content-area">
-                ${getAbaConfig()}
                 ${getAbaDash()}
                 ${getAbaClientes()}
+                ${getAbaEntregas()}
                 ${getAbaPedidos()}
                 ${getAbaEmail()}
                 ${getAbaWhatsapp()}
                 ${getAbaRfm()}
                 ${getAbaCep()}
                 ${getAbaTrocas()}
+                ${getAbaConfig()}
             </div>
             
             ${getDrawer()}
