@@ -41,8 +41,12 @@ function copiarCodigo(texto) {
     }).catch(err => console.error('Erro ao copiar', err));
 }
 
+// ⚡ Bolt Optimization: Cache to prevent duplicate API requests
+const trackingCache = new Map();
+
 async function pesquisar() {
     const inputCodigo = document.getElementById('codigo');
+    const btnPesquisar = document.getElementById('botao_pesquisar');
     const codigo = inputCodigo.value.trim();
     const divResultado = document.getElementById('resultado');
 
@@ -52,22 +56,37 @@ async function pesquisar() {
     divResultado.style.display = "block";
     divResultado.innerHTML = "<p style='width:100%; text-align:center; font-size:1.2em; color:#888'>A carregar dados...</p>";
 
+    // ⚡ Bolt Optimization: Disable UI elements while fetching to prevent duplicate requests
+    if (btnPesquisar) btnPesquisar.disabled = true;
+    if (inputCodigo) inputCodigo.disabled = true;
+
     // CONFIGURAÇÕES API
     const proxy = "https://cors-anywhere.herokuapp.com/"; 
     const api_url = "https://api.smartenvios.com/v1/freight-order/tracking";
     const token = "NY2WulkhIl8n4Ttbqjj25zhmdyvikro"; 
 
     try {
-        const resposta = await fetch(proxy + api_url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Accept": "application/json", "token": token },
-            body: JSON.stringify({ "tracking_code": codigo })
-        });
+        let r;
 
-        if (!resposta.ok) throw new Error("Erro de conexão (Verifique o Proxy)");
+        // ⚡ Bolt Optimization: Use cached result if available
+        if (trackingCache.has(codigo)) {
+            r = trackingCache.get(codigo);
+        } else {
+            const resposta = await fetch(proxy + api_url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Accept": "application/json", "token": token },
+                body: JSON.stringify({ "tracking_code": codigo })
+            });
 
-        const json = await resposta.json();
-        const r = json.result;
+            if (!resposta.ok) throw new Error("Erro de conexão (Verifique o Proxy)");
+
+            const json = await resposta.json();
+            r = json.result;
+
+            if (r) {
+                trackingCache.set(codigo, r);
+            }
+        }
 
         if (!r) { divResultado.innerHTML = "<p style='width:100%; text-align:center'>Código não encontrado.</p>"; return; }
 
@@ -196,5 +215,9 @@ async function pesquisar() {
     } catch (erro) {
         console.error(erro);
         divResultado.innerHTML = `<p style="color:red; text-align:center">Erro: ${erro.message}</p>`;
+    } finally {
+        // ⚡ Bolt Optimization: Re-enable UI elements
+        if (btnPesquisar) btnPesquisar.disabled = false;
+        if (inputCodigo) inputCodigo.disabled = false;
     }
 }
