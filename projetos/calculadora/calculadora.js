@@ -32,9 +32,23 @@ function calcular(tipo, valor) {
 
         if(valor === '=') {
             var historico = document.getElementById('resultado').value + '='
-            var valor_campo = eval(document.getElementById('resultado').value)
-            document.getElementById('historico').value = historico + valor_campo
-            document.getElementById('resultado').value = valor_campo
+
+            // 🛡️ Sentinel: Fix critical code execution vulnerability
+            // Removed eval() and added strict input validation
+            var expressao = document.getElementById('resultado').value;
+            // Only allow numbers, basic operators, and decimals to prevent XSS/code execution
+            if (/^[0-9+\-*/.]+$/.test(expressao)) {
+                try {
+                    // Safe evaluation using Function instead of eval
+                    var valor_campo = new Function('return ' + expressao)();
+                    document.getElementById('historico').value = historico + valor_campo;
+                    document.getElementById('resultado').value = valor_campo;
+                } catch (e) {
+                    document.getElementById('resultado').value = 'Erro';
+                }
+            } else {
+                document.getElementById('resultado').value = 'Entrada Inválida';
+            }
         }
 
     } else if(tipo === 'valor') {
