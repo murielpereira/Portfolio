@@ -18,15 +18,13 @@ router.get('/api/logout', (req, res) => {
 });
 
 // =========================================================
-// ROTA DE CONFIGURAÇÕES (Blindada contra erro 500)
+// ROTA DE CONFIGURAÇÕES (Blindada 2.0 - Sem depender do ID)
 // =========================================================
 router.get('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
-        // Tenta criar a tabela se ela não existir para blindar contra erros 500
         await sql`
             CREATE TABLE IF NOT EXISTS configuracoes_sistema (
-                id SERIAL PRIMARY KEY,
                 wpp_ativo BOOLEAN DEFAULT false,
                 msg_aprovado TEXT,
                 msg_fabricacao TEXT,
@@ -38,11 +36,16 @@ router.get('/api/configuracoes', async (req, res) => {
                 vip_prata NUMERIC DEFAULT 1000
             );
         `;
-        // Insere linha padrão caso esteja vazia, para não devolver dados nulos
-        await sql`INSERT INTO configuracoes_sistema (id) VALUES (1) ON CONFLICT DO NOTHING;`;
-
-        // Lendo os dados com o nome correto
-        const { rows } = await sql`SELECT * FROM configuracoes_sistema WHERE id = 1;`;
+        
+        let { rows } = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
+        
+        // Se a tabela estiver vazia, cria a primeira linha invisível
+        if (rows.length === 0) {
+            await sql`INSERT INTO configuracoes_sistema (wpp_ativo) VALUES (false);`;
+            const res2 = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
+            rows = res2.rows;
+        }
+        
         res.json({ sucesso: true, config: rows[0] || {} });
     } catch (erro) {
         console.error("Erro ao buscar configurações:", erro);
@@ -54,6 +57,7 @@ router.post('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
         const c = req.body;
+        // Atualiza a configuração diretamente, sem precisar da coluna ID
         await sql`
             UPDATE configuracoes_sistema SET
                 wpp_ativo = ${c.wpp_ativo},
@@ -65,7 +69,6 @@ router.post('/api/configuracoes', async (req, res) => {
                 vip_diamante = ${c.vip_diamante},
                 vip_ouro = ${c.vip_ouro},
                 vip_prata = ${c.vip_prata}
-            WHERE id = 1;
         `;
         res.json({ sucesso: true });
     } catch (erro) {

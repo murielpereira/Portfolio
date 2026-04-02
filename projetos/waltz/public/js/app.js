@@ -60,19 +60,24 @@ function toggleSidebar() {
 }
 
 // Lógica de navegação principal LIMPA
-async function mostrarSubPaginaDash(idAlvo) {
+async function mostrarSubPaginaDash(idAlvoOriginal) {
+    let idAlvo = idAlvoOriginal;
+    
+    if (idAlvo === 'clientes') idAlvo = 'tiny';
+    if (idAlvo === 'pedidos') idAlvo = 'nuvem';
+    if (idAlvo === 'entregas' || idAlvo === 'logistica' || idAlvo === 'regioes') idAlvo = 'cep';
+
     document.querySelectorAll('.sub-pagina').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
     
     const painelAlvo = document.getElementById(`sub-${idAlvo}`);
-    const menuAlvo = document.getElementById(`nav-${idAlvo}`);
+    const menuAlvo = document.getElementById(`nav-${idAlvoOriginal}`) || document.getElementById(`nav-${idAlvo}`);
     const topActions = document.getElementById('dynamic-top-actions');
     
     if (painelAlvo) painelAlvo.style.display = 'block';
     if (menuAlvo) menuAlvo.classList.add('active');
     
-    // FIX: Limpa totalmente os topos antigos para não clonar inputs e destruir a busca
-    if (topActions) topActions.innerHTML = ''; 
+    if (topActions) topActions.innerHTML = '';
 
     if (idAlvo === 'dash') {
         document.getElementById('dash-page-title').innerText = "Dashboard";
