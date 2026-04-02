@@ -21,7 +21,6 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     const cpfLimpo = cpfBruto.replace(/\D/g, '');
     if (!cpfLimpo) return;
 
-    // 🛡️ Se este CPF já está sendo calculado nesta exata fração de segundo, ignora para não duplicar chamadas
     if (cpfsEmProcessamento.has(cpfLimpo)) {
         console.log(`🛡️ CPF ${cpfLimpo} ignorado (Já em processamento simultâneo).`);
         return;
@@ -29,7 +28,7 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
     cpfsEmProcessamento.add(cpfLimpo);
 
     try {
-        await delay(500); 
+        await delay(800); // Aumentei o delay para dar mais tempo ao motor de busca do Tiny respirar
         
         const respostaBusca = await fetch(`https://api.tiny.com.br/api2/pedidos.pesquisa.php?token=${TOKEN}&cpf_cnpj=${cpfLimpo}&formato=JSON`);
         const dadosBusca = await respostaBusca.json();
@@ -38,12 +37,7 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
             const pedidosDoCliente = dadosBusca.retorno.pedidos;
             const pedidoAtual = pedidosDoCliente[0].pedido;
 
-            if (pedidoAtual.obs_interna && pedidoAtual.obs_interna.includes('⭐ CLASSIFICAÇÃO')) {
-                console.log(`🛡️ Loop evitado: O pedido ${idPedido} já foi classificado anteriormente.`);
-                return; 
-            }
-
-            // Ignora os pedidos Cancelados ou Devolvidos na hora de somar o valor VIP do cliente
+            // Ignora os pedidos Cancelados ou Devolvidos na hora de somar o LTV
             const pedidosValidos = pedidosDoCliente.filter(p => {
                 const situacao = (p.pedido.situacao || '').toLowerCase();
                 return !situacao.includes('cancelad') && !situacao.includes('devolvid') && !situacao.includes('excluíd');
@@ -55,18 +49,34 @@ async function processarGrupoClienteTiny(idPedido, cpfBruto) {
             await sql`
                 INSERT INTO clientes (cpf, nome, total_pedidos, valor_total)
                 VALUES (${cpfLimpo}, ${pedidoAtual.nome}, ${totalPedidos}, ${valorTotalGasto})
-                ON CONFLICT (cpf) DO UPDATE SET total_pedidos = EXCLUDED.total_pedidos, valor_total = EXCLUDED.valor_total;
+                ON CONFLICT (cpf) DO UPDATE SET total_pedidos = EXCLUDED.total_pedidos, valor_total = EXCLUDED.valor_total, nome = EXCLUDED.nome;
             `;
 
-            let grupoReal = totalPedidos === 1 ? "PRIMEIRA COMPRA" : (valorTotalGasto <= 1000 ? "BRONZE" : (valorTotalGasto <= 3000 ? "PRATA" : "OURO"));
-            const obsInterna = `⭐ CLASSIFICAÇÃO: Cliente ${grupoReal} | Histórico: ${totalPedidos} pedidos | LTV: R$ ${valorTotalGasto.toFixed(2)}`;
+            // Calcula o Grupo
+            let grupoReal = totalPedidos === 0 ? "SEM COMPRAS" : (totalPedidos === 1 ? "PRIMEIRA COMPRA" : (valorTotalGasto <= 1000 ? "BRONZE" : (valorTotalGasto <= 3000 ? "PRATA" : "OURO")));
             
-            await atualizarObservacaoTiny(idPedido, obsInterna);
+            // A MÁGICA ACONTECE AQUI: A Nova Etiqueta
+            const obsInternaNova = `⭐ CLASSIFICAÇÃO: Cliente ${grupoReal} | Histórico: ${totalPedidos} pedidos | LTV: R$ ${valorTotalGasto.toFixed(2)}`;
+
+            // Verifica se a etiqueta do pedido JÁ É EXATAMENTE igual à nova. Só aborta se não houver mudanças.
+            if (pedidoAtual.obs_interna && pedidoAtual.obs_interna.includes(obsInternaNova)) {
+                console.log(`🛡️ Loop evitado: O pedido ${idPedido} já está com os dados LTV perfeitamente atualizados.`);
+                return; 
+            }
+
+            // Se for diferente (ex: passou de 0 para 1 pedido), substitui a velha pela nova
+            let obsFinal = pedidoAtual.obs_interna || "";
+            if (obsFinal.includes('⭐ CLASSIFICAÇÃO')) {
+                obsFinal = obsFinal.replace(/⭐ CLASSIFICAÇÃO.*/g, obsInternaNova);
+            } else {
+                obsFinal = obsFinal ? `${obsFinal}\n${obsInternaNova}` : obsInternaNova;
+            }
+            
+            await atualizarObservacaoTiny(idPedido, obsFinal);
         }
     } catch (erro) {
         console.error("Erro ao processar cliente do Tiny:", erro);
     } finally {
-        // 🛡️ Remove o CPF do bloqueio após 15 segundos, libertando-o para futuras atualizações reais
         setTimeout(() => cpfsEmProcessamento.delete(cpfLimpo), 15000);
     }
 }
@@ -90,36 +100,62 @@ router.post('/api/webhook/tiny', async (req, res) => {
     } catch (erro) { res.status(200).send('OK'); }
 });
 
-router.get('/api/relatorios/clientes', async (req, res) => {
+// 1. Rota Super Leve (Carrega 28.000 clientes em ~0.1s para alimentar RFM e Gráficos)
+router.get('/api/relatorios/clientes/lite', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
         const { rows } = await sql`
-            SELECT 
-                c.*,
-                CASE WHEN c.total_pedidos > 0 THEN (c.valor_total / c.total_pedidos) ELSE 0 END AS ticket_medio,
-                ROUND(p.media_dias, 0) AS tempo_medio_entrega_dias,
-                ult.data_criacao AS ultima_compra_data,
-                ult.numero_pedido AS ultima_compra_pedido,
-                ult.telefone AS telefone_nuvem
+            SELECT c.*,
+                   (SELECT MAX(data_criacao) FROM pedidos_nuvemshop WHERE cpf_cliente = c.cpf) as ultima_compra_data,
+                   (SELECT telefone FROM pedidos_nuvemshop WHERE cpf_cliente = c.cpf AND telefone IS NOT NULL AND telefone != '' ORDER BY data_criacao DESC LIMIT 1) as telefone_nuvem
             FROM clientes c
-            LEFT JOIN (
-                SELECT cpf_cliente, AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400)::numeric AS media_dias
-                FROM pedidos_nuvemshop
-                WHERE status_nuvemshop = 'Entregue' AND data_envio IS NOT NULL AND data_entrega IS NOT NULL AND data_entrega >= data_envio
-                GROUP BY cpf_cliente
-            ) p ON c.cpf = p.cpf_cliente
-            LEFT JOIN LATERAL (
-                SELECT data_criacao, numero_pedido, telefone
-                FROM pedidos_nuvemshop
-                WHERE cpf_cliente = c.cpf AND telefone IS NOT NULL AND telefone != ''
-                ORDER BY data_criacao DESC
-                LIMIT 1
-            ) ult ON true
             ORDER BY c.valor_total DESC;
         `;
         res.json({ sucesso: true, clientes: rows });
     } catch (erro) { 
         res.status(500).json({ sucesso: false }); 
+    }
+});
+
+// 2. Rota de Detalhes (Faz a matemática pesada APENAS para os 50 CPFs da página atual)
+router.post('/api/relatorios/clientes/detalhes', async (req, res) => {
+    if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        const { cpfs } = req.body;
+        if (!cpfs || !cpfs.length) return res.json({ sucesso: true, detalhes: {} });
+
+        // Proteção contra SQL Injection para consultas dinâmicas
+        const placeholders = cpfs.map((_, i) => `$${i + 1}`).join(',');
+        const query = `
+            SELECT 
+                c.cpf,
+                ROUND(p.media_dias, 0) AS tempo_medio_entrega_dias,
+                ult.numero_pedido AS ultima_compra_pedido
+            FROM clientes c
+            LEFT JOIN (
+                SELECT cpf_cliente, AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400)::numeric AS media_dias
+                FROM pedidos_nuvemshop
+                WHERE status_nuvemshop = 'Entregue' AND data_envio IS NOT NULL AND data_entrega IS NOT NULL AND data_entrega >= data_envio
+                  AND cpf_cliente IN (${placeholders})
+                GROUP BY cpf_cliente
+            ) p ON c.cpf = p.cpf_cliente
+            LEFT JOIN LATERAL (
+                SELECT numero_pedido
+                FROM pedidos_nuvemshop
+                WHERE cpf_cliente = c.cpf
+                ORDER BY data_criacao DESC
+                LIMIT 1
+            ) ult ON true
+            WHERE c.cpf IN (${placeholders});
+        `;
+        
+        const result = await sql.query(query, cpfs);
+        const detalhes = {};
+        result.rows.forEach(r => detalhes[r.cpf] = r);
+        
+        res.json({ sucesso: true, detalhes });
+    } catch (erro) {
+        res.status(500).json({ sucesso: false });
     }
 });
 

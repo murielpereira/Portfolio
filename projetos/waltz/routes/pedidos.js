@@ -14,6 +14,28 @@ router.get('/api/pedidos', async (req, res) => {
     } catch (erro) { res.status(500).json({ erro: 'Erro interno' }); }
 });
 
+router.get('/api/relatorios/logistica', async (req, res) => {
+    if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        const { rows } = await sql`
+            SELECT 
+                SUBSTRING(REGEXP_REPLACE(cep, '\\D', '', 'g'), 1, 5) AS cep_prefixo,
+                COUNT(id_pedido)::int AS volume,
+                ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 0)::int AS media_dias
+            FROM pedidos_nuvemshop
+            WHERE status_nuvemshop IN ('Entregue', 'Arquivado', 'CLOSED', 'DELIVERED') 
+              AND cep IS NOT NULL AND cep != ''
+              AND data_envio IS NOT NULL AND data_entrega IS NOT NULL AND data_entrega >= data_envio
+              AND EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400 <= 60
+            GROUP BY SUBSTRING(REGEXP_REPLACE(cep, '\\D', '', 'g'), 1, 5)
+            ORDER BY volume DESC;
+        `;
+        res.json({ sucesso: true, dados: rows });
+    } catch (erro) { 
+        res.status(500).json({ sucesso: false }); 
+    }
+});
+
 router.post('/api/pedidos/marcar-feedback', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {

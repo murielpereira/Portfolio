@@ -56,16 +56,20 @@ function toggleSidebar() {
     if (sidebar) sidebar.classList.toggle('collapsed');
 }
 
-// Lógica de navegação principal (Totalmente Limpa - Sem injeção de HTML fantasma)
+// Lógica de navegação principal LIMPA
 async function mostrarSubPaginaDash(idAlvo) {
     document.querySelectorAll('.sub-pagina').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
     
     const painelAlvo = document.getElementById(`sub-${idAlvo}`);
     const menuAlvo = document.getElementById(`nav-${idAlvo}`);
+    const topActions = document.getElementById('dynamic-top-actions');
     
     if (painelAlvo) painelAlvo.style.display = 'block';
     if (menuAlvo) menuAlvo.classList.add('active');
+    
+    // FIX: Limpa totalmente os topos antigos para não clonar inputs e destruir a busca
+    if (topActions) topActions.innerHTML = ''; 
 
     if (idAlvo === 'dash') {
         document.getElementById('dash-page-title').innerText = "Dashboard";
@@ -88,15 +92,15 @@ async function mostrarSubPaginaDash(idAlvo) {
     } else if (idAlvo === 'cep') { 
         document.getElementById('dash-page-title').innerText = "Desempenho Logístico por Região";
         document.getElementById('dash-page-subtitle').innerText = "Análise de tempo de entrega";
-        if (window.todosOsPedidosNuvem && window.todosOsPedidosNuvem.length === 0) await window.carregarPedidosNuvemDB(); 
-        else if (window.renderizarTabelaCEPs) window.renderizarTabelaCEPs();
+        // Recarrega sempre do Back-end para garantir dados fresquinhos 
+        if (window.carregarDadosLogistica) await window.carregarDadosLogistica(); 
+    } else if (idAlvo === 'config') {
+        document.getElementById('dash-page-title').innerText = "Configurações do Sistema";
+        document.getElementById('dash-page-subtitle').innerText = "Personalização de Automações e Variáveis";
+        preencherFormularioConfig();
     } else if (idAlvo === 'whatsapp') {
         document.getElementById('dash-page-title').innerText = "Automações do WhatsApp";
         document.getElementById('dash-page-subtitle').innerText = "Configuração de mensagens";
-        preencherFormularioConfig();
-    } else if (idAlvo === 'config') {
-        document.getElementById('dash-page-title').innerText = "Configurações do Sistema";
-        document.getElementById('dash-page-subtitle').innerText = "Regras VIP e variáveis";
         preencherFormularioConfig();
     }
     atualizarIcones();

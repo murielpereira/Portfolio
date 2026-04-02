@@ -7,39 +7,6 @@ const itensPorPaginaRelatorio = 50;
 let colunaOrdenacao = -1;
 let ordemCrescente = true;
 
-// ==========================================
-// FUNÇÕES DE MATRIZ RFM E GRÁFICOS (MANTIDAS INTACTAS)
-// ==========================================
-export function renderizarMatrizRFM() {
-    if (window.todaABaseDeClientes.length === 0) return;
-
-    let somaLTV = 0, somaFreq = 0, somaRecencia = 0, clientesComCompra = 0;
-    let campeoes = 0, fieis = 0, recentes = 0, risco = 0;
-
-    window.todaABaseDeClientes.forEach(c => {
-        if (c.segmento_rfm === "SEM COMPRAS") return;
-        somaLTV += parseFloat(c.valor_total || 0);
-        somaFreq += parseInt(c.total_pedidos || 0);
-        somaRecencia += c.recenciaDias; 
-        clientesComCompra++;
-
-        if (c.segmento_rfm === "CAMPEOES") campeoes++;
-        else if (c.segmento_rfm === "FIEIS") fieis++;
-        else if (c.segmento_rfm === "RECENTES") recentes++;
-        else if (c.segmento_rfm === "RISCO") risco++;
-    });
-
-    if (clientesComCompra > 0) {
-        document.getElementById('rfm-r-avg').innerText = Math.round(somaRecencia / clientesComCompra) + ' d';
-        document.getElementById('rfm-f-avg').innerText = (somaFreq / clientesComCompra).toFixed(1);
-        document.getElementById('rfm-m-avg').innerText = 'R$ ' + (somaLTV / clientesComCompra).toFixed(2).replace('.', ',');
-        document.getElementById('rfm-campeoes').innerText = campeoes + ' clientes';
-        document.getElementById('rfm-fieis').innerText = fieis + ' clientes';
-        document.getElementById('rfm-recentes').innerText = recentes + ' clientes';
-        document.getElementById('rfm-emrisco').innerText = risco + ' clientes';
-    }
-}
-
 export function renderizarGraficoClientes(dadosOpcionais = null) {
     const divGrafico = document.getElementById('grafico-clientes-div');
     if (!divGrafico || typeof google === 'undefined' || !google.visualization) return;
@@ -69,48 +36,144 @@ export function renderizarGraficoClientes(dadosOpcionais = null) {
     new google.visualization.PieChart(divGrafico).draw(dataTable, options);
 }
 
+window.clientesNoSegmentoAtualRFM = [];
+window.segmentoAtualRFM = "";
+
+export function renderizarMatrizRFM() {
+    if (!window.todaABaseDeClientes || window.todaABaseDeClientes.length === 0) return;
+
+    let contagem = {
+        "Campeões": 0, "Clientes Leais": 0, "Potenciais Leais": 0, "Novos Clientes": 0,
+        "Promissores": 0, "Precisam de Atenção": 0, "Prestes a Dormir": 0, 
+        "Em Risco": 0, "Não Podemos Perder": 0, "Hibernando": 0, "Perdidos": 0
+    };
+
+    window.todaABaseDeClientes.forEach(c => {
+        if (contagem[c.segmento_rfm] !== undefined) contagem[c.segmento_rfm]++;
+    });
+
+    const totalClientesAtivos = Object.values(contagem).reduce((a, b) => a + b, 0);
+
+    Object.keys(contagem).forEach(seg => {
+        const idLimpo = seg.replace(/\s+/g, '');
+        const elCount = document.getElementById(`rfm-count-${idLimpo}`);
+        if (elCount) {
+            const percent = totalClientesAtivos > 0 ? ((contagem[seg] / totalClientesAtivos) * 100).toFixed(1) : 0;
+            elCount.innerHTML = `${contagem[seg]}<br><span style="font-size:11px;">${percent}%</span>`;
+        }
+    });
+}
+
+export function abrirListaClientesRFM(segmento) {
+    if (!segmento) return;
+    window.segmentoAtualRFM = segmento;
+    window.clientesNoSegmentoAtualRFM = window.todaABaseDeClientes.filter(c => c.segmento_rfm === segmento);
+
+    const titulo = document.getElementById('rfm-detalhes-titulo');
+    const tbody = document.getElementById('rfm-tabela-clientes-body');
+    const area = document.getElementById('rfm-detalhes-area');
+
+    titulo.innerText = `Clientes em "${segmento}" (${window.clientesNoSegmentoAtualRFM.length})`;
+    tbody.innerHTML = '';
+
+    window.clientesNoSegmentoAtualRFM.forEach(c => {
+        const dataUltima = c.ultima_compra_data ? new Date(c.ultima_compra_data).toLocaleDateString('pt-BR') : '-';
+        const telefone = c.whatsapp || c.telefone_nuvem || '-';
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-weight: 500;">${c.nome || '-'}</td>
+            <td>${telefone}</td>
+            <td>${c.cpf || '-'}</td>
+            <td>${c.total_pedidos || 0}</td>
+            <td style="font-weight: bold;">R$ ${parseFloat(c.valor_total || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td>${dataUltima}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    area.style.display = 'block';
+    area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+export function exportarCSV_RFM() {
+    if (!window.clientesNoSegmentoAtualRFM || window.clientesNoSegmentoAtualRFM.length === 0) return;
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM para acentuação no Excel
+    csvContent += "Nome;WhatsApp;CPF;Total Pedidos;Valor Total LTV;Ultima Compra\n";
+
+    window.clientesNoSegmentoAtualRFM.forEach(c => {
+        const nome = `"${(c.nome || '').replace(/"/g, '""')}"`;
+        const wpp = c.whatsapp || c.telefone_nuvem || '';
+        const cpf = c.cpf || '';
+        const pedidos = c.total_pedidos || 0;
+        const ltv = parseFloat(c.valor_total || 0).toFixed(2).replace('.', ','); // Formato PT-BR
+        const ultima = c.ultima_compra_data ? new Date(c.ultima_compra_data).toLocaleDateString('pt-BR') : '';
+
+        csvContent += `${nome};${wpp};${cpf};${pedidos};${ltv};${ultima}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Clientes_${window.segmentoAtualRFM.replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 // ==========================================
-// CARREGAMENTO DA BASE E INTELIGÊNCIA DE GRUPOS
+// CARREGAMENTO DA BASE E INTELIGÊNCIA LITE
 // ==========================================
 export async function carregarClientesTinyDB() {
     try {
-        const resposta = await fetch('/api/relatorios/clientes');
+        const resposta = await fetch('/api/relatorios/clientes/lite');
         const data = await resposta.json();
         if (data.sucesso) { 
             const hoje = new Date();
             const regras = getRegrasVIP();
+            
+            // O Mapa Oficial dos 25 cruzamentos RFM (Recência x Frequência)
+            const rfmMap = {
+                "55": "Campeões", "54": "Campeões", "45": "Campeões",
+                "53": "Potenciais Leais", "44": "Clientes Leais", "43": "Potenciais Leais", "35": "Clientes Leais", "34": "Clientes Leais",
+                "52": "Potenciais Leais", "51": "Novos Clientes",
+                "42": "Potenciais Leais", "41": "Promissores",
+                "33": "Precisam de Atenção", "32": "Prestes a Dormir", "31": "Prestes a Dormir",
+                "25": "Não Podemos Perder", "24": "Em Risco", "23": "Em Risco", "22": "Hibernando", "21": "Hibernando",
+                "15": "Não Podemos Perder", "14": "Não Podemos Perder", "13": "Em Risco", "12": "Perdidos", "11": "Perdidos"
+            };
 
             window.todaABaseDeClientes = data.clientes.map(c => {
-                // Inteligência RFM (Mantida)
-                let r = 1, f = 1, m = 1;
-                let recenciaDias = 999;
-                if (c.ultima_compra) recenciaDias = Math.ceil(Math.abs(hoje - new Date(c.ultima_compra)) / (1000 * 60 * 60 * 24));
-                if (recenciaDias <= 30) r = 5; else if (recenciaDias <= 90) r = 4; else if (recenciaDias <= 180) r = 3; else if (recenciaDias <= 365) r = 2; else r = 1;
-                if (c.total_pedidos >= 5) f = 5; else if (c.total_pedidos >= 3) f = 4; else if (c.total_pedidos === 2) f = 3; else if (c.total_pedidos === 1) f = 1; else f = 0;
-                if (c.valor_total >= 3000) m = 5; else if (c.valor_total >= 1000) m = 4; else if (c.valor_total >= 500) m = 3; else if (c.valor_total > 0) m = 2; else m = 0;
-                
-                let segmento = "SEM COMPRAS";
-                if (f > 0) {
-                    if (r >= 4 && f >= 4 && m >= 4) segmento = "CAMPEOES";
-                    else if (r >= 2 && f >= 3) segmento = "FIEIS";
-                    else if (r >= 4 && f <= 2) segmento = "RECENTES";
-                    else segmento = "RISCO";
-                }
+                c.ticket_medio = c.total_pedidos > 0 ? (c.valor_total / c.total_pedidos) : 0;
+                let tPedidos = parseInt(c.total_pedidos || 0);
 
-                // Inteligência de Grupo (VIP) em Tempo Real
-                let grupoCalculado = "SEM COMPRAS";
-                let totalPedidos = parseInt(c.total_pedidos || 0); 
-                let valorTotal = parseFloat(c.valor_total || 0); 
+                // 1. Cálculo da Recência (R: 1 a 5)
+                let r = 1;
+                let recenciaDias = 999;
+                if (c.ultima_compra_data) recenciaDias = Math.ceil(Math.abs(hoje - new Date(c.ultima_compra_data)) / (1000 * 60 * 60 * 24));
+                if (recenciaDias <= 30) r = 5; else if (recenciaDias <= 90) r = 4; else if (recenciaDias <= 180) r = 3; else if (recenciaDias <= 365) r = 2; else r = 1;
                 
-                if (totalPedidos === 1) grupoCalculado = "PRIMEIRA COMPRA";
-                else if (totalPedidos > 1) { 
+                // 2. Cálculo da Frequência (F: 1 a 5)
+                let f = 1;
+                if (tPedidos >= 10) f = 5; else if (tPedidos >= 5) f = 4; else if (tPedidos >= 3) f = 3; else if (tPedidos === 2) f = 2; else if (tPedidos === 1) f = 1; else f = 0;
+                
+                // Segmento RFM Oficial
+                let segmento = rfmMap[`${r}${f}`] || "SEM COMPRAS";
+                if (tPedidos === 0) segmento = "SEM COMPRAS";
+
+                // Segmento de Grupos VIPs
+                let grupoCalculado = "SEM COMPRAS";
+                let valorTotal = parseFloat(c.valor_total || 0); 
+                if (tPedidos === 1) grupoCalculado = "PRIMEIRA COMPRA";
+                else if (tPedidos > 1) { 
                     if (valorTotal < regras.prata) grupoCalculado = "BRONZE"; 
                     else if (valorTotal < regras.ouro) grupoCalculado = "PRATA"; 
                     else if (valorTotal < regras.diamante) grupoCalculado = "OURO"; 
                     else grupoCalculado = "DIAMANTE"; 
                 }
 
-                return { ...c, rfm_score: {r, f, m}, recenciaDias, segmento_rfm: segmento, grupoCalculado };
+                return { ...c, recenciaDias, segmento_rfm: segmento, grupoCalculado };
             });
             
             resetarEPaginacao(); 
@@ -120,17 +183,19 @@ export async function carregarClientesTinyDB() {
 }
 
 // ==========================================
-// RENDERIZAÇÃO DA TABELA NOVA (7 COLUNAS E FILTROS V2)
+// RENDERIZAÇÃO HIDRATADA (O Segredo da Velocidade)
 // ==========================================
-export function renderizarPaginaRelatorio() {
+let renderId = 0; // Escudo contra cliques duplos e digitação rápida
+
+export async function renderizarPaginaRelatorio() {
+    const idDestaRenderizacao = ++renderId;
     const tbody = document.getElementById('tabela-clientes-body');
     if(!tbody) return;
     
-    // Ler os novos IDs dos filtros (Versão modular v2)
     const termoBusca = (document.getElementById("busca-tiny-v2")?.value || "").toLowerCase();
     const filtroGrupo = document.getElementById("filtro-grupo-v2")?.value || "TODOS";
     
-    // 1. Filtragem Inteligente
+    // 1. Filtragem Inteligente (Instantânea)
     let dadosFiltrados = window.todaABaseDeClientes.filter(c => {
         const nomeStr = (c.nome || "").toLowerCase(); 
         const cpfStr = (c.cpf || "").replace(/\D/g, '');
@@ -142,18 +207,46 @@ export function renderizarPaginaRelatorio() {
         return passaBusca && passaGrupo;
     });
 
-    // 2. Atualizar Contador e Gráfico
     const contadorElem = document.getElementById('contador-cadastros');
     if (contadorElem) contadorElem.innerText = `${dadosFiltrados.length} cadastro(s)`;
-    renderizarGraficoClientes(dadosFiltrados); // Atualiza o gráfico de pizza filtrado em tempo real
+    renderizarGraficoClientes(dadosFiltrados); 
 
-    // 3. Paginação
+    // 2. Paginação
     const totalPaginas = Math.ceil(dadosFiltrados.length / itensPorPaginaRelatorio);
     if (paginaAtualRelatorio > totalPaginas && totalPaginas > 0) paginaAtualRelatorio = totalPaginas;
     const inicio = (paginaAtualRelatorio - 1) * itensPorPaginaRelatorio;
     const itensDaPagina = dadosFiltrados.slice(inicio, inicio + itensPorPaginaRelatorio);
 
-    // 4. Desenho da Tabela (7 Colunas)
+    // 3. Busca de Detalhes Pesados APENAS da Página Atual (Hidratação)
+    if (itensDaPagina.length > 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: var(--primary); font-weight: 600;">Calculando métricas logísticas da página...</td></tr>';
+        
+        try {
+            const cpfsParaBuscar = itensDaPagina.map(c => c.cpf);
+            const resDetalhes = await fetch('/api/relatorios/clientes/detalhes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cpfs: cpfsParaBuscar })
+            });
+            const jsonDetalhes = await resDetalhes.json();
+            
+            // Aborta se o utilizador digitou algo novo ou mudou de página enquanto esperava o servidor
+            if (idDestaRenderizacao !== renderId) return; 
+
+            if (jsonDetalhes.sucesso) {
+                itensDaPagina.forEach(c => {
+                    if (jsonDetalhes.detalhes[c.cpf]) {
+                        c.tempo_medio_entrega_dias = jsonDetalhes.detalhes[c.cpf].tempo_medio_entrega_dias;
+                        c.ultima_compra_pedido = jsonDetalhes.detalhes[c.cpf].ultima_compra_pedido;
+                    }
+                });
+            }
+        } catch (e) { console.error(e); }
+    }
+    
+    if (idDestaRenderizacao !== renderId) return;
+
+    // 4. Desenho da Tabela
     tbody.innerHTML = '';
     if (itensDaPagina.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px;">Nenhum cliente atende aos filtros.</td></tr>';
@@ -352,3 +445,5 @@ window.carregarClientesTinyDB = carregarClientesTinyDB;
 window.renderizarMatrizRFM = renderizarMatrizRFM;
 window.abrirDetalhesCliente = abrirDetalhesCliente;
 window.atualizarMetricasDashboard = atualizarMetricasDashboard;
+window.abrirListaClientesRFM = abrirListaClientesRFM;
+window.exportarCSV_RFM = exportarCSV_RFM;
