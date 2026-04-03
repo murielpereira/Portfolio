@@ -15,7 +15,7 @@ export function getTemplateLogin() {
                     <label for="senha" style="display: block; margin-bottom: 8px; font-weight: 600; color: #f8fafc; font-size: 13px;">Senha</label>
                     <div style="position: relative; display: flex; align-items: center;">
                         <input type="password" id="senha" name="senha" placeholder="••••••••" class="glass-input" required>
-                        <button type="button" id="btn-mostrar-senha" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #cbd5e1; display: flex;"><span class="material-symbols-outlined" id="icone-senha" style="font-size: 20px;">visibility</span></button>
+                        <button type="button" id="btn-mostrar-senha" aria-label="Mostrar ou ocultar senha" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #cbd5e1; display: flex;"><span class="material-symbols-outlined" id="icone-senha" style="font-size: 20px;">visibility</span></button>
                     </div>
                 </div>
                 <div style="text-align: right; margin-bottom: 30px;"><a href="#" style="color: #cbd5e1; font-size: 13px; text-decoration: none;">Esqueceu a senha?</a></div>
