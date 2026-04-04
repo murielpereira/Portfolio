@@ -3,6 +3,10 @@ const express = require('express');
 const cookieSession = require('cookie-session');
 const path = require('path');
 
+if (!process.env.CHAVE_SECRETA_SESSAO) {
+    throw new Error('CRITICAL VULNERABILITY: CHAVE_SECRETA_SESSAO environment variable is not defined.');
+}
+
 const app = express();
 
 // 1. Configurações Básicas
@@ -12,7 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieSession({
     name: 'sessao-automacao',
-    keys: [process.env.CHAVE_SECRETA_SESSAO || 'chave-fallback'],
+    keys: [process.env.CHAVE_SECRETA_SESSAO],
     maxAge: 24 * 60 * 60 * 1000,
     secure: false, 
     sameSite: 'lax' 
