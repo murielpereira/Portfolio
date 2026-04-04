@@ -32,6 +32,12 @@ input[type="text"] {
     color: white;
     width: 300px;
     font-size: 16px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+input[type="text"]:focus-visible {
+    outline: none;
+    border-color: #00ff88;
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.3);
 }
 input[type="button"] {
     padding: 12px 25px;
@@ -42,9 +48,15 @@ input[type="button"] {
     cursor: pointer;
     font-weight: bold;
     font-size: 16px;
-    transition: background 0.2s;
+    transition: background 0.2s, opacity 0.2s;
 }
-input[type="button"]:hover { background: #0056b3; }
+input[type="button"]:hover:not(:disabled) { background: #0056b3; }
+input[type="button"]:disabled {
+    background: #333;
+    color: #888;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
 
 /* --- GRID LAYOUT --- */
 #resultado {

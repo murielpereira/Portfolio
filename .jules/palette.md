@@ -1,0 +1,3 @@
+## 2024-05-24 - Provide Clear Loading States and Expected Keyboard Shortcuts
+**Learning:** For interactive tools that don't rely on native `<form>` submission (like the tracking page search box), users expect common keyboard navigation to still work (e.g. hitting Enter to search). Additionally, because API queries take time, explicitly updating the submit button state (adding disabled and changing the text label to indicate loading) ensures the interface feels responsive and helps prevent multiple unintentional API requests.
+**Action:** Always map "Enter" keypress behavior on main text inputs to trigger their associated search/action function, and clearly alter button states dynamically when fetching external resources.
