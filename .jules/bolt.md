@@ -1,3 +1,7 @@
 ## 2025-04-02 - Frontend Debouncing and Caching
 **Learning:** Found a common performance anti-pattern in the frontend tracking search module where an expensive external API request (SmartEnvios tracking) was triggered on every button click without debouncing or caching. If the user spam-clicked or re-searched the same tracking code, redundant external proxy + API fetch operations would queue up, unnecessarily taxing bandwidth and potentially hitting API rate limits.
 **Action:** Implemented a `Map` based in-memory cache for tracking results within the single-page application session. Also added UI debouncing by disabling the search button and input fields while an API fetch is in progress. Always ensure frequent user-triggered network requests have proper debouncing/throttling and consider caching for idempotent lookups.
+
+## 2023-10-27 - Duplicate Script Tags
+**Learning:** Found that `script.js` was being loaded twice in `index.html` (once with `type="module"` and once without). Since the script executes multiple `fetch` calls on load, this duplicated network requests and hurt performance. Additionally, `iniciarTypewriter` was called without including `typewriter.js` in the main HTML, causing a console error.
+**Action:** Remove the duplicate classic `<script>` tag to halve redundant API/fetch calls, keeping the `<script type="module">` tag to preserve ES module scoping and take advantage of its natural deferral. Include the missing `typewriter.js` using `<script defer>` to fix the `ReferenceError` while avoiding parser blocking.
