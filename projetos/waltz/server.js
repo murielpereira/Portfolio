@@ -5,6 +5,13 @@ const path = require('path');
 
 const app = express();
 
+// 🛡️ Fail-secure: Server MUST NOT start without a proper session secret
+if (!process.env.CHAVE_SECRETA_SESSAO) {
+    console.error("CRITICAL SECURITY ERROR: CHAVE_SECRETA_SESSAO environment variable is missing.");
+    console.error("The server is failing securely to prevent session hijacking via fallback keys.");
+    process.exit(1);
+}
+
 // 1. Configurações Básicas
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -12,7 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieSession({
     name: 'sessao-automacao',
-    keys: [process.env.CHAVE_SECRETA_SESSAO || 'chave-fallback'],
+    keys: [process.env.CHAVE_SECRETA_SESSAO],
     maxAge: 24 * 60 * 60 * 1000,
     secure: false, 
     sameSite: 'lax' 
