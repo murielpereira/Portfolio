@@ -1,41 +1,41 @@
-# Portfolio
+# Portfólio
 
-A personal portfolio web application to showcase projects and skills, built with vanilla web technologies.
+Uma aplicação web de portfólio pessoal para exibir projetos e habilidades, construída com tecnologias web puras (vanilla).
 
-## 🔗 Live Demos
-- [GitHub Pages Deployment](https://murielpereira.github.io/Portfolio/index.html)
-- [Vercel Deployment](https://murielpereira.vercel.app/)
+## 🔗 Demonstrações ao Vivo
+- [Implantação no GitHub Pages](https://murielpereira.github.io/Portfolio/index.html)
+- [Implantação na Vercel](https://murielpereira.vercel.app/)
 
-## 🚀 Architecture and Technologies
-This project is built using:
-- **HTML5 & CSS3**
-- **Vanilla JavaScript**
+## 🚀 Arquitetura e Tecnologias
+Este projeto foi desenvolvido utilizando:
+- **HTML5 e CSS3**
+- **JavaScript Puro (Vanilla JavaScript)**
 
-A key feature of the portfolio is its dynamic content loading architecture. It utilizes the modern JavaScript `fetch` API to load HTML snippets (like the header and different sections) into placeholder elements. This provides a single-page application (SPA) like experience while keeping the codebase lightweight and free of heavy framework dependencies.
+Uma característica principal do portfólio é a sua arquitetura de carregamento dinâmico de conteúdo. Ele utiliza a moderna API `fetch` do JavaScript para carregar fragmentos de HTML (como o cabeçalho e as diferentes seções) em elementos de marcação (placeholders). Isso proporciona uma experiência de aplicação de página única (SPA), mantendo o código base leve e livre de dependências pesadas de frameworks.
 
-## 📁 Included Sub-projects
-The portfolio links to and hosts several smaller sub-projects within the `projetos/` directory:
-- **Calculadora**: A simple calculator application.
-- **Consulta CEP**: A tool to query Brazilian ZIP codes (CEP).
-- **Rastreamento**: A package tracking application.
-- **Waltz App**: An automation app (linked externally to `https://waltz-automacao.vercel.app/`).
+## 📁 Subprojetos Incluídos
+O portfólio se conecta e hospeda vários subprojetos menores dentro do diretório `projetos/`:
+- **Calculadora**: Uma aplicação de calculadora simples.
+- **Consulta CEP**: Uma ferramenta para buscar Códigos de Endereçamento Postal (CEP) brasileiros.
+- **Rastreamento**: Uma aplicação de rastreamento de encomendas.
+- **Waltz App**: Um aplicativo de automação (link externo para `https://waltz-automacao.vercel.app/`).
 
-## 💻 Running Locally
+## 💻 Executando Localmente
 
-Because this project uses the JavaScript `fetch` API to load local HTML snippet files, it must be run over a local web server (using `file://` protocol will result in CORS/origin errors).
+Como este projeto utiliza a API `fetch` do JavaScript para carregar os arquivos de fragmentos HTML locais, ele precisa ser executado por meio de um servidor web local (utilizar o protocolo `file://` resultará em erros de CORS/origem).
 
-You can easily serve it using Python or Node.js:
+Você pode servi-lo facilmente usando Python ou Node.js:
 
-**Using Python 3:**
+**Usando Python 3:**
 ```bash
-# Run this from the root directory of the project
+# Execute isso a partir do diretório raiz do projeto
 python3 -m http.server 8000
 ```
-Then open `http://localhost:8000` in your browser.
+Em seguida, abra `http://localhost:8000` no seu navegador.
 
-**Using Node.js / npm:**
-If you have Node.js installed, you can use `npx serve`:
+**Usando Node.js / npm:**
+Se você tiver o Node.js instalado, pode usar o `npx serve`:
 ```bash
 npx serve .
 ```
-Then open the URL provided in the terminal.
+Em seguida, abra a URL fornecida no terminal.
