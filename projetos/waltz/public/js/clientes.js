@@ -195,16 +195,25 @@ export async function renderizarPaginaRelatorio() {
     const termoBusca = (document.getElementById("busca-tiny-v2")?.value || "").toLowerCase();
     const filtroGrupo = document.getElementById("filtro-grupo-v2")?.value || "TODOS";
     
+    // ⚡ Bolt Optimization: Move regex outside the loop
+    const buscaLimpa = termoBusca.replace(/\D/g, '');
+
     // 1. Filtragem Inteligente (Instantânea)
     let dadosFiltrados = window.todaABaseDeClientes.filter(c => {
-        const nomeStr = (c.nome || "").toLowerCase(); 
-        const cpfStr = (c.cpf || "").replace(/\D/g, '');
-        const buscaLimpa = termoBusca.replace(/\D/g, '');
-
-        const passaBusca = termoBusca === "" || nomeStr.includes(termoBusca) || (buscaLimpa !== "" && cpfStr.includes(buscaLimpa));
         const passaGrupo = filtroGrupo === "TODOS" || c.grupoCalculado === filtroGrupo;
-        
-        return passaBusca && passaGrupo;
+        if (!passaGrupo) return false;
+
+        if (termoBusca === "") return true;
+
+        const nomeStr = (c.nome || "").toLowerCase(); 
+        if (nomeStr.includes(termoBusca)) return true;
+
+        if (buscaLimpa !== "") {
+            const cpfStr = (c.cpf || "").replace(/\D/g, '');
+            if (cpfStr.includes(buscaLimpa)) return true;
+        }
+
+        return false;
     });
 
     const contadorElem = document.getElementById('contador-cadastros');

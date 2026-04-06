@@ -27,6 +27,9 @@ export function renderizarPaginaNuvem() {
     const filtroStatus = document.getElementById("filtro-status-v2")?.value || "TODOS";
     const filtroAutomacao = document.getElementById("filtro-automacao-v2")?.value || "TODOS";
     
+    // ⚡ Bolt Optimization: Move regex outside the loop
+    const buscaLimpa = termoBusca.replace(/\D/g, '');
+
     let dadosFiltrados = window.todosOsPedidosNuvem.map(p => {
         let pedidoProcessado = { ...p };
         let stOriginal = (pedidoProcessado.status_nuvemshop || '').toLowerCase();
@@ -44,15 +47,23 @@ export function renderizarPaginaNuvem() {
         return pedidoProcessado;
 
     }).filter(p => {
-        const numPedido = (p.numero_pedido || "").toLowerCase();
-        const nomeCliente = (p.nome_cliente || "").toLowerCase();
-        const cpfCliente = (p.cpf_cliente || "").replace(/\D/g, ''); 
-        const buscaLimpa = termoBusca.replace(/\D/g, ''); 
-        
-        const passaBusca = termoBusca === "" || numPedido.includes(termoBusca) || nomeCliente.includes(termoBusca) || (buscaLimpa !== "" && cpfCliente.includes(buscaLimpa));
         const passaStatus = filtroStatus === "TODOS" || p.status_nuvemshop === filtroStatus;
+        if (!passaStatus) return false;
 
-        return passaBusca && passaStatus;
+        if (termoBusca === "") return true;
+
+        const numPedido = (p.numero_pedido || "").toLowerCase();
+        if (numPedido.includes(termoBusca)) return true;
+
+        const nomeCliente = (p.nome_cliente || "").toLowerCase();
+        if (nomeCliente.includes(termoBusca)) return true;
+
+        if (buscaLimpa !== "") {
+            const cpfCliente = (p.cpf_cliente || "").replace(/\D/g, '');
+            if (cpfCliente.includes(buscaLimpa)) return true;
+        }
+
+        return false;
     });
 
     const contadorElem = document.getElementById('contador-nuvem');
