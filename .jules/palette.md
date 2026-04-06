@@ -1,0 +1,3 @@
+## 2024-05-24 - Missing Form Tags Break Native Enter Submission
+**Learning:** Vanilla JS inputs lacking a `<form>` wrapper break native "Enter" key submission behavior, which hurts accessibility and user experience, forcing users to click a button manually.
+**Action:** When working on standalone Vanilla JS form inputs without a `<form>` tag, always manually attach a keypress event listener for the "Enter" key to trigger the primary action.

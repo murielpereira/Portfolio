@@ -24,8 +24,42 @@ const handleZipCode = (event) => {
 
     let url = `https://viacep.com.br/ws/${cep}/json/`;
 
+    let btn = document.querySelector('.pesquisa');
+
+    // Prevent double submission if already loading
+    if (btn.disabled) return;
+
+    let originalText = btn.innerHTML;
+    btn.innerHTML = 'Carregando...';
+    btn.disabled = true;
+
     fetch(url).then(function(response){
-      response.json().then(mostrarEndereco);       
+      return response.json();
+    }).then(function(dados) {
+      mostrarEndereco(dados);
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }).catch(function(error) {
+      console.error(error);
+      // Handle parsing or network errors gracefully, ensuring UI resets
+      let resultado = document.querySelector('#resultado');
+      resultado.innerHTML = "Não foi possivel localizar endereço. Verifique novamente o CEP digitado.";
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    });
+  }
+
+  // Add event listener for Enter key support
+  if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+      let cepInput = document.querySelector('#cep');
+      if (cepInput) {
+        cepInput.addEventListener('keypress', function (e) {
+          if (e.key === 'Enter') {
+            consultaEndereco();
+          }
+        });
+      }
     });
   }
 
