@@ -26,6 +26,12 @@ export function renderizarPaginaNuvem() {
     const termoBusca = (document.getElementById("busca-nuvem-v2")?.value || "").toLowerCase();
     const filtroStatus = document.getElementById("filtro-status-v2")?.value || "TODOS";
     const filtroAutomacao = document.getElementById("filtro-automacao-v2")?.value || "TODOS";
+
+    const inputBusca = document.getElementById("busca-nuvem-v2");
+    if (inputBusca && !inputBusca.dataset.listenerAtivo) {
+        inputBusca.addEventListener('input', () => { resetarPaginacaoNuvem(); });
+        inputBusca.dataset.listenerAtivo = 'true';
+    }
     
     let dadosFiltrados = window.todosOsPedidosNuvem.map(p => {
         let pedidoProcessado = { ...p };

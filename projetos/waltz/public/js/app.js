@@ -119,9 +119,11 @@ async function mostrarSubPaginaDash(idAlvoOriginal) {
         document.getElementById('dash-page-subtitle').innerText = "Gestão de logística reversa e defeitos";
         if (window.carregarTrocasDB) await window.carregarTrocasDB();
     } else if (idAlvo === 'entregas') {
-    document.getElementById('dash-page-title').innerText = "Entregas";
-    document.getElementById('dash-page-subtitle').innerText = "Análise de Transportadoras";
-    if (window.carregarDadosEntregas) await window.carregarDadosEntregas();
+        document.getElementById('dash-page-title').innerText = "Entregas";
+        document.getElementById('dash-page-subtitle').innerText = "Análise de Transportadoras";
+        try { 
+            if (window.carregarDadosEntregas) await window.carregarDadosEntregas(); 
+        } catch(e) { console.error('Erro ao carregar entregas:', e); }
     }
     atualizarIcones();
 }

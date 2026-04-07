@@ -194,6 +194,12 @@ export async function renderizarPaginaRelatorio() {
     
     const termoBusca = (document.getElementById("busca-tiny-v2")?.value || "").toLowerCase();
     const filtroGrupo = document.getElementById("filtro-grupo-v2")?.value || "TODOS";
+
+    const inputBusca = document.getElementById("busca-tiny-v2");
+    if (inputBusca && !inputBusca.dataset.listenerAtivo) {
+        inputBusca.addEventListener('input', () => { resetarEPaginacao(); });
+        inputBusca.dataset.listenerAtivo = 'true';
+    }
     
     // 1. Filtragem Inteligente (Instantânea)
     let dadosFiltrados = window.todaABaseDeClientes.filter(c => {

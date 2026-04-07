@@ -17,6 +17,8 @@ router.get('/api/logout', (req, res) => {
     req.session = null; res.json({ sucesso: true }); 
 });
 
+// Substitua tudo entre a rota /api/logout e a rota /api/trocas por isto:
+
 // =========================================================
 // ROTA DE CONFIGURAÇÕES (Blindada 2.0 - Sem depender do ID)
 // =========================================================
@@ -26,27 +28,41 @@ router.get('/api/configuracoes', async (req, res) => {
         await sql`
             CREATE TABLE IF NOT EXISTS configuracoes_sistema (
                 wpp_ativo BOOLEAN DEFAULT false,
-                msg_aprovado TEXT,
-                msg_fabricacao TEXT,
-                msg_rastreio TEXT,
-                msg_rota TEXT,
-                msg_feedback TEXT,
-                vip_diamante NUMERIC DEFAULT 6000,
-                vip_ouro NUMERIC DEFAULT 3000,
-                vip_prata NUMERIC DEFAULT 1000
+                msg_aprovado TEXT, msg_fabricacao TEXT, msg_rastreio TEXT, msg_rota TEXT, msg_feedback TEXT,
+                vip_diamante NUMERIC DEFAULT 6000, vip_ouro NUMERIC DEFAULT 3000, vip_prata NUMERIC DEFAULT 1000
             );
         `;
+        // Adiciona as colunas de "Ativo/Inativo" individuais dinamicamente
+        try {
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_aprovado BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_fabricacao BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rastreio BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rota BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_feedback BOOLEAN DEFAULT true;`;
+        } catch(e) {}
         
         let { rows } = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
-        
-        // Se a tabela estiver vazia, cria a primeira linha invisível
         if (rows.length === 0) {
             await sql`INSERT INTO configuracoes_sistema (wpp_ativo) VALUES (false);`;
             const res2 = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
             rows = res2.rows;
         }
         
-        res.json({ sucesso: true, config: rows[0] || {} });
+        // Traduz a linha plana do banco para o Objeto aninhado que o Front-end adora ler
+        const row = rows[0] || {};
+        const configFormatada = {
+            whatsapp_ativo: row.wpp_ativo,
+            templates_wpp: {
+                aprovado: row.msg_aprovado, ativo_aprovado: row.ativo_aprovado !== false,
+                fabricacao: row.msg_fabricacao, ativo_fabricacao: row.ativo_fabricacao !== false,
+                rastreio: row.msg_rastreio, ativo_rastreio: row.ativo_rastreio !== false,
+                rota: row.msg_rota, ativo_rota: row.ativo_rota !== false,
+                feedback: row.msg_feedback, ativo_feedback: row.ativo_feedback !== false
+            },
+            regras_vip: { diamante: row.vip_diamante, ouro: row.vip_ouro, prata: row.vip_prata }
+        };
+        
+        res.json({ sucesso: true, config: configFormatada });
     } catch (erro) {
         console.error("Erro ao buscar configurações:", erro);
         res.status(500).json({ sucesso: false });
@@ -57,24 +73,18 @@ router.post('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
         const c = req.body;
-        // Atualiza a configuração diretamente, sem precisar da coluna ID
         await sql`
             UPDATE configuracoes_sistema SET
-                wpp_ativo = ${c.wpp_ativo},
-                msg_aprovado = ${c.msg_aprovado},
-                msg_fabricacao = ${c.msg_fabricacao},
-                msg_rastreio = ${c.msg_rastreio},
-                msg_rota = ${c.msg_rota},
-                msg_feedback = ${c.msg_feedback},
-                vip_diamante = ${c.vip_diamante},
-                vip_ouro = ${c.vip_ouro},
-                vip_prata = ${c.vip_prata}
+                wpp_ativo = ${c.whatsapp_ativo},
+                msg_aprovado = ${c.templates_wpp.aprovado}, ativo_aprovado = ${c.templates_wpp.ativo_aprovado},
+                msg_fabricacao = ${c.templates_wpp.fabricacao}, ativo_fabricacao = ${c.templates_wpp.ativo_fabricacao},
+                msg_rastreio = ${c.templates_wpp.rastreio}, ativo_rastreio = ${c.templates_wpp.ativo_rastreio},
+                msg_rota = ${c.templates_wpp.rota}, ativo_rota = ${c.templates_wpp.ativo_rota},
+                msg_feedback = ${c.templates_wpp.feedback}, ativo_feedback = ${c.templates_wpp.ativo_feedback},
+                vip_diamante = ${c.regras_vip.diamante}, vip_ouro = ${c.regras_vip.ouro}, vip_prata = ${c.regras_vip.prata}
         `;
         res.json({ sucesso: true });
-    } catch (erro) {
-        console.error("Erro ao salvar config:", erro);
-        res.status(500).json({ sucesso: false });
-    }
+    } catch (erro) { res.status(500).json({ sucesso: false }); }
 });
 
 // =========================================================

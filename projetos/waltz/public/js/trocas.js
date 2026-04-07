@@ -193,6 +193,13 @@ export async function salvarNovaTroca(event) {
     } catch (e) { alert('Erro de conexão.'); }
 }
 
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('modal-troca');
+        if (modal && modal.classList.contains('active')) fecharModalTroca();
+    }
+});
+
 window.abrirModalTroca = abrirModalTroca;
 window.fecharModalTroca = fecharModalTroca;
 window.preencherDadosPedidoTroca = preencherDadosPedidoTroca;
