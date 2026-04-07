@@ -39,9 +39,19 @@ body{
     font-weight: bolder;
 }
 
-.pesquisa:hover{
+.pesquisa:hover:not(:disabled){
     cursor: pointer;
     transform: scale(1.08);
+}
+
+.pesquisa:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cep:focus-visible, .pesquisa:focus-visible {
+    outline: 2px solid #5cd15e;
+    outline-offset: 2px;
 }
 
 p{margin-top: 10px;}
