@@ -69,30 +69,52 @@ router.get('/api/configuracoes', async (req, res) => {
     }
 });
 
-router.post('/api/configuracoes', async (req, res) => {
+// =========================================================
+// ROTA DE CONFIGURAÇÕES (Blindada 2.0 - Sem depender do ID)
+// =========================================================
+router.get('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
-        const c = req.body;
-        
-        // Extração extra segura (Impede o banco de explodir com undefineds)
-        const t = c.templates_wpp || {};
-        const r = c.regras_vip || {};
-        const wppAtivo = c.whatsapp_ativo === true;
-
         await sql`
-            UPDATE configuracoes_sistema SET
-                wpp_ativo = ${wppAtivo},
-                msg_aprovado = ${t.aprovado || ''}, ativo_aprovado = ${t.ativo_aprovado !== false},
-                msg_fabricacao = ${t.fabricacao || ''}, ativo_fabricacao = ${t.ativo_fabricacao !== false},
-                msg_rastreio = ${t.rastreio || ''}, ativo_rastreio = ${t.ativo_rastreio !== false},
-                msg_rota = ${t.rota || ''}, ativo_rota = ${t.ativo_rota !== false},
-                msg_feedback = ${t.feedback || ''}, ativo_feedback = ${t.ativo_feedback !== false},
-                vip_diamante = ${r.diamante || 6000}, vip_ouro = ${r.ouro || 3000}, vip_prata = ${r.prata || 1000}
+            CREATE TABLE IF NOT EXISTS configuracoes_sistema (
+                msg_aprovado TEXT, msg_fabricacao TEXT, msg_rastreio TEXT, msg_rota TEXT, msg_feedback TEXT,
+                vip_diamante NUMERIC DEFAULT 6000, vip_ouro NUMERIC DEFAULT 3000, vip_prata NUMERIC DEFAULT 1000
+            );
         `;
-        res.json({ sucesso: true });
-    } catch (erro) { 
-        console.error("Erro salvando config:", erro);
-        res.status(500).json({ sucesso: false }); 
+        // FIX: Força a criação das colunas novas caso a tabela já existisse antes!
+        try {
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS wpp_ativo BOOLEAN DEFAULT false;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_aprovado BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_fabricacao BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rastreio BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rota BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_feedback BOOLEAN DEFAULT true;`;
+        } catch(e) { console.error("Erro no ALTER TABLE", e); }
+        
+        let { rows } = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
+        if (rows.length === 0) {
+            await sql`INSERT INTO configuracoes_sistema (wpp_ativo) VALUES (false);`;
+            const res2 = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
+            rows = res2.rows;
+        }
+        
+        const row = rows[0] || {};
+        const configFormatada = {
+            whatsapp_ativo: row.wpp_ativo,
+            templates_wpp: {
+                aprovado: row.msg_aprovado, ativo_aprovado: row.ativo_aprovado !== false,
+                fabricacao: row.msg_fabricacao, ativo_fabricacao: row.ativo_fabricacao !== false,
+                rastreio: row.msg_rastreio, ativo_rastreio: row.ativo_rastreio !== false,
+                rota: row.msg_rota, ativo_rota: row.ativo_rota !== false,
+                feedback: row.msg_feedback, ativo_feedback: row.ativo_feedback !== false
+            },
+            regras_vip: { diamante: row.vip_diamante, ouro: row.vip_ouro, prata: row.vip_prata }
+        };
+        
+        res.json({ sucesso: true, config: configFormatada });
+    } catch (erro) {
+        console.error("Erro ao buscar configurações:", erro);
+        res.status(500).json({ sucesso: false });
     }
 });
 

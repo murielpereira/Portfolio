@@ -1,7 +1,3 @@
-// ==========================================
-// ARQUIVO: routes/whatsapp.js
-// Objetivo: Motor de Fila e Disparo de Mensagens
-// ==========================================
 const express = require('express');
 const router = express.Router();
 const { sql } = require('@vercel/postgres');
@@ -22,9 +18,6 @@ async function agendarMensagemWhatsApp(pedido, etapaLogistica) {
         const configDb = {};
         rows.forEach(r => configDb[r.chave] = r.valor);
 
-        // ==========================================================
-        // 🛑 A BARREIRA DO BOTÃO MESTRE
-        // ==========================================================
         // Se a chave não existir no banco (primeira vez), o padrão é false.
         const isWhatsAppAtivo = configDb.whatsapp_ativo === 'true';
         
@@ -73,9 +66,6 @@ async function agendarMensagemWhatsApp(pedido, etapaLogistica) {
     }
 }
 
-// ----------------------------------------------------------------------------
-// ROTA: Teste Manual de Agendamento
-// ----------------------------------------------------------------------------
 router.get('/teste-whatsapp', async (req, res) => {
     const { telefone } = req.query;
     if (!telefone) return res.status(400).json({ erro: 'Faltou o número! Ex: /teste-whatsapp?telefone=55...' });
@@ -102,12 +92,6 @@ router.get('/teste-whatsapp', async (req, res) => {
     }
 });
 
-// ----------------------------------------------------------------------------
-// ROTA: O "Despachante" (Processar a Fila e Enviar de Fato)
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-// ROTA: O "Despachante" (Processar a Fila e Enviar de Fato pelo Cronjob)
-// ----------------------------------------------------------------------------
 router.get('/processar-fila', async (req, res) => {
     try {
         // FIX: O "Despertador" do Render agora vem PRIMEIRO!
@@ -135,7 +119,7 @@ router.get('/processar-fila', async (req, res) => {
         for (const item of fila) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
                 
                 const resposta = await fetch(URL, {
                     method: 'POST',
@@ -159,7 +143,7 @@ router.get('/processar-fila', async (req, res) => {
                     await sql`UPDATE fila_mensagens SET tentativas = COALESCE(tentativas, 0) + 1 WHERE id = ${item.id}`;
                 }
             } catch (e) {
-                console.log("⏳ O Render está lento ou desconectado. Abortando ciclo.");
+                console.log(`⏳ Falha na comunicação com o Render: ${e.message}. Abortando ciclo.`);
                 break; 
             }
         }
