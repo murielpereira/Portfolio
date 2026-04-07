@@ -43,16 +43,78 @@ router.get('/api/relatorios/logistica', async (req, res) => {
 router.get('/api/relatorios/entregas', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
+        // Regra de limpeza: unifica os nomes das transportadoras
+        const agrupamento = `
+            CASE 
+                WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
+                WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
+                WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
+                WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
+                WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
+                WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
+                ELSE transportadora 
+            END
+        `;
+
         const geral = await sql`
-            SELECT transportadora, COUNT(id_pedido)::int AS envios, ROUND(AVG(valor_frete), 2)::numeric AS media_frete, ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 1)::numeric AS media_dias
-            FROM pedidos_nuvemshop WHERE transportadora IS NOT NULL AND transportadora != ''
-            GROUP BY transportadora ORDER BY envios DESC;
+            SELECT 
+                CASE 
+                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
+                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
+                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
+                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
+                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
+                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
+                    ELSE transportadora 
+                END AS transportadora, 
+                COUNT(id_pedido)::int AS envios, 
+                ROUND(AVG(valor_frete), 2)::numeric AS media_frete, 
+                ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 1)::numeric AS media_dias
+            FROM pedidos_nuvemshop 
+            WHERE transportadora IS NOT NULL AND transportadora != ''
+            GROUP BY 
+                CASE 
+                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
+                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
+                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
+                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
+                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
+                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
+                    ELSE transportadora 
+                END
+            ORDER BY envios DESC;
         `;
+
         const estados = await sql`
-            SELECT estado, transportadora, COUNT(id_pedido)::int AS envios, ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 1)::numeric AS media_dias
-            FROM pedidos_nuvemshop WHERE estado IS NOT NULL AND estado != '' AND transportadora IS NOT NULL AND transportadora != '' AND data_entrega IS NOT NULL AND data_envio IS NOT NULL
-            GROUP BY estado, transportadora ORDER BY estado ASC, envios DESC;
+            SELECT 
+                estado, 
+                CASE 
+                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
+                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
+                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
+                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
+                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
+                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
+                    ELSE transportadora 
+                END AS transportadora, 
+                COUNT(id_pedido)::int AS envios, 
+                ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 1)::numeric AS media_dias
+            FROM pedidos_nuvemshop 
+            WHERE estado IS NOT NULL AND estado != '' AND transportadora IS NOT NULL AND transportadora != '' AND data_entrega IS NOT NULL AND data_envio IS NOT NULL
+            GROUP BY 
+                estado, 
+                CASE 
+                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
+                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
+                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
+                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
+                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
+                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
+                    ELSE transportadora 
+                END
+            ORDER BY estado ASC, envios DESC;
         `;
+        
         res.json({ sucesso: true, geral: geral.rows, estados: estados.rows });
     } catch (erro) { res.status(500).json({ sucesso: false }); }
 });
