@@ -286,6 +286,37 @@ router.post('/api/webhook/nuvemshop', async (req, res) => {
                     ELSE pedidos_nuvemshop.data_entrega
                 END;
         `;
+        const whatsappRouter = require('./whatsapp.js');
+        const agendar = whatsappRouter.agendarMensagemWhatsApp;
+
+        if (agendar) {
+            // Verifica o passado para saber se o pedido é novo
+            const { rows: oldOrderDb } = await sql`SELECT rastreio, status_nuvemshop FROM pedidos_nuvemshop WHERE id_pedido = ${dadosPedido.id}`;
+            const isNewOrder = oldOrderDb.length === 0;
+            const oldRastreio = isNewOrder ? '' : (oldOrderDb[0].rastreio || '');
+            const oldStatus = isNewOrder ? '' : (oldOrderDb[0].status_nuvemshop || '');
+
+            const pedidoFila = { id_pedido: dadosPedido.id, numero_pedido: dadosPedido.number, telefone: telefone, nome_cliente: cliente, rastreio: rastreio, produtos: nomesProdutos };
+
+            // 1. Pedido acabou de entrar no sistema
+            if (isNewOrder) {
+                await agendar(pedidoFila, 'aprovado');
+                await agendar(pedidoFila, 'fabricacao'); // Fica na gaveta por 48h
+            }
+
+            // 2. Rastreio acabou de ser inserido!
+            if (!oldRastreio && rastreio) {
+                // A GUILHOTINA: Mata a fabricação se ela ainda não tiver sido enviada!
+                await sql`UPDATE fila_mensagens SET status = 'cancelada' WHERE id_pedido = ${dadosPedido.id.toString()} AND tipo_mensagem = 'fabricacao' AND status ILIKE 'pendente'`;
+                await agendar(pedidoFila, 'rastreio');
+            }
+            
+            // 3. O pedido foi finalizado
+            if (status === 'Entregue' && oldStatus !== 'Entregue') {
+                await agendar(pedidoFila, 'feedback'); // Fica na gaveta por 30 dias
+            }
+        }
+
         res.status(200).send('Processado e salvo com sucesso');
     } catch (erro) { res.status(200).send('Falha interna'); }
 });

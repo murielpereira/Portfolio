@@ -44,6 +44,11 @@ export function preencherFormularioConfig() {
     if (document.getElementById('cfg-whatsapp-ativo')) {
         document.getElementById('cfg-whatsapp-ativo').checked = configsGlobais.whatsapp_ativo === true;
     }
+
+    const h = configsGlobais.horarios_wpp || { inicio: '08:00', fim: '18:00', dias: [1,2,3,4,5] };
+    if(document.getElementById('cfg-hora-inicio')) document.getElementById('cfg-hora-inicio').value = h.inicio;
+    if(document.getElementById('cfg-hora-fim')) document.getElementById('cfg-hora-fim').value = h.fim;
+    document.querySelectorAll('.cfg-dias').forEach(cb => { cb.checked = h.dias.includes(parseInt(cb.value)); });
 }
 
 export async function testarMensagemWpp(tipo) {
@@ -108,10 +113,22 @@ export async function salvarConfiguracoes(event) {
         prata: parseFloat(document.getElementById('cfg-prata')?.value) || r.prata || 1000
     };
 
+    // FIX: Ler os horários ANTES de enviar para o banco
+    const diasSelecionados = Array.from(document.querySelectorAll('.cfg-dias:checked')).map(cb => parseInt(cb.value));
+    const horarios_wpp = {
+        inicio: document.getElementById('cfg-hora-inicio')?.value || '08:00',
+        fim: document.getElementById('cfg-hora-fim')?.value || '18:00',
+        dias: diasSelecionados.length > 0 ? diasSelecionados : [1,2,3,4,5]
+    };
+
     try {
-        const res = await fetch('/api/configuracoes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templates_wpp, regras_vip, whatsapp_ativo }) });
+        // FIX: Adicionado horarios_wpp no pacote de envio (JSON.stringify)
+        const res = await fetch('/api/configuracoes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templates_wpp, regras_vip, whatsapp_ativo, horarios_wpp }) });
         if (res.ok) {
-            configsGlobais.templates_wpp = templates_wpp; configsGlobais.regras_vip = regras_vip; configsGlobais.whatsapp_ativo = whatsapp_ativo;
+            configsGlobais.templates_wpp = templates_wpp; 
+            configsGlobais.regras_vip = regras_vip; 
+            configsGlobais.whatsapp_ativo = whatsapp_ativo;
+            configsGlobais.horarios_wpp = horarios_wpp; // FIX: Guardar na memória local
             if (window.renderizarPaginaRelatorio) window.renderizarPaginaRelatorio();
             if (window.renderizarGraficoClientes) window.renderizarGraficoClientes();
             btn.innerHTML = '<i data-lucide="check" style="width:18px; height:18px;"></i> Salvo!'; btn.style.backgroundColor = '#10b981';

@@ -23,6 +23,23 @@ export function getAbaWhatsapp() {
                 <div style="background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 25px; font-size: 13px; color: #1e3a8a;">
                     <strong>Variáveis Dinâmicas:</strong> <span class="var-tag" style="background:white;">{nome}</span>, <span class="var-tag" style="background:white;">{pedido}</span>, <span class="var-tag" style="background:white;">{rastreio}</span>, <span class="var-tag" style="background:white;">{link_rastreio}</span>, <span class="var-tag" style="background:white;">{produtos}</span>.
                 </div>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 25px;">
+                    <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--text-main);"><i data-lucide="clock" style="width:16px; margin-bottom:-3px;"></i> Horário de Envio (Mensagens Normais)</h3>
+                    <div style="display:flex; gap: 15px; align-items:center; margin-bottom: 10px;">
+                        <div><label style="font-size:12px; color:var(--text-muted);">Início</label><br><input type="time" id="cfg-hora-inicio" class="input-modern" style="width:120px;"></div>
+                        <div><label style="font-size:12px; color:var(--text-muted);">Fim</label><br><input type="time" id="cfg-hora-fim" class="input-modern" style="width:120px;"></div>
+                    </div>
+                    <label style="font-size:12px; color:var(--text-muted);">Dias de Envio Permitidos</label>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:5px;">
+                        <label style="font-size:13px;"><input type="checkbox" class="cfg-dias" value="1"> Seg</label>
+                        <label style="font-size:13px;"><input type="checkbox" class="cfg-dias" value="2"> Ter</label>
+                        <label style="font-size:13px;"><input type="checkbox" class="cfg-dias" value="3"> Qua</label>
+                        <label style="font-size:13px;"><input type="checkbox" class="cfg-dias" value="4"> Qui</label>
+                        <label style="font-size:13px;"><input type="checkbox" class="cfg-dias" value="5"> Sex</label>
+                        <label style="font-size:13px;"><input type="checkbox" class="cfg-dias" value="6"> Sáb</label>
+                        <label style="font-size:13px;"><input type="checkbox" class="cfg-dias" value="0"> Dom</label>
+                    </div>
+                </div>
                 <form id="form-config-msg" onsubmit="salvarConfiguracoes(event)">
                     ${gerarBloco('aprovado', '1. Pedido Aprovado', 'Olá {nome}! Seu pedido #{pedido} foi aprovado com sucesso! 🐶💙')}
                     ${gerarBloco('fabricacao', '2. Em Fabricação', 'Boas notícias, {nome}! O pedido #{pedido} entrou em produção.')}

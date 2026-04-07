@@ -5,66 +5,62 @@ const { sql } = require('@vercel/postgres');
 // ----------------------------------------------------------------------------
 // FUNÇÃO: Agendar Mensagem (Salvar na Fila do Banco de Dados)
 // ----------------------------------------------------------------------------
-async function agendarMensagemWhatsApp(pedido, etapaLogistica) {
+router.agendarMensagemWhatsApp = async function (pedido, etapaLogistica) {
     try {
         let telefoneBase = (pedido.telefone || '').replace(/\D/g, '');
         if (!telefoneBase) return false;
         if (telefoneBase.length === 10 || telefoneBase.length === 11) telefoneBase = `55${telefoneBase}`;
 
-        // 1. Busca tanto os templates quanto o status do WhatsApp no banco
-        const { rows } = await sql`SELECT chave, valor FROM configuracoes_sistema WHERE chave IN ('templates_wpp', 'whatsapp_ativo');`;
-        
-        // Agrupa os resultados num objeto mais fácil de ler
-        const configDb = {};
-        rows.forEach(r => configDb[r.chave] = r.valor);
+        const { rows } = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
+        const configDb = rows[0] || {};
+        if (configDb.wpp_ativo !== true) return false; 
 
-        // Se a chave não existir no banco (primeira vez), o padrão é false.
-        const isWhatsAppAtivo = configDb.whatsapp_ativo === 'true';
-        
-        if (!isWhatsAppAtivo) {
-            console.log(`⏸️ [WHATSAPP DESATIVADO] Pedido ${pedido.numero_pedido || id_pedido} ignorado.`);
-            return false; // Sai da função, a mensagem não vai para a fila!
-        }
-        // ==========================================================
+        // Definição da Prioridade e Data Agendada
+        let prioridade = 2; // 1=Urgente, 2=Normal
+        let dataAgendada = new Date();
+        const horarios = configDb.horarios_wpp || { inicio: '08:00', fim: '18:00', dias: [1,2,3,4,5] };
 
-        if (!configDb.templates_wpp) return false;
-        const configTemplates = typeof configDb.templates_wpp === 'string' ? JSON.parse(configDb.templates_wpp) : configDb.templates_wpp;
-        
-        let templateMensagem = "";
-
-        // Continua com o seu switch normal...
-        switch (etapaLogistica) {
-            case 'aprovado': templateMensagem = configTemplates.aprovado; break;
-            case 'fabricacao': templateMensagem = configTemplates.fabricacao; break;
-            case 'rastreio': templateMensagem = config.rastreio; break;
-            case 'rota': templateMensagem = config.rota; break;
-            case 'feedback': templateMensagem = config.feedback; break;
-            default: return false; 
+        if (['aprovado', 'rastreio', 'rota'].includes(etapaLogistica)) {
+            prioridade = 1; 
+        } else {
+            prioridade = 2; 
+            if (etapaLogistica === 'fabricacao') dataAgendada.setHours(dataAgendada.getHours() + 48); // 48h base
+            if (etapaLogistica === 'feedback') dataAgendada.setDate(dataAgendada.getDate() + 30); // 30 dias
+            
+            // Corrige para o horário comercial e dias permitidos
+            let hora = dataAgendada.getHours();
+            let startH = parseInt(horarios.inicio.split(':')[0]);
+            let endH = parseInt(horarios.fim.split(':')[0]);
+            
+            if (hora < startH) { dataAgendada.setHours(startH, 0, 0); }
+            if (hora >= endH) { dataAgendada.setDate(dataAgendada.getDate() + 1); dataAgendada.setHours(startH, 0, 0); }
+            while (!horarios.dias.includes(dataAgendada.getDay())) {
+                dataAgendada.setDate(dataAgendada.getDate() + 1);
+                dataAgendada.setHours(startH, 0, 0);
+            }
         }
 
-        if (!templateMensagem || templateMensagem.trim() === "") return false;
+        // Puxa o texto base e monta a mensagem
+        let templateMensagem = configDb[`msg_${etapaLogistica}`] || '';
+        let ativo = configDb[`ativo_${etapaLogistica}`] !== false;
+        if (!ativo || templateMensagem.trim() === '') return false;
 
-        // 5. Substituir as tags dinâmicas
         let mensagemFinal = templateMensagem
             .replace(/{nome}/g, pedido.nome_cliente ? pedido.nome_cliente.split(' ')[0] : 'Cliente')
             .replace(/{pedido}/g, pedido.numero_pedido || '')
             .replace(/{rastreio}/g, pedido.rastreio || 'Aguardando código')
-            .replace(/{link_rastreio}/g, pedido.rastreio ? `https://linkderastreio.com/${pedido.rastreio}` : ''); 
+            .replace(/{link_rastreio}/g, pedido.rastreio ? `https://linkderastreio.com/${pedido.rastreio}` : '')
+            .replace(/{produtos}/g, pedido.produtos || 'produtos'); 
 
-        const idValido = pedido.id_pedido ? pedido.id_pedido : 0; 
-        
-        // 6. Inserir na fila de mensagens
+        const idValido = pedido.id_pedido || pedido.numero_pedido || '0'; 
+
         await sql`
-            INSERT INTO fila_mensagens (id_pedido, telefone, mensagem, status)
-            VALUES (${idValido}, ${telefoneBase}, ${mensagemFinal}, 'pendente');
+            INSERT INTO fila_mensagens (id_pedido, telefone, mensagem, status, prioridade, tipo_mensagem, data_agendada)
+            VALUES (${idValido}, ${telefoneBase}, ${mensagemFinal}, 'pendente', ${prioridade}, ${etapaLogistica}, ${dataAgendada.toISOString()});
         `;
         return true;
-
-    } catch (erro) {
-        console.error(`❌ Erro ao agendar WhatsApp:`, erro.message);
-        return false;
-    }
-}
+    } catch (e) { console.log("Erro no agendamento", e); return false; }
+};
 
 router.get('/teste-whatsapp', async (req, res) => {
     const { telefone } = req.query;
@@ -94,66 +90,30 @@ router.get('/teste-whatsapp', async (req, res) => {
 
 router.get('/processar-fila', async (req, res) => {
     try {
-        // FIX: O "Despertador" do Render agora vem PRIMEIRO!
-        // A cada 10 minutos, o cron acorda o Render independentemente de haver fila ou não.
-        fetch(`${process.env.SERVER_URL}/instance/fetchInstances`, { 
-            headers: { 'apikey': process.env.AUTHENTICATION_API_KEY } 
-        }).catch(() => {}); 
+        fetch(`${process.env.SERVER_URL}/instance/fetchInstances`, { headers: { 'apikey': process.env.AUTHENTICATION_API_KEY } }).catch(() => {}); 
 
-        // Blindagem: Garante colunas de controlo
-        try { await sql`ALTER TABLE fila_mensagens ADD COLUMN IF NOT EXISTS tentativas INT DEFAULT 0;`; } catch(e){}
-        try { await sql`ALTER TABLE fila_mensagens ADD COLUMN IF NOT EXISTS data_envio TIMESTAMP;`; } catch(e){}
+        // O Funil Inteligente: Até 4 urgentes (passam reto), mas APENAS 1 normal por minuto (respeita as pausas!)
+        const { rows: filaUrgente } = await sql`SELECT * FROM fila_mensagens WHERE status ILIKE 'pendente' AND prioridade = 1 AND tentativas < 5 AND data_agendada <= NOW() ORDER BY data_criacao ASC LIMIT 4;`;
+        const { rows: filaNormal } = await sql`SELECT * FROM fila_mensagens WHERE status ILIKE 'pendente' AND prioridade = 2 AND tentativas < 5 AND data_agendada <= NOW() ORDER BY data_agendada ASC LIMIT 1;`;
+        
+        const fila = [...filaUrgente, ...filaNormal];
 
-        const { rows: fila } = await sql`
-            SELECT * FROM fila_mensagens 
-            WHERE status ILIKE 'pendente' AND tentativas < 5 
-            ORDER BY data_criacao ASC LIMIT 10;
-        `;
-
-        if (fila.length === 0) return res.send("Fila vazia. Servidor do WhatsApp pingado para se manter acordado.");
-
+        if (fila.length === 0) return res.send("Fila vazia ou aguardando horário.");
         let enviadas = 0;
-        const baseUrl = (process.env.SERVER_URL || '').replace(/\/$/, ''); 
-        const URL = `${baseUrl}/message/sendText/loja_waltz`;
+        const URL = `${(process.env.SERVER_URL || '').replace(/\/$/, '')}/message/sendText/loja_waltz`;
 
         for (const item of fila) {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 8000);
-                
-                const resposta = await fetch(URL, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'apikey': process.env.AUTHENTICATION_API_KEY 
-                    },
-                    body: JSON.stringify({ 
-                        number: item.telefone, 
-                        text: item.mensagem 
-                    }),
-                    signal: controller.signal
-                });
-                
+                const resposta = await fetch(URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': process.env.AUTHENTICATION_API_KEY }, body: JSON.stringify({ number: item.telefone, text: item.mensagem }), signal: controller.signal });
                 clearTimeout(timeoutId);
-
-                if (resposta.ok) {
-                    await sql`UPDATE fila_mensagens SET status = 'enviado', data_envio = NOW() WHERE id = ${item.id}`;
-                    enviadas++;
-                } else {
-                    await sql`UPDATE fila_mensagens SET tentativas = COALESCE(tentativas, 0) + 1 WHERE id = ${item.id}`;
-                }
-            } catch (e) {
-                console.log(`⏳ Falha na comunicação com o Render: ${e.message}. Abortando ciclo.`);
-                break; 
-            }
+                if (resposta.ok) { await sql`UPDATE fila_mensagens SET status = 'enviado', data_envio = NOW() WHERE id = ${item.id}`; enviadas++; } 
+                else { await sql`UPDATE fila_mensagens SET tentativas = COALESCE(tentativas, 0) + 1 WHERE id = ${item.id}`; }
+            } catch (e) { break; }
         }
-        
-        res.status(200).send(`Processamento concluído. Enviadas: ${enviadas}`);
-        
-    } catch (erro) {
-        console.error("❌ Erro ao processar a fila:", erro.message);
-        res.status(500).send("Erro ao processar fila.");
-    }
+        res.status(200).send(`Enviadas: ${enviadas}`);
+    } catch (erro) { res.status(500).send("Erro na fila."); }
 });
 
 router.get('/api/whatsapp/qrcode', async (req, res) => {

@@ -72,9 +72,6 @@ router.get('/api/configuracoes', async (req, res) => {
 // =========================================================
 // ROTA DE CONFIGURAÇÕES (Blindada 2.0 - Sem depender do ID)
 // =========================================================
-// =========================================================
-// ROTA DE CONFIGURAÇÕES (Blindada 2.0 - Sem depender do ID)
-// =========================================================
 router.get('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
@@ -84,31 +81,26 @@ router.get('/api/configuracoes', async (req, res) => {
                 vip_diamante NUMERIC DEFAULT 6000, vip_ouro NUMERIC DEFAULT 3000, vip_prata NUMERIC DEFAULT 1000
             );
         `;
-        // FIX: Força a criação das colunas novas caso a tabela já existisse antes!
-        // A BLINDAGEM DEFINITIVA MASTER: Força a criação de TODAS as colunas possíveis antes de salvar
         try {
-            // 1. Colunas de Ativação (Booleanas)
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS wpp_ativo BOOLEAN DEFAULT false;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_aprovado BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_fabricacao BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rastreio BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rota BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_feedback BOOLEAN DEFAULT true;`;
-            
-            // 2. Colunas de Texto das Mensagens
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_aprovado TEXT;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_fabricacao TEXT;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_rastreio TEXT;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_rota TEXT;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_feedback TEXT;`;
-
-            // 3. Colunas das Regras VIP (As culpadas deste erro!)
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_diamante NUMERIC DEFAULT 6000;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_ouro NUMERIC DEFAULT 3000;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_prata NUMERIC DEFAULT 1000;`;
-        } catch(e) { 
-            console.log("Aviso: As colunas já existem ou houve um bloqueio menor.", e.message); 
-        }
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS horarios_wpp JSONB DEFAULT '{"inicio":"08:00","fim":"18:00","dias":[1,2,3,4,5]}'::jsonb;`;
+            await sql`ALTER TABLE fila_mensagens ADD COLUMN IF NOT EXISTS prioridade INT DEFAULT 2;`;
+            await sql`ALTER TABLE fila_mensagens ADD COLUMN IF NOT EXISTS tipo_mensagem VARCHAR(50);`;
+            await sql`ALTER TABLE fila_mensagens ADD COLUMN IF NOT EXISTS data_agendada TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`;
+        } catch(e) { console.log("Aviso: Bloqueio menor no DB.", e.message); }
         
         let { rows } = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
         if (rows.length === 0) {
@@ -120,6 +112,7 @@ router.get('/api/configuracoes', async (req, res) => {
         const row = rows[0] || {};
         const configFormatada = {
             whatsapp_ativo: row.wpp_ativo,
+            horarios_wpp: row.horarios_wpp, // FIX: Enviar horários para o Frontend!
             templates_wpp: {
                 aprovado: row.msg_aprovado, ativo_aprovado: row.ativo_aprovado !== false,
                 fabricacao: row.msg_fabricacao, ativo_fabricacao: row.ativo_fabricacao !== false,
@@ -137,50 +130,45 @@ router.get('/api/configuracoes', async (req, res) => {
     }
 });
 
-// A Rota que tinha "sumido" (Com proteção total contra undefined)
 router.post('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
         const c = req.body;
         
-        // Extração extra segura (Impede o banco de explodir com undefineds)
         const t = c.templates_wpp || {};
         const r = c.regras_vip || {};
         const wppAtivo = c.whatsapp_ativo === true;
+        const h = c.horarios_wpp || { inicio: '08:00', fim: '18:00', dias: [1,2,3,4,5] }; // FIX: Receber os horários!
 
-        // A BLINDAGEM DEFINITIVA: Força a criação das colunas milissegundos ANTES de salvar
-        // A BLINDAGEM DEFINITIVA MASTER: Força a criação de TODAS as colunas possíveis antes de salvar
         try {
-            // 1. Colunas de Ativação (Booleanas)
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS wpp_ativo BOOLEAN DEFAULT false;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_aprovado BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_fabricacao BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rastreio BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rota BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_feedback BOOLEAN DEFAULT true;`;
-            
-            // 2. Colunas de Texto das Mensagens
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_aprovado TEXT;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_fabricacao TEXT;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_rastreio TEXT;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_rota TEXT;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_feedback TEXT;`;
-
-            // 3. Colunas das Regras VIP (As culpadas deste erro!)
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_diamante NUMERIC DEFAULT 6000;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_ouro NUMERIC DEFAULT 3000;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_prata NUMERIC DEFAULT 1000;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS horarios_wpp JSONB DEFAULT '{"inicio":"08:00","fim":"18:00","dias":[1,2,3,4,5]}'::jsonb;`;
+            await sql`ALTER TABLE fila_mensagens ADD COLUMN IF NOT EXISTS prioridade INT DEFAULT 2;`;
+            await sql`ALTER TABLE fila_mensagens ADD COLUMN IF NOT EXISTS tipo_mensagem VARCHAR(50);`;
+            await sql`ALTER TABLE fila_mensagens ADD COLUMN IF NOT EXISTS data_agendada TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`;
         } catch(e) { 
             console.log("Aviso: As colunas já existem ou houve um bloqueio menor.", e.message); 
         }
 
-        // Garante que a linha mestre (ID 1) existe antes de dar UPDATE
         const { rows } = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
         if (rows.length === 0) {
             await sql`INSERT INTO configuracoes_sistema (wpp_ativo) VALUES (false);`;
         }
 
-        // Agora sim, grava com 100% de segurança
+        // FIX: Gravar a variável horarios_wpp no banco!
         await sql`
             UPDATE configuracoes_sistema SET
                 wpp_ativo = ${wppAtivo},
@@ -189,7 +177,8 @@ router.post('/api/configuracoes', async (req, res) => {
                 msg_rastreio = ${t.rastreio || ''}, ativo_rastreio = ${t.ativo_rastreio !== false},
                 msg_rota = ${t.rota || ''}, ativo_rota = ${t.ativo_rota !== false},
                 msg_feedback = ${t.feedback || ''}, ativo_feedback = ${t.ativo_feedback !== false},
-                vip_diamante = ${r.diamante || 6000}, vip_ouro = ${r.ouro || 3000}, vip_prata = ${r.prata || 1000}
+                vip_diamante = ${r.diamante || 6000}, vip_ouro = ${r.ouro || 3000}, vip_prata = ${r.prata || 1000},
+                horarios_wpp = ${h}::jsonb
         `;
         
         res.json({ sucesso: true });
