@@ -85,14 +85,30 @@ router.get('/api/configuracoes', async (req, res) => {
             );
         `;
         // FIX: Força a criação das colunas novas caso a tabela já existisse antes!
+        // A BLINDAGEM DEFINITIVA MASTER: Força a criação de TODAS as colunas possíveis antes de salvar
         try {
+            // 1. Colunas de Ativação (Booleanas)
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS wpp_ativo BOOLEAN DEFAULT false;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_aprovado BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_fabricacao BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rastreio BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rota BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_feedback BOOLEAN DEFAULT true;`;
-        } catch(e) { console.error("Erro no ALTER TABLE", e); }
+            
+            // 2. Colunas de Texto das Mensagens
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_aprovado TEXT;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_fabricacao TEXT;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_rastreio TEXT;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_rota TEXT;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_feedback TEXT;`;
+
+            // 3. Colunas das Regras VIP (As culpadas deste erro!)
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_diamante NUMERIC DEFAULT 6000;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_ouro NUMERIC DEFAULT 3000;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_prata NUMERIC DEFAULT 1000;`;
+        } catch(e) { 
+            console.log("Aviso: As colunas já existem ou houve um bloqueio menor.", e.message); 
+        }
         
         let { rows } = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
         if (rows.length === 0) {
@@ -133,13 +149,27 @@ router.post('/api/configuracoes', async (req, res) => {
         const wppAtivo = c.whatsapp_ativo === true;
 
         // A BLINDAGEM DEFINITIVA: Força a criação das colunas milissegundos ANTES de salvar
+        // A BLINDAGEM DEFINITIVA MASTER: Força a criação de TODAS as colunas possíveis antes de salvar
         try {
+            // 1. Colunas de Ativação (Booleanas)
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS wpp_ativo BOOLEAN DEFAULT false;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_aprovado BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_fabricacao BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rastreio BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rota BOOLEAN DEFAULT true;`;
             await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_feedback BOOLEAN DEFAULT true;`;
+            
+            // 2. Colunas de Texto das Mensagens
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_aprovado TEXT;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_fabricacao TEXT;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_rastreio TEXT;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_rota TEXT;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS msg_feedback TEXT;`;
+
+            // 3. Colunas das Regras VIP (As culpadas deste erro!)
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_diamante NUMERIC DEFAULT 6000;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_ouro NUMERIC DEFAULT 3000;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS vip_prata NUMERIC DEFAULT 1000;`;
         } catch(e) { 
             console.log("Aviso: As colunas já existem ou houve um bloqueio menor.", e.message); 
         }
