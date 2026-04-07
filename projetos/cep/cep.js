@@ -3,6 +3,9 @@
 const handleZipCode = (event) => {
     let input = event.target
     input.value = zipCodeMask(input.value)
+    if (event.key === 'Enter') {
+      consultaEndereco()
+    }
   }
   
   const zipCodeMask = (value) => {
@@ -22,11 +25,35 @@ const handleZipCode = (event) => {
       return;
     }
 
+    let btn = document.querySelector('.pesquisa');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Pesquisando...';
+    }
+
     let url = `https://viacep.com.br/ws/${cep}/json/`;
 
-    fetch(url).then(function(response){
-      response.json().then(mostrarEndereco);       
-    });
+    fetch(url)
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(dados) {
+        mostrarEndereco(dados);
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Pesquisar';
+        }
+      })
+      .catch(function(error) {
+        let resultado = document.querySelector('#resultado');
+        if (resultado) {
+          resultado.innerHTML = "Ocorreu um erro ao consultar o CEP.";
+        }
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Pesquisar';
+        }
+      });
   }
 
   function mostrarEndereco(dados){
