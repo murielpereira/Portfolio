@@ -10,9 +10,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 //app.use(express.static(path.join(__dirname, 'public')));
 
+if (!process.env.CHAVE_SECRETA_SESSAO) {
+    throw new Error('CRITICAL: CHAVE_SECRETA_SESSAO environment variable is missing.');
+}
+
 app.use(cookieSession({
     name: 'sessao-automacao',
-    keys: [process.env.CHAVE_SECRETA_SESSAO || 'chave-fallback'],
+    keys: [process.env.CHAVE_SECRETA_SESSAO],
     maxAge: 24 * 60 * 60 * 1000,
     secure: false, 
     sameSite: 'lax' 
