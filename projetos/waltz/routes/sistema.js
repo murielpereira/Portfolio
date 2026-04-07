@@ -73,18 +73,27 @@ router.post('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
         const c = req.body;
+        
+        // Extração extra segura (Impede o banco de explodir com undefineds)
+        const t = c.templates_wpp || {};
+        const r = c.regras_vip || {};
+        const wppAtivo = c.whatsapp_ativo === true;
+
         await sql`
             UPDATE configuracoes_sistema SET
-                wpp_ativo = ${c.whatsapp_ativo},
-                msg_aprovado = ${c.templates_wpp.aprovado}, ativo_aprovado = ${c.templates_wpp.ativo_aprovado},
-                msg_fabricacao = ${c.templates_wpp.fabricacao}, ativo_fabricacao = ${c.templates_wpp.ativo_fabricacao},
-                msg_rastreio = ${c.templates_wpp.rastreio}, ativo_rastreio = ${c.templates_wpp.ativo_rastreio},
-                msg_rota = ${c.templates_wpp.rota}, ativo_rota = ${c.templates_wpp.ativo_rota},
-                msg_feedback = ${c.templates_wpp.feedback}, ativo_feedback = ${c.templates_wpp.ativo_feedback},
-                vip_diamante = ${c.regras_vip.diamante}, vip_ouro = ${c.regras_vip.ouro}, vip_prata = ${c.regras_vip.prata}
+                wpp_ativo = ${wppAtivo},
+                msg_aprovado = ${t.aprovado || ''}, ativo_aprovado = ${t.ativo_aprovado !== false},
+                msg_fabricacao = ${t.fabricacao || ''}, ativo_fabricacao = ${t.ativo_fabricacao !== false},
+                msg_rastreio = ${t.rastreio || ''}, ativo_rastreio = ${t.ativo_rastreio !== false},
+                msg_rota = ${t.rota || ''}, ativo_rota = ${t.ativo_rota !== false},
+                msg_feedback = ${t.feedback || ''}, ativo_feedback = ${t.ativo_feedback !== false},
+                vip_diamante = ${r.diamante || 6000}, vip_ouro = ${r.ouro || 3000}, vip_prata = ${r.prata || 1000}
         `;
         res.json({ sucesso: true });
-    } catch (erro) { res.status(500).json({ sucesso: false }); }
+    } catch (erro) { 
+        console.error("Erro salvando config:", erro);
+        res.status(500).json({ sucesso: false }); 
+    }
 });
 
 // =========================================================

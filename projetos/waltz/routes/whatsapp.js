@@ -105,31 +105,36 @@ router.get('/teste-whatsapp', async (req, res) => {
 // ----------------------------------------------------------------------------
 // ROTA: O "Despachante" (Processar a Fila e Enviar de Fato)
 // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// ROTA: O "Despachante" (Processar a Fila e Enviar de Fato pelo Cronjob)
+// ----------------------------------------------------------------------------
 router.get('/processar-fila', async (req, res) => {
     try {
-        // 1. Busca mensagens pendentes (máximo 5 por vez para ser rápido)
-        const { rows: fila } = await sql`
-            SELECT * FROM fila_mensagens 
-            WHERE status = 'pendente' AND tentativas < 5 
-            ORDER BY data_criacao ASC LIMIT 5;
-        `;
-
-        if (fila.length === 0) return res.send("Fila vazia. Nada a processar.");
-
-        // 2. Acorda o Render silenciosamente
+        // FIX: O "Despertador" do Render agora vem PRIMEIRO!
+        // A cada 10 minutos, o cron acorda o Render independentemente de haver fila ou não.
         fetch(`${process.env.SERVER_URL}/instance/fetchInstances`, { 
             headers: { 'apikey': process.env.AUTHENTICATION_API_KEY } 
         }).catch(() => {}); 
+
+        // Blindagem: Garante colunas de controlo
+        try { await sql`ALTER TABLE fila_mensagens ADD COLUMN IF NOT EXISTS tentativas INT DEFAULT 0;`; } catch(e){}
+        try { await sql`ALTER TABLE fila_mensagens ADD COLUMN IF NOT EXISTS data_envio TIMESTAMP;`; } catch(e){}
+
+        const { rows: fila } = await sql`
+            SELECT * FROM fila_mensagens 
+            WHERE status ILIKE 'pendente' AND tentativas < 5 
+            ORDER BY data_criacao ASC LIMIT 10;
+        `;
+
+        if (fila.length === 0) return res.send("Fila vazia. Servidor do WhatsApp pingado para se manter acordado.");
 
         let enviadas = 0;
         const baseUrl = (process.env.SERVER_URL || '').replace(/\/$/, ''); 
         const URL = `${baseUrl}/message/sendText/loja_waltz`;
 
-        // 3. Tenta disparar as mensagens com o ESCUDO DE PROTEÇÃO (Fail Fast)
         for (const item of fila) {
             try {
                 const controller = new AbortController();
-                // LIMITE DE 5 SEGUNDOS: Se o Render não responder rápido, abortamos a tentativa!
                 const timeoutId = setTimeout(() => controller.abort(), 5000);
                 
                 const resposta = await fetch(URL, {
@@ -147,25 +152,19 @@ router.get('/processar-fila', async (req, res) => {
                 
                 clearTimeout(timeoutId);
 
-                // 4. Atualiza o status no banco de dados com base na resposta
                 if (resposta.ok) {
                     await sql`UPDATE fila_mensagens SET status = 'enviado', data_envio = NOW() WHERE id = ${item.id}`;
                     enviadas++;
                 } else {
-                    await sql`UPDATE fila_mensagens SET tentativas = tentativas + 1 WHERE id = ${item.id}`;
+                    await sql`UPDATE fila_mensagens SET tentativas = COALESCE(tentativas, 0) + 1 WHERE id = ${item.id}`;
                 }
             } catch (e) {
-                // A MAGIA ACONTECE AQUI:
-                // Se der timeout de 5 segundos (Render a dormir ou WhatsApp desconectado),
-                // nós PARAMOS O LOOP (break) para devolver uma resposta de Sucesso ao Cronjob 
-                // antes que a Vercel desligue tudo à força! A mensagem fica pendente.
-                console.log("⏳ O Render está lento ou desconectado. Abortando ciclo para proteger o sistema.");
+                console.log("⏳ O Render está lento ou desconectado. Abortando ciclo.");
                 break; 
             }
         }
         
-        // Devolvemos 200 OK para o cron-job.org ficar feliz (verde)
-        res.status(200).send(`Processamento concluído de forma segura. Enviadas: ${enviadas}`);
+        res.status(200).send(`Processamento concluído. Enviadas: ${enviadas}`);
         
     } catch (erro) {
         console.error("❌ Erro ao processar a fila:", erro.message);
