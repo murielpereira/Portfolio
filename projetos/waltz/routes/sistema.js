@@ -143,4 +143,32 @@ router.post('/api/trocas', async (req, res) => {
     }
 });
 
+// =========================================================
+// ROTA DE TESTE DO WHATSAPP (Fila de Mensagens)
+// =========================================================
+router.post('/api/whatsapp/testar', async (req, res) => {
+    if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        // Cria a tabela da Fila se ela não existir
+        await sql`
+            CREATE TABLE IF NOT EXISTS fila_mensagens (
+                id SERIAL PRIMARY KEY,
+                telefone VARCHAR(20),
+                mensagem TEXT,
+                status VARCHAR(20) DEFAULT 'Pendente',
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `;
+        // Insere o teste na fila
+        await sql`
+            INSERT INTO fila_mensagens (telefone, mensagem, status)
+            VALUES ('5548991574943', ${req.body.mensagem}, 'Pendente');
+        `;
+        res.json({ sucesso: true });
+    } catch (erro) {
+        console.error("Erro na fila do wpp:", erro);
+        res.status(500).json({ sucesso: false });
+    }
+});
+
 module.exports = router;

@@ -6,7 +6,7 @@ export function getAbaWhatsapp() {
                 <label style="display: flex; align-items: center; gap: 8px; font-weight: bold; cursor: pointer; color: var(--text-main);">
                     <input type="checkbox" id="cfg-ativo-${id}" style="width: 16px; height: 16px;"> ${titulo}
                 </label>
-                <button type="button" onclick="testarMensagemWpp('${id}')" class="btn-salvar" style="background: white; color: #475569; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 12px; min-width: auto;"><i data-lucide="play" style="width: 14px; height: 14px;"></i> Testar</button>
+                <button type="button" id="btn-testar-${id}" onclick="testarMensagemWpp('${id}')" class="btn-salvar" style="background: white; color: #475569; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 12px; min-width: auto; transition: 0.3s;"><i data-lucide="play" style="width: 14px; height: 14px;"></i> Testar</button>
             </div>
             <textarea id="msg-${id}" class="textarea-modern">${placeholder}</textarea>
         </div>`;
@@ -14,18 +14,11 @@ export function getAbaWhatsapp() {
 
     return `
     <div id="sub-whatsapp" class="sub-pagina" style="display: none;">
-        <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: white;">
-            <label style="display: flex; align-items: center; cursor: pointer; font-weight: bold;">
-                <input type="checkbox" id="cfg-whatsapp-ativo" style="margin-right: 10px; width: 20px; height: 20px;">
-                Ativar Envio Automático de Mensagens no WhatsApp (Geral)
-            </label>
-            <p style="margin-top: 5px; font-size: 12px; color: #666;">Se desmarcado, nenhuma mensagem será enviada, ignorando as configurações abaixo.</p>
-        </div>
         <div class="card-table" style="padding: 30px;">
             <div style="max-width: 800px; margin: 0 auto;">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
                     <div style="width: 50px; height: 50px; background: #25D366; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center;"><i data-lucide="message-circle" style="width: 24px; height: 24px;"></i></div>
-                    <div><h2 style="font-size: 18px; color: var(--text-main); margin-bottom: 4px;">Templates do WhatsApp</h2><p style="font-size: 13px; color: var(--text-muted);">Personalize as mensagens disparadas em cada etapa.</p></div>
+                    <div><h2 style="font-size: 18px; color: var(--text-main); margin-bottom: 4px;">Templates do WhatsApp</h2><p style="font-size: 13px; color: var(--text-muted);">Personalize e ative as mensagens que deseja disparar em cada etapa.</p></div>
                 </div>
                 <div style="background: #eff6ff; padding: 15px; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 25px; font-size: 13px; color: #1e3a8a;">
                     <strong>Variáveis Dinâmicas:</strong> <span class="var-tag" style="background:white;">{nome}</span>, <span class="var-tag" style="background:white;">{pedido}</span>, <span class="var-tag" style="background:white;">{rastreio}</span>, <span class="var-tag" style="background:white;">{link_rastreio}</span>, <span class="var-tag" style="background:white;">{produtos}</span>.

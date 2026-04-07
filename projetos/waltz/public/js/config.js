@@ -18,14 +18,21 @@ export async function carregarConfiguracoesDoBanco() {
     } catch (e) {}
 }
 
-export function getRegrasVIP() { return configsGlobais.regras_vip; }
+// FIX: Força a conversão para Número para o gráfico não quebrar!
+export function getRegrasVIP() { 
+    return {
+        diamante: Number(configsGlobais.regras_vip.diamante) || 6000,
+        ouro: Number(configsGlobais.regras_vip.ouro) || 3000,
+        prata: Number(configsGlobais.regras_vip.prata) || 1000
+    }; 
+}
 
 export function preencherFormularioConfig() {
     const t = configsGlobais.templates_wpp;
     if (t) {
         ['aprovado', 'fabricacao', 'rastreio', 'rota', 'feedback'].forEach(id => {
             if(document.getElementById(`msg-${id}`)) document.getElementById(`msg-${id}`).value = t[id] || '';
-            if(document.getElementById(`cfg-ativo-${id}`)) document.getElementById(`cfg-ativo-${id}`).checked = t[`ativo_${id}`] !== false; // Default true
+            if(document.getElementById(`cfg-ativo-${id}`)) document.getElementById(`cfg-ativo-${id}`).checked = t[`ativo_${id}`] !== false; 
         });
     }
     const r = configsGlobais.regras_vip;
@@ -34,15 +41,13 @@ export function preencherFormularioConfig() {
         if(document.getElementById('cfg-ouro')) document.getElementById('cfg-ouro').value = r.ouro;
         if(document.getElementById('cfg-prata')) document.getElementById('cfg-prata').value = r.prata;
     }
-    if (document.getElementById('cfg-whatsapp-ativo')) {
-        document.getElementById('cfg-whatsapp-ativo').checked = configsGlobais.whatsapp_ativo;
-    }
 }
 
-// FIX: A função de envio de teste manual para o seu número!
-export function testarMensagemWpp(tipo) {
+// FIX: Agora envia para a fila do Backend!
+export async function testarMensagemWpp(tipo) {
     const textarea = document.getElementById(`msg-${tipo}`);
-    if(!textarea) return;
+    const btn = document.getElementById(`btn-testar-${tipo}`);
+    if(!textarea || !btn) return;
     
     let textoFinal = textarea.value
         .replace(/{nome}/g, 'Maria')
@@ -51,7 +56,22 @@ export function testarMensagemWpp(tipo) {
         .replace(/{link_rastreio}/g, 'https://rastreio.com/BR123456789BR')
         .replace(/{produtos}/g, 'Coleira Rosa Bebê (M), Guia Ouro');
         
-    window.open(`https://wa.me/5548991574943?text=${encodeURIComponent(textoFinal)}`, '_blank');
+    const textoOriginal = btn.innerHTML;
+    btn.innerHTML = 'Enviando...'; btn.style.opacity = '0.7';
+
+    try {
+        const res = await fetch('/api/whatsapp/testar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mensagem: textoFinal })
+        });
+        if (res.ok) {
+            btn.innerHTML = '✅ Na Fila!'; btn.style.backgroundColor = '#10b981'; btn.style.color = 'white';
+        } else throw new Error();
+    } catch (e) {
+        btn.innerHTML = '❌ Erro'; btn.style.backgroundColor = '#ef4444'; btn.style.color = 'white';
+    }
+
+    setTimeout(() => { btn.innerHTML = textoOriginal; btn.style.backgroundColor = 'white'; btn.style.color = '#475569'; btn.style.opacity = '1'; atualizarIcones(); }, 2500);
 }
 
 export async function salvarConfiguracoes(event) {
@@ -59,27 +79,31 @@ export async function salvarConfiguracoes(event) {
     const btn = event.submitter;
     const textoOriginal = btn.innerHTML;
     btn.innerHTML = 'Salvando no Banco...'; btn.style.opacity = '0.7';
-
-    const whatsapp_ativo = document.getElementById('cfg-whatsapp-ativo') ? document.getElementById('cfg-whatsapp-ativo').checked : false;
     
     const templates_wpp = {
-        aprovado: document.getElementById('msg-aprovado')?.value, ativo_aprovado: document.getElementById('cfg-ativo-aprovado')?.checked,
-        fabricacao: document.getElementById('msg-fabricacao')?.value, ativo_fabricacao: document.getElementById('cfg-ativo-fabricacao')?.checked,
-        rastreio: document.getElementById('msg-rastreio')?.value, ativo_rastreio: document.getElementById('cfg-ativo-rastreio')?.checked,
-        rota: document.getElementById('msg-rota')?.value, ativo_rota: document.getElementById('cfg-ativo-rota')?.checked,
-        feedback: document.getElementById('msg-feedback')?.value, ativo_feedback: document.getElementById('cfg-ativo-feedback')?.checked,
+        aprovado: document.getElementById('msg-aprovado')?.value || configsGlobais.templates_wpp.aprovado, 
+        ativo_aprovado: document.getElementById('cfg-ativo-aprovado')?.checked !== undefined ? document.getElementById('cfg-ativo-aprovado').checked : configsGlobais.templates_wpp.ativo_aprovado,
+        fabricacao: document.getElementById('msg-fabricacao')?.value || configsGlobais.templates_wpp.fabricacao, 
+        ativo_fabricacao: document.getElementById('cfg-ativo-fabricacao')?.checked !== undefined ? document.getElementById('cfg-ativo-fabricacao').checked : configsGlobais.templates_wpp.ativo_fabricacao,
+        rastreio: document.getElementById('msg-rastreio')?.value || configsGlobais.templates_wpp.rastreio, 
+        ativo_rastreio: document.getElementById('cfg-ativo-rastreio')?.checked !== undefined ? document.getElementById('cfg-ativo-rastreio').checked : configsGlobais.templates_wpp.ativo_rastreio,
+        rota: document.getElementById('msg-rota')?.value || configsGlobais.templates_wpp.rota, 
+        ativo_rota: document.getElementById('cfg-ativo-rota')?.checked !== undefined ? document.getElementById('cfg-ativo-rota').checked : configsGlobais.templates_wpp.ativo_rota,
+        feedback: document.getElementById('msg-feedback')?.value || configsGlobais.templates_wpp.feedback, 
+        ativo_feedback: document.getElementById('cfg-ativo-feedback')?.checked !== undefined ? document.getElementById('cfg-ativo-feedback').checked : configsGlobais.templates_wpp.ativo_feedback,
     };
     
+    // FIX: Preserva as configurações antigas se o input não estiver na tela!
     const regras_vip = {
-        diamante: parseFloat(document.getElementById('cfg-diamante')?.value) || 6000,
-        ouro: parseFloat(document.getElementById('cfg-ouro')?.value) || 3000,
-        prata: parseFloat(document.getElementById('cfg-prata')?.value) || 1000
+        diamante: parseFloat(document.getElementById('cfg-diamante')?.value) || configsGlobais.regras_vip.diamante,
+        ouro: parseFloat(document.getElementById('cfg-ouro')?.value) || configsGlobais.regras_vip.ouro,
+        prata: parseFloat(document.getElementById('cfg-prata')?.value) || configsGlobais.regras_vip.prata
     };
 
     try {
-        const res = await fetch('/api/configuracoes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templates_wpp, regras_vip, whatsapp_ativo }) });
+        const res = await fetch('/api/configuracoes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templates_wpp, regras_vip, whatsapp_ativo: false }) });
         if (res.ok) {
-            configsGlobais.templates_wpp = templates_wpp; configsGlobais.regras_vip = regras_vip; configsGlobais.whatsapp_ativo = whatsapp_ativo;
+            configsGlobais.templates_wpp = templates_wpp; configsGlobais.regras_vip = regras_vip; 
             if (window.renderizarPaginaRelatorio) window.renderizarPaginaRelatorio();
             if (window.renderizarGraficoClientes) window.renderizarGraficoClientes();
             btn.innerHTML = '<i data-lucide="check" style="width:18px; height:18px;"></i> Salvo!'; btn.style.backgroundColor = '#10b981';

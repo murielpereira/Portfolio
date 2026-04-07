@@ -87,13 +87,6 @@ export function renderizarTabelaCEPs() {
     const divMapaCard = document.getElementById('mapa_brasil_card'); 
     const divMapaCanvas = document.getElementById('mapa_brasil_div');
     if (!tbody) return;
-
-    // FIX: Garante que o input pesquisa vai disparar (resolve o problema de digitar e nada acontecer)
-    const inputBusca = document.getElementById("busca-cep-analise");
-    if (inputBusca && !inputBusca.dataset.listenerAtivo) {
-        inputBusca.addEventListener('input', renderizarTabelaCEPs);
-        inputBusca.dataset.listenerAtivo = 'true';
-    }
     
     const buscaRaw = (inputBusca?.value || "").toLowerCase().trim();
     const buscaApenasNumeros = buscaRaw.replace(/\D/g, '');
@@ -222,6 +215,12 @@ export function ordenarTabelaCep(colIndex) {
     if(activeIcon) { activeIcon.innerText = ordemCrescenteCep ? '↑' : '↓'; activeIcon.classList.add('active'); }
     renderizarTabelaCEPs();
 }
+
+document.addEventListener('input', function(e) {
+    if (e.target && e.target.id === 'busca-cep-analise') {
+        if(window.renderizarTabelaCEPs) window.renderizarTabelaCEPs();
+    }
+});
 
 window.ordenarTabelaCep = ordenarTabelaCep;
 window.renderizarTabelaCEPs = renderizarTabelaCEPs;
