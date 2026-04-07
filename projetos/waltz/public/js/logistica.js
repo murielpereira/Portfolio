@@ -1,6 +1,21 @@
-import { isGoogleChartsReady } from './utils.js';
+// FIX: Garantia absoluta de carregamento do Google Charts
+function garantirGoogleCharts(callback) {
+    if (typeof google !== 'undefined' && google.visualization && google.visualization.GeoChart) {
+        callback();
+    } else if (!document.getElementById('google-charts-script')) {
+        const script = document.createElement('script');
+        script.id = 'google-charts-script';
+        script.src = 'https://www.gstatic.com/charts/loader.js';
+        script.onload = () => {
+            google.charts.load('current', { 'packages': ['geochart'], 'language': 'pt-br' });
+            google.charts.setOnLoadCallback(callback);
+        };
+        document.head.appendChild(script);
+    } else {
+        setTimeout(() => garantirGoogleCharts(callback), 300);
+    }
+}
 
-// FIX 1: Função blindada contra acentos (Pará -> PARA -> BR-PA)
 export function mapEstadoParaISO(estado) {
     if (!estado) return null; 
     const uf = estado.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
@@ -8,7 +23,6 @@ export function mapEstadoParaISO(estado) {
     return map[uf] || null;
 }
 
-// O MOTOR DEFINITIVO: Mapeia qualquer CEP do Brasil para o Estado correto
 export function obterEstadoPorCep(cep) {
     if (!cep) return '';
     const prefixo = parseInt(cep.replace(/\D/g, '').substring(0, 5));
@@ -63,14 +77,10 @@ window.dadosLogisticaBackend = [];
 let colunaOrdenacaoCep = -1;
 let ordemCrescenteCep = true;
 
-if (typeof google !== 'undefined' && google.charts) {
-    google.charts.load('current', { 'packages': ['geochart'] });
-}
-
 export async function carregarDadosLogistica() {
     const tbody = document.getElementById('corpo-tabela-ceps');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px;">Processando histórico do banco de dados...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 30px;">Processando histórico do banco de dados...</td></tr>';
     
     try {
         const res = await fetch('/api/relatorios/logistica');
@@ -88,6 +98,7 @@ export function renderizarTabelaCEPs() {
     const divMapaCanvas = document.getElementById('mapa_brasil_div');
     if (!tbody) return;
     
+    const inputBusca = document.getElementById("busca-cep-analise");
     const buscaRaw = (inputBusca?.value || "").toLowerCase().trim();
     const buscaApenasNumeros = buscaRaw.replace(/\D/g, '');
     
@@ -99,7 +110,7 @@ export function renderizarTabelaCEPs() {
     const dadosEnriquecidos = window.dadosLogisticaBackend.map(d => {
         const cepLimpo = String(d.cep_prefixo || d.prefixo_cep || "");
         const estadoReal = obterEstadoPorCep(cepLimpo + '000'); 
-        return { ...d, cepLimpo, estadoReal };
+        return { ...d, cepLimpo, estadoReal, media_frete: parseFloat(d.media_frete || 0) };
     });
 
     const isBuscandoTexto = buscaRaw.length > 0 && buscaApenasNumeros.length === 0;
@@ -118,6 +129,7 @@ export function renderizarTabelaCEPs() {
             estado: item.estadoReal,
             cep: item.cepLimpo + (item.cepLimpo.length === 5 ? '-***' : ''),
             mediaDias: item.media_dias,
+            mediaFrete: item.media_frete,
             quantidade: item.volume
         }));
         
@@ -140,14 +152,16 @@ export function renderizarTabelaCEPs() {
         let agrupado = {};
         dadosEnriquecidos.forEach(item => {
             const est = item.estadoReal;
-            if (!agrupado[est]) agrupado[est] = { somaDiasVolume: 0, volumeTotal: 0 };
+            if (!agrupado[est]) agrupado[est] = { somaDiasVolume: 0, somaFreteVolume: 0, volumeTotal: 0 };
             agrupado[est].somaDiasVolume += (item.media_dias * item.volume);
+            agrupado[est].somaFreteVolume += (item.media_frete * item.volume);
             agrupado[est].volumeTotal += item.volume;
         });
 
         resultadosTabela = Object.keys(agrupado).map(est => {
             const vol = agrupado[est].volumeTotal;
             const med = Math.round(agrupado[est].somaDiasVolume / vol);
+            const medFrete = agrupado[est].somaFreteVolume / vol;
             
             const isoCode = mapEstadoParaISO(est); 
             if (isoCode) {
@@ -155,24 +169,23 @@ export function renderizarTabelaCEPs() {
                 analiseAgrupadaMapaBR[isoCode].somaDias += (med * vol);
                 analiseAgrupadaMapaBR[isoCode].quantidade += vol;
             }
-            return { estado: est, cep: `Geral (Todo o Estado)`, mediaDias: med, quantidade: vol };
+            return { estado: est, cep: `Geral (Todo o Estado)`, mediaDias: med, mediaFrete: medFrete, quantidade: vol };
         });
     }
 
-    const desenharMapaInteligente = () => {
-        if (divMapaCanvas && divMapaCard && window.google && google.visualization && google.visualization.GeoChart) {
-            try {
-                let dadosMapa = [ ["Region", "Média de Dias", "Quantidade"] ];
-                Object.entries(analiseAgrupadaMapaBR).forEach(([iso, dados]) => dadosMapa.push([ iso, Math.round(dados.somaDias / dados.quantidade), dados.quantidade ]));
-                const options = { region: 'BR', resolution: 'provinces', displayMode: 'regions', colorAxis: { colors: ['#a7f3d0', '#fef08a', '#fca5a5'] }, backgroundColor: 'transparent', datalessRegionColor: '#f1f5f9', legend: { textStyle: { color: '#475569', fontSize: 11 } } };
-                new google.visualization.GeoChart(divMapaCanvas).draw(google.visualization.arrayToDataTable(dadosMapa), options);
-                divMapaCard.style.display = 'block';
-            } catch(mapErro) { divMapaCard.style.display = 'none'; }
-        } else if (divMapaCard) setTimeout(desenharMapaInteligente, 300);
-    };
-
-    if (Object.keys(analiseAgrupadaMapaBR).length > 0) desenharMapaInteligente();
-    else if (divMapaCard) divMapaCard.style.display = 'none';
+    if (Object.keys(analiseAgrupadaMapaBR).length > 0) {
+        garantirGoogleCharts(() => {
+            if(divMapaCanvas && divMapaCard) {
+                try {
+                    let dadosMapa = [ ["Region", "Média de Dias", "Quantidade"] ];
+                    Object.entries(analiseAgrupadaMapaBR).forEach(([iso, dados]) => dadosMapa.push([ iso, Math.round(dados.somaDias / dados.quantidade), dados.quantidade ]));
+                    const options = { region: 'BR', resolution: 'provinces', displayMode: 'regions', colorAxis: { colors: ['#a7f3d0', '#fef08a', '#fca5a5'] }, backgroundColor: 'transparent', datalessRegionColor: '#f1f5f9', legend: { textStyle: { color: '#475569', fontSize: 11 } } };
+                    new google.visualization.GeoChart(divMapaCanvas).draw(google.visualization.arrayToDataTable(dadosMapa), options);
+                    divMapaCard.style.display = 'block';
+                } catch(mapErro) { divMapaCard.style.display = 'none'; }
+            }
+        });
+    } else if (divMapaCard) divMapaCard.style.display = 'none';
 
     if (colunaOrdenacaoCep !== -1) {
         resultadosTabela.sort((a, b) => {
@@ -181,7 +194,8 @@ export function renderizarTabelaCEPs() {
                 case 0: valA = a.estado; valB = b.estado; break;
                 case 1: valA = a.cep; valB = b.cep; break;
                 case 2: valA = a.mediaDias; valB = b.mediaDias; break;
-                case 3: valA = a.quantidade; valB = b.quantidade; break;
+                case 3: valA = a.mediaFrete; valB = b.mediaFrete; break;
+                case 4: valA = a.quantidade; valB = b.quantidade; break;
             }
             if (valA < valB) return ordemCrescenteCep ? -1 : 1;
             if (valA > valB) return ordemCrescenteCep ? 1 : -1;
@@ -198,6 +212,7 @@ export function renderizarTabelaCEPs() {
             <td style="font-weight:500;">${r.estado}</td> 
             <td style="font-family: monospace; font-size: 14px; color: #64748b;">${r.cep}</td>
             <td style="font-weight: bold; color: #2563eb; font-size: 15px;">${r.mediaDias} dias</td>
+            <td style="font-weight: bold; color: #ef4444; font-size: 14px;">R$ ${parseFloat(r.mediaFrete || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
             <td style="color: #475569;">${r.quantidade} entregas mapeadas</td>
         `;
         tbody.appendChild(linha);
@@ -207,7 +222,7 @@ export function renderizarTabelaCEPs() {
 export function ordenarTabelaCep(colIndex) {
     if (colunaOrdenacaoCep === colIndex) ordemCrescenteCep = !ordemCrescenteCep; 
     else { colunaOrdenacaoCep = colIndex; ordemCrescenteCep = true; }
-    for(let i = 0; i <= 3; i++) { 
+    for(let i = 0; i <= 4; i++) { 
         const icon = document.getElementById(`sort-cep-${i}`); 
         if(icon) { icon.innerText = '↑↓'; icon.classList.remove('active'); } 
     }

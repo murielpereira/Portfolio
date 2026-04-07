@@ -5,7 +5,7 @@ export function getAbaCep() {
             <div class="control-filters" style="flex-wrap: nowrap; flex: 1;">
                 <div class="control-search">
                     <i data-lucide="search"></i>
-                    <input type="text" id="busca-cep" class="input-modern" placeholder="Buscar por Estado ou CEP..." onkeyup="if(typeof renderizarTabelaCeps === 'function') renderizarTabelaCeps()">
+                    <input type="text" id="busca-cep-analise" class="input-modern" placeholder="Buscar por Estado ou CEP..." onkeyup="if(typeof renderizarTabelaCEPs === 'function') renderizarTabelaCEPs()">
                 </div>
             </div>
         </div>
@@ -16,8 +16,16 @@ export function getAbaCep() {
         <div class="card-table">
             <div class="tabela-responsiva">
                 <table class="tabela-dados">
-                    <thead><tr><th>Estado (UF)</th><th>CEP Base</th><th>Média de Tempo de Entrega</th><th>Volume (Qtd de Pedidos)</th></tr></thead>
-                    <tbody id="corpo-tabela-ceps"><tr><td colspan="4" style="text-align: center; padding: 30px;">Aguardando processamento...</td></tr></tbody>
+                    <thead>
+                        <tr>
+                            <th onclick="ordenarTabelaCep(0)" style="cursor:pointer">Estado (UF) <span class="sort-icon" id="sort-cep-0">↑↓</span></th>
+                            <th onclick="ordenarTabelaCep(1)" style="cursor:pointer">CEP Base <span class="sort-icon" id="sort-cep-1">↑↓</span></th>
+                            <th onclick="ordenarTabelaCep(2)" style="cursor:pointer">Média de Tempo <span class="sort-icon" id="sort-cep-2">↑↓</span></th>
+                            <th onclick="ordenarTabelaCep(3)" style="cursor:pointer">Custo Médio (Frete) <span class="sort-icon" id="sort-cep-3">↑↓</span></th>
+                            <th onclick="ordenarTabelaCep(4)" style="cursor:pointer">Volume <span class="sort-icon" id="sort-cep-4">↑↓</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-tabela-ceps"><tr><td colspan="5" style="text-align: center; padding: 30px;">Aguardando processamento...</td></tr></tbody>
                 </table>
             </div>
         </div>

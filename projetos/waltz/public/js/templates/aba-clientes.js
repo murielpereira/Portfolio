@@ -5,9 +5,9 @@ export function getAbaClientes() {
             <div class="control-filters" style="flex-wrap: nowrap; flex: 1;">
                 <div class="control-search">
                     <i data-lucide="search"></i>
-                    <input type="text" id="busca-tiny-v2" class="input-modern" placeholder="Nome ou Documento..." onkeyup="renderizarPaginaClientes()">
+                    <input type="text" id="busca-tiny-v2" class="input-modern" placeholder="Nome ou Documento..." onkeyup="if(window.resetarEPaginacao) window.resetarEPaginacao()">
                 </div>
-                <select id="filtro-grupo-v2" class="input-modern control-select" onchange="renderizarPaginaClientes()">
+                <select id="filtro-grupo-v2" class="input-modern control-select" onchange="if(window.resetarEPaginacao) window.resetarEPaginacao()">
                     <option value="TODOS">Todos os Grupos</option>
                     <option value="SEM COMPRAS">Sem Compras</option>
                     <option value="PRIMEIRA COMPRA">1ª Compra</option>

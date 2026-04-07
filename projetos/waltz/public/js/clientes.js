@@ -185,7 +185,10 @@ export async function carregarClientesTinyDB() {
 // ==========================================
 // RENDERIZAÇÃO HIDRATADA (O Segredo da Velocidade)
 // ==========================================
-let renderId = 0; // Escudo contra cliques duplos e digitação rápida
+// ==========================================
+// RENDERIZAÇÃO HIDRATADA (O Segredo da Velocidade)
+// ==========================================
+let renderId = 0;
 
 export async function renderizarPaginaRelatorio() {
     const idDestaRenderizacao = ++renderId;
@@ -195,10 +198,16 @@ export async function renderizarPaginaRelatorio() {
     const termoBusca = (document.getElementById("busca-tiny-v2")?.value || "").toLowerCase();
     const filtroGrupo = document.getElementById("filtro-grupo-v2")?.value || "TODOS";
 
+    // Ouve a digitação e a mudança de grupos ativamente
     const inputBusca = document.getElementById("busca-tiny-v2");
     if (inputBusca && !inputBusca.dataset.listenerAtivo) {
         inputBusca.addEventListener('input', () => { resetarEPaginacao(); });
         inputBusca.dataset.listenerAtivo = 'true';
+    }
+    const dropGrupo = document.getElementById("filtro-grupo-v2");
+    if (dropGrupo && !dropGrupo.dataset.listenerAtivo) {
+        dropGrupo.addEventListener('change', () => { resetarEPaginacao(); });
+        dropGrupo.dataset.listenerAtivo = 'true';
     }
     
     // 1. Filtragem Inteligente (Instantânea)
