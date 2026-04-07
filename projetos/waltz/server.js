@@ -3,6 +3,12 @@ const express = require('express');
 const cookieSession = require('cookie-session');
 const path = require('path');
 
+// 🛡️ Sentinel: Fix critical fail-secure vulnerability
+// The server must fail to start if the session secret is missing
+if (!process.env.CHAVE_SECRETA_SESSAO) {
+    throw new Error("CRITICAL SECURITY ERROR: CHAVE_SECRETA_SESSAO is not set in the environment variables. The server cannot start securely.");
+}
+
 const app = express();
 
 // 1. Configurações Básicas
@@ -12,7 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieSession({
     name: 'sessao-automacao',
-    keys: [process.env.CHAVE_SECRETA_SESSAO || 'chave-fallback'],
+    keys: [process.env.CHAVE_SECRETA_SESSAO],
     maxAge: 24 * 60 * 60 * 1000,
     secure: false, 
     sameSite: 'lax' 
