@@ -132,6 +132,25 @@ router.post('/api/configuracoes', async (req, res) => {
         const r = c.regras_vip || {};
         const wppAtivo = c.whatsapp_ativo === true;
 
+        // A BLINDAGEM DEFINITIVA: Força a criação das colunas milissegundos ANTES de salvar
+        try {
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS wpp_ativo BOOLEAN DEFAULT false;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_aprovado BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_fabricacao BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rastreio BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_rota BOOLEAN DEFAULT true;`;
+            await sql`ALTER TABLE configuracoes_sistema ADD COLUMN IF NOT EXISTS ativo_feedback BOOLEAN DEFAULT true;`;
+        } catch(e) { 
+            console.log("Aviso: As colunas já existem ou houve um bloqueio menor.", e.message); 
+        }
+
+        // Garante que a linha mestre (ID 1) existe antes de dar UPDATE
+        const { rows } = await sql`SELECT * FROM configuracoes_sistema LIMIT 1;`;
+        if (rows.length === 0) {
+            await sql`INSERT INTO configuracoes_sistema (wpp_ativo) VALUES (false);`;
+        }
+
+        // Agora sim, grava com 100% de segurança
         await sql`
             UPDATE configuracoes_sistema SET
                 wpp_ativo = ${wppAtivo},
@@ -142,6 +161,7 @@ router.post('/api/configuracoes', async (req, res) => {
                 msg_feedback = ${t.feedback || ''}, ativo_feedback = ${t.ativo_feedback !== false},
                 vip_diamante = ${r.diamante || 6000}, vip_ouro = ${r.ouro || 3000}, vip_prata = ${r.prata || 1000}
         `;
+        
         res.json({ sucesso: true });
     } catch (erro) { 
         console.error("Erro salvando config:", erro);
