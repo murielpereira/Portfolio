@@ -72,6 +72,9 @@ router.get('/api/configuracoes', async (req, res) => {
 // =========================================================
 // ROTA DE CONFIGURAÇÕES (Blindada 2.0 - Sem depender do ID)
 // =========================================================
+// =========================================================
+// ROTA DE CONFIGURAÇÕES (Blindada 2.0 - Sem depender do ID)
+// =========================================================
 router.get('/api/configuracoes', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
@@ -115,6 +118,34 @@ router.get('/api/configuracoes', async (req, res) => {
     } catch (erro) {
         console.error("Erro ao buscar configurações:", erro);
         res.status(500).json({ sucesso: false });
+    }
+});
+
+// A Rota que tinha "sumido" (Com proteção total contra undefined)
+router.post('/api/configuracoes', async (req, res) => {
+    if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
+    try {
+        const c = req.body;
+        
+        // Extração extra segura (Impede o banco de explodir com undefineds)
+        const t = c.templates_wpp || {};
+        const r = c.regras_vip || {};
+        const wppAtivo = c.whatsapp_ativo === true;
+
+        await sql`
+            UPDATE configuracoes_sistema SET
+                wpp_ativo = ${wppAtivo},
+                msg_aprovado = ${t.aprovado || ''}, ativo_aprovado = ${t.ativo_aprovado !== false},
+                msg_fabricacao = ${t.fabricacao || ''}, ativo_fabricacao = ${t.ativo_fabricacao !== false},
+                msg_rastreio = ${t.rastreio || ''}, ativo_rastreio = ${t.ativo_rastreio !== false},
+                msg_rota = ${t.rota || ''}, ativo_rota = ${t.ativo_rota !== false},
+                msg_feedback = ${t.feedback || ''}, ativo_feedback = ${t.ativo_feedback !== false},
+                vip_diamante = ${r.diamante || 6000}, vip_ouro = ${r.ouro || 3000}, vip_prata = ${r.prata || 1000}
+        `;
+        res.json({ sucesso: true });
+    } catch (erro) { 
+        console.error("Erro salvando config:", erro);
+        res.status(500).json({ sucesso: false }); 
     }
 });
 
