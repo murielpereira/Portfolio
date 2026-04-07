@@ -45,45 +45,92 @@ router.get('/api/relatorios/logistica', async (req, res) => {
 router.get('/api/relatorios/entregas', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
-        const agrupamento = `
-            CASE 
-                WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
-                WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
-                WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
-                WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
-                WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
-                WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
-                ELSE transportadora 
-            END
-        `;
-
-        // FIX: Média de frete das transportadoras também ignora frete grátis!
+        // Consulta GERAL (Gráfico de Pizza e Tabela Principal)
         const geral = await sql`
             SELECT 
-                ${sql.unsafe(agrupamento)} AS transportadora, 
+                CASE 
+                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
+                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
+                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
+                    WHEN transportadora ILIKE '%mini%' THEN 'Correios (Mini)'
+                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
+                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
+                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
+                    WHEN transportadora ILIKE '%gollog%' THEN 'GolLog'
+                    ELSE transportadora 
+                END AS transportadora, 
                 COUNT(id_pedido)::int AS envios, 
                 ROUND(AVG(NULLIF(valor_frete, 0)), 2)::numeric AS media_frete, 
                 ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 1)::numeric AS media_dias
             FROM pedidos_nuvemshop 
             WHERE transportadora IS NOT NULL AND transportadora != ''
-            GROUP BY ${sql.unsafe(agrupamento)}
+              -- LISTA NEGRA: Remove lixos e nomes genéricos
+              AND transportadora NOT ILIKE '%Brazilian Post Office%'
+              AND transportadora NOT ILIKE '%Custo e prazo de entrega padrão%'
+              AND transportadora NOT ILIKE '%Econômico%'
+              AND transportadora NOT ILIKE '%Entraremos em contato com você%'
+              AND transportadora NOT ILIKE '%Expresso%'
+            GROUP BY 
+                CASE 
+                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
+                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
+                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
+                    WHEN transportadora ILIKE '%mini%' THEN 'Correios (Mini)'
+                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
+                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
+                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
+                    WHEN transportadora ILIKE '%gollog%' THEN 'GolLog'
+                    ELSE transportadora 
+                END
             ORDER BY envios DESC;
         `;
 
+        // Consulta por ESTADOS (Tabela Inferior)
         const estados = await sql`
             SELECT 
                 estado, 
-                ${sql.unsafe(agrupamento)} AS transportadora, 
+                CASE 
+                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
+                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
+                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
+                    WHEN transportadora ILIKE '%mini%' THEN 'Correios (Mini)'
+                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
+                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
+                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
+                    WHEN transportadora ILIKE '%gollog%' THEN 'GolLog'
+                    ELSE transportadora 
+                END AS transportadora, 
                 COUNT(id_pedido)::int AS envios, 
                 ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 1)::numeric AS media_dias
             FROM pedidos_nuvemshop 
             WHERE estado IS NOT NULL AND estado != '' AND transportadora IS NOT NULL AND transportadora != '' AND data_entrega IS NOT NULL AND data_envio IS NOT NULL
-            GROUP BY estado, ${sql.unsafe(agrupamento)}
+              -- LISTA NEGRA: Remove lixos e nomes genéricos
+              AND transportadora NOT ILIKE '%Brazilian Post Office%'
+              AND transportadora NOT ILIKE '%Custo e prazo de entrega padrão%'
+              AND transportadora NOT ILIKE '%Econômico%'
+              AND transportadora NOT ILIKE '%Entraremos em contato com você%'
+              AND transportadora NOT ILIKE '%Expresso%'
+            GROUP BY 
+                estado, 
+                CASE 
+                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
+                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
+                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
+                    WHEN transportadora ILIKE '%mini%' THEN 'Correios (Mini)'
+                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
+                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
+                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
+                    WHEN transportadora ILIKE '%gollog%' THEN 'GolLog'
+                    ELSE transportadora 
+                END
             ORDER BY estado ASC, envios DESC;
         `;
         
         res.json({ sucesso: true, geral: geral.rows, estados: estados.rows });
-    } catch (erro) { res.status(500).json({ sucesso: false }); }
+    } catch (erro) { 
+        console.error("Erro na rota de entregas:", erro);
+        res.status(500).json({ sucesso: false }); 
+    }
 });
 
 router.post('/api/pedidos/marcar-feedback', async (req, res) => {
