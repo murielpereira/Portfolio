@@ -107,10 +107,17 @@ export function renderizarTabelaCEPs() {
     let resultadosTabela = [];
     let analiseAgrupadaMapaBR = {}; 
 
+    // FIX: Agora lemos também o volume de fretes que foram realmente pagos (maior que 0)
     const dadosEnriquecidos = window.dadosLogisticaBackend.map(d => {
         const cepLimpo = String(d.cep_prefixo || d.prefixo_cep || "");
         const estadoReal = obterEstadoPorCep(cepLimpo + '000'); 
-        return { ...d, cepLimpo, estadoReal, media_frete: parseFloat(d.media_frete || 0) };
+        return { 
+            ...d, 
+            cepLimpo, 
+            estadoReal, 
+            media_frete: parseFloat(d.media_frete || 0),
+            volume_frete_pago: parseInt(d.volume_frete_pago || 0)
+        };
     });
 
     const isBuscandoTexto = buscaRaw.length > 0 && buscaApenasNumeros.length === 0;
@@ -152,16 +159,22 @@ export function renderizarTabelaCEPs() {
         let agrupado = {};
         dadosEnriquecidos.forEach(item => {
             const est = item.estadoReal;
-            if (!agrupado[est]) agrupado[est] = { somaDiasVolume: 0, somaFreteVolume: 0, volumeTotal: 0 };
+            if (!agrupado[est]) agrupado[est] = { somaDiasVolume: 0, somaFreteVolume: 0, volumeTotal: 0, volumeFretePago: 0 };
+            
             agrupado[est].somaDiasVolume += (item.media_dias * item.volume);
-            agrupado[est].somaFreteVolume += (item.media_frete * item.volume);
             agrupado[est].volumeTotal += item.volume;
+            
+            // FIX: Soma do frete baseada apenas nos pedidos que não foram Frete Grátis
+            agrupado[est].somaFreteVolume += (item.media_frete * item.volume_frete_pago);
+            agrupado[est].volumeFretePago += item.volume_frete_pago;
         });
 
         resultadosTabela = Object.keys(agrupado).map(est => {
             const vol = agrupado[est].volumeTotal;
             const med = Math.round(agrupado[est].somaDiasVolume / vol);
-            const medFrete = agrupado[est].somaFreteVolume / vol;
+            
+            const volFrete = agrupado[est].volumeFretePago;
+            const medFrete = volFrete > 0 ? (agrupado[est].somaFreteVolume / volFrete) : 0;
             
             const isoCode = mapEstadoParaISO(est); 
             if (isoCode) {

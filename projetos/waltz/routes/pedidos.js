@@ -19,12 +19,14 @@ router.get('/api/pedidos', async (req, res) => {
 router.get('/api/relatorios/logistica', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
+        // FIX: Usando NULLIF para ignorar fretes zerados (Frete Grátis) da média
         const { rows } = await sql`
             SELECT 
                 LEFT(REPLACE(cep, '-', ''), 5) AS cep_prefixo,
                 COUNT(id_pedido)::int AS volume,
+                COUNT(NULLIF(valor_frete, 0))::int AS volume_frete_pago,
                 ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 0)::int AS media_dias,
-                ROUND(AVG(valor_frete), 2)::numeric AS media_frete
+                ROUND(AVG(NULLIF(valor_frete, 0)), 2)::numeric AS media_frete
             FROM pedidos_nuvemshop
             WHERE status_nuvemshop IN ('Entregue', 'Arquivado', 'CLOSED', 'DELIVERED') 
               AND cep IS NOT NULL AND cep != ''
@@ -43,7 +45,6 @@ router.get('/api/relatorios/logistica', async (req, res) => {
 router.get('/api/relatorios/entregas', async (req, res) => {
     if (!req.session || !req.session.logado) return res.status(401).json({ erro: 'Acesso negado.' });
     try {
-        // Regra de limpeza: unifica os nomes das transportadoras
         const agrupamento = `
             CASE 
                 WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
@@ -56,62 +57,28 @@ router.get('/api/relatorios/entregas', async (req, res) => {
             END
         `;
 
+        // FIX: Média de frete das transportadoras também ignora frete grátis!
         const geral = await sql`
             SELECT 
-                CASE 
-                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
-                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
-                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
-                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
-                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
-                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
-                    ELSE transportadora 
-                END AS transportadora, 
+                ${sql.unsafe(agrupamento)} AS transportadora, 
                 COUNT(id_pedido)::int AS envios, 
-                ROUND(AVG(valor_frete), 2)::numeric AS media_frete, 
+                ROUND(AVG(NULLIF(valor_frete, 0)), 2)::numeric AS media_frete, 
                 ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 1)::numeric AS media_dias
             FROM pedidos_nuvemshop 
             WHERE transportadora IS NOT NULL AND transportadora != ''
-            GROUP BY 
-                CASE 
-                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
-                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
-                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
-                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
-                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
-                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
-                    ELSE transportadora 
-                END
+            GROUP BY ${sql.unsafe(agrupamento)}
             ORDER BY envios DESC;
         `;
 
         const estados = await sql`
             SELECT 
                 estado, 
-                CASE 
-                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
-                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
-                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
-                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
-                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
-                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
-                    ELSE transportadora 
-                END AS transportadora, 
+                ${sql.unsafe(agrupamento)} AS transportadora, 
                 COUNT(id_pedido)::int AS envios, 
                 ROUND(AVG(EXTRACT(EPOCH FROM (data_entrega::timestamp - data_envio::timestamp)) / 86400), 1)::numeric AS media_dias
             FROM pedidos_nuvemshop 
             WHERE estado IS NOT NULL AND estado != '' AND transportadora IS NOT NULL AND transportadora != '' AND data_entrega IS NOT NULL AND data_envio IS NOT NULL
-            GROUP BY 
-                estado, 
-                CASE 
-                    WHEN transportadora ILIKE '%jadlog%' THEN 'Jadlog'
-                    WHEN transportadora ILIKE '%sedex%' THEN 'Correios (SEDEX)'
-                    WHEN transportadora ILIKE '%pac%' THEN 'Correios (PAC)'
-                    WHEN transportadora ILIKE '%j&t%' OR transportadora ILIKE '%j t%' THEN 'J&T Express'
-                    WHEN transportadora ILIKE '%loggi%' THEN 'Loggi'
-                    WHEN transportadora ILIKE '%gfl%' THEN 'GFL'
-                    ELSE transportadora 
-                END
+            GROUP BY estado, ${sql.unsafe(agrupamento)}
             ORDER BY estado ASC, envios DESC;
         `;
         
