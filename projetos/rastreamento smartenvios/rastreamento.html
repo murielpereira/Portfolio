@@ -13,10 +13,10 @@
 
     <div id="toast">Código copiado com sucesso!</div>
 
-    <div class="campo_pesquisar">
-        <input type="text" id="codigo" placeholder="Digite o código (Ex: SM...)" value="">
-        <input type="button" id="botao_pesquisar" value="RASTREAR" onclick="pesquisar()">
-    </div>
+    <form class="campo_pesquisar" onsubmit="event.preventDefault(); pesquisar();">
+        <input type="text" id="codigo" placeholder="Digite o código (Ex: SM...)" value="" aria-label="Código de rastreamento">
+        <input type="submit" id="botao_pesquisar" value="RASTREAR">
+    </form>
 
     <div id="resultado"></div>
 
