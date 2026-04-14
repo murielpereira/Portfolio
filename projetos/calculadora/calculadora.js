@@ -4,19 +4,31 @@ fetch('/snippets/menu.html')
         document.getElementById('menu-placeholder').innerHTML = data;
 })
 
-function soarClick() {
-    var click = new Audio('sons/click.mp3')
+// ⚡ Bolt Optimization: Cache Audio objects to prevent recreation overhead
+var cachedClickAudio = null;
+var cachedNazareAudio = null;
 
-    click.currentTime = 0.05
-    click.play()
+if (typeof window !== 'undefined' && typeof window.Audio !== 'undefined') {
+    cachedClickAudio = new Audio('sons/click.mp3');
+    cachedNazareAudio = new Audio('sons/nazare.mp3');
+}
+
+function playClickSound() {
+    if (cachedClickAudio) {
+        // Clone node allows rapid consecutive overlapping clicks without cutting off
+        var sound = cachedClickAudio.cloneNode();
+        sound.currentTime = 0.05;
+        sound.play().catch(e => console.log('Audio play failed', e));
+    }
+}
+
+function soarClick() {
+    playClickSound();
 }
 
 function calcular(tipo, valor) {
 
-    var click = new Audio('sons/click.mp3')
-
-    click.currentTime = 0.05
-    click.play()
+    playClickSound();
 
     console.log(tipo, valor)
 
@@ -82,13 +94,14 @@ function exibirPopup() {
     popup.classList.remove('popup-oculto');
     popup.classList.add('popup-visivel');
 
-    var nazare = new Audio('sons/nazare.mp3')
-    nazare.currentTime = 5
-    nazare.play()
+    if (cachedNazareAudio) {
+        cachedNazareAudio.currentTime = 5;
+        cachedNazareAudio.play().catch(e => console.log('Audio play failed', e));
 
-    setTimeout(function() {
-        nazare.pause();
-    }, 2000);
+        setTimeout(function() {
+            cachedNazareAudio.pause();
+        }, 2000);
+    }
 }
 
 function fecharPopup() {
