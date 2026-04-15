@@ -61,7 +61,7 @@ async function pesquisar() {
     if (inputCodigo) inputCodigo.disabled = true;
 
     // CONFIGURAÇÕES API
-    const api_url = "/api/tracking";
+    const api_url = "/proxy-rastreio";
     const token = "NY2WulkhIl8n4Ttbqjj25zhmdyvikro";
 
     try {

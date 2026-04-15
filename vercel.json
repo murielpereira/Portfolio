@@ -1,7 +1,7 @@
 {
     "rewrites": [
         {
-            "source": "/api/tracking",
+            "source": "/proxy-rastreio",
             "destination": "https://api.smartenvios.com/v1/freight-order/tracking"
         }
     ]
