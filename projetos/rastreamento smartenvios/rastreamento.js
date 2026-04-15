@@ -2,7 +2,7 @@ fetch('/snippets/menu.html')
     .then(response => response.text())
     .then(data => {
         document.getElementById('menu-placeholder').innerHTML = data;
-})
+    })
 
 // --- ÍCONES E UTILITÁRIOS ---
 const icons = {
@@ -51,7 +51,7 @@ async function pesquisar() {
     const divResultado = document.getElementById('resultado');
 
     if (!codigo) { alert("Digite o código!"); return; }
-    inputCodigo.value = ""; 
+    inputCodigo.value = "";
 
     divResultado.style.display = "block";
     divResultado.innerHTML = "<p style='width:100%; text-align:center; font-size:1.2em; color:#888'>A carregar dados...</p>";
@@ -61,9 +61,8 @@ async function pesquisar() {
     if (inputCodigo) inputCodigo.disabled = true;
 
     // CONFIGURAÇÕES API
-    const proxy = "https://cors-anywhere.herokuapp.com/"; 
-    const api_url = "https://api.smartenvios.com/v1/freight-order/tracking";
-    const token = "NY2WulkhIl8n4Ttbqjj25zhmdyvikro"; 
+    const api_url = "/api/tracking";
+    const token = "NY2WulkhIl8n4Ttbqjj25zhmdyvikro";
 
     try {
         let r;
@@ -72,7 +71,7 @@ async function pesquisar() {
         if (trackingCache.has(codigo)) {
             r = trackingCache.get(codigo);
         } else {
-            const resposta = await fetch(proxy + api_url, {
+            const resposta = await fetch(api_url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Accept": "application/json", "token": token },
                 body: JSON.stringify({ "tracking_code": codigo })
@@ -95,18 +94,18 @@ async function pesquisar() {
         const eventos = (r.trackings || []).sort((a, b) => new Date(b.date) - new Date(a.date));
 
         // --- PROGRESSO ---
-        let progresso = 0; 
+        let progresso = 0;
         let statusEntregue = false;
-        if (eventos.length > 0) progresso = 33; 
-        
+        if (eventos.length > 0) progresso = 33;
+
         // O evento [0] agora é SEMPRE o mais recente devido ao sort()
         const ultimoEvento = eventos[0];
-        
+
         if (ultimoEvento && ultimoEvento.code.tracking_type === 'DELIVERED') {
             progresso = 100;
             statusEntregue = true;
         } else if (eventos.length > 1) {
-            progresso = 66; 
+            progresso = 66;
         }
 
         // Previsão
@@ -124,9 +123,9 @@ async function pesquisar() {
             const dataObj = new Date(ev.date);
             const dataStr = dataObj.toLocaleDateString('pt-BR');
             const horaStr = dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            
+
             const infoIcone = obterIcone(ev.code.tracking_type);
-            
+
             timelineHTML += `
                 <div class="timeline-item ${infoIcone.classe}">
                     <div class="timeline-icon-box">${infoIcone.svg}</div>

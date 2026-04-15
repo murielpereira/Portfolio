@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+        {
+            "source": "/api/tracking",
+            "destination": "https://api.smartenvios.com/v1/freight-order/tracking"
+        }
+    ]
+}
