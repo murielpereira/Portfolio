@@ -57,7 +57,10 @@ async function pesquisar() {
     divResultado.innerHTML = "<p style='width:100%; text-align:center; font-size:1.2em; color:#888'>A carregar dados...</p>";
 
     // ⚡ Bolt Optimization: Disable UI elements while fetching to prevent duplicate requests
-    if (btnPesquisar) btnPesquisar.disabled = true;
+    if (btnPesquisar) {
+        btnPesquisar.disabled = true;
+        btnPesquisar.value = "RASTREANDO...";
+    }
     if (inputCodigo) inputCodigo.disabled = true;
 
     // CONFIGURAÇÕES API
@@ -216,7 +219,10 @@ async function pesquisar() {
         divResultado.innerHTML = `<p style="color:red; text-align:center">Erro: ${erro.message}</p>`;
     } finally {
         // ⚡ Bolt Optimization: Re-enable UI elements
-        if (btnPesquisar) btnPesquisar.disabled = false;
+        if (btnPesquisar) {
+            btnPesquisar.disabled = false;
+            btnPesquisar.value = "RASTREAR";
+        }
         if (inputCodigo) inputCodigo.disabled = false;
     }
 }
