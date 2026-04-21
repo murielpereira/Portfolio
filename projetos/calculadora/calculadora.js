@@ -4,19 +4,27 @@ fetch('/snippets/menu.html')
         document.getElementById('menu-placeholder').innerHTML = data;
 })
 
-function soarClick() {
-    var click = new Audio('sons/click.mp3')
+// ⚡ Bolt Optimization: Cache Audio instance to prevent redundant network requests and GC overhead during rapid clicks
+var cachedClickAudio = null;
+if (typeof Audio !== 'undefined') {
+    cachedClickAudio = new Audio('sons/click.mp3');
+}
 
-    click.currentTime = 0.05
-    click.play()
+function playClickSound() {
+    if (cachedClickAudio) {
+        var click = cachedClickAudio.cloneNode();
+        click.currentTime = 0.05;
+        click.play().catch(e => console.warn('Audio play failed:', e));
+    }
+}
+
+function soarClick() {
+    playClickSound();
 }
 
 function calcular(tipo, valor) {
 
-    var click = new Audio('sons/click.mp3')
-
-    click.currentTime = 0.05
-    click.play()
+    playClickSound();
 
     console.log(tipo, valor)
 

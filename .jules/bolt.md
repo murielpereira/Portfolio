@@ -5,3 +5,7 @@
 ## 2024-05-24 - Duplicate Script Execution
 **Learning:** The application was loading `script.js` twice on `index.html` and `snippets/projetos.html` (once as regular script, once as module). This caused double network requests for snippets, duplicate executions of `script.js` setup code.
 **Action:** Removed the duplicate standard `<script>` tag and kept only `<script type="module">`. `<script type="module">` is better since it runs deferred by default, not blocking the parser. In the future, verify `index.html` and entrypoints for duplicate standard/module script tags if performance or double-fetch issues are reported.
+
+## 2026-04-21 - UI Audio Caching
+**Learning:** Found a performance bottleneck in the calculator application where a new `Audio` object was instantiated and fetched on every button click. For high-frequency events like rapid calculator use, this causes redundant network requests and unnecessary garbage collection overhead, potentially leading to audio skipping or UI lag.
+**Action:** Implemented a global cached `Audio` instance using `var cachedClickAudio = new Audio('sons/click.mp3');` and utilized `cachedClickAudio.cloneNode().play()` inside the click handlers. Always cache audio instances for recurring UI sounds to minimize memory and network overhead.
