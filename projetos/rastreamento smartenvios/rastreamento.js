@@ -14,6 +14,17 @@ const icons = {
     copy: `<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`
 };
 
+
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function obterLogo(nomeServico) {
     if (!nomeServico) return 'https://cdn-icons-png.flaticon.com/512/713/713311.png';
     const nome = nomeServico.toLowerCase();
@@ -129,8 +140,8 @@ async function pesquisar() {
             timelineHTML += `
                 <div class="timeline-item ${infoIcone.classe}">
                     <div class="timeline-icon-box">${infoIcone.svg}</div>
-                    <div class="status-titulo">${ev.code.name}</div>
-                    <div class="status-desc">${ev.observation || ''}</div>
+                    <div class="status-titulo">${escapeHTML(ev.code.name)}</div>
+                    <div class="status-desc">${escapeHTML(ev.observation || '')}</div>
                     <div class="status-data">${dataStr} às ${horaStr}</div>
                 </div>
             `;
@@ -141,9 +152,9 @@ async function pesquisar() {
         divResultado.innerHTML = `
             <div class="card">
                 <div class="pedido-header">
-                    <div class="codigo-copiavel" onclick="copiarCodigo('${r.tracking_code}')" title="Clique para copiar">
+                    <div class="codigo-copiavel" data-codigo="${escapeHTML(r.tracking_code)}" onclick="copiarCodigo(this.getAttribute('data-codigo'))" title="Clique para copiar">
                         <div><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4z"/></svg></div>
-                        <span>${r.tracking_code}</span>
+                        <span>${escapeHTML(r.tracking_code)}</span>
                         <div class="icone-copiar">${icons.copy}</div> 
                     </div>
                     <span class="badge-rastreio">RASTREIO</span>
@@ -178,9 +189,9 @@ async function pesquisar() {
                         </div>
                         <div>
                         <div class="card-header">Destinatário</div>
-                        <div class="card-value">${r.destiny_name}</div>
+                        <div class="card-value">${escapeHTML(r.destiny_name)}</div>
                         <div style="color: #aaa; margin-top:5px; font-size:0.9em">
-                            ${r.destiny_city_name || ''} - ${r.destiny_uf || ''}
+                            ${escapeHTML(r.destiny_city_name || '')} - ${escapeHTML(r.destiny_uf || '')}
                         </div>
                         </div>
                 </div>
@@ -190,7 +201,7 @@ async function pesquisar() {
                     <div class="transportadora-info" style="margin-bottom: 20px;">
                         <img src="${obterLogo(r.service_name)}" class="logo-img">
                         <div>
-                            <div class="card-value">${r.service_name}</div>
+                            <div class="card-value">${escapeHTML(r.service_name)}</div>
                         </div>
                     </div>
 
