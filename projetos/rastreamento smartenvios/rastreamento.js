@@ -227,7 +227,7 @@ async function pesquisar() {
 
     } catch (erro) {
         console.error(erro);
-        divResultado.innerHTML = `<p style="color:red; text-align:center">Erro: ${erro.message}</p>`;
+        divResultado.innerHTML = `<p style="color:red; text-align:center">Erro: ${escapeHTML(erro.message)}</p>`;
     } finally {
         // ⚡ Bolt Optimization: Re-enable UI elements
         if (btnPesquisar) {
