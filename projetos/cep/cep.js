@@ -61,6 +61,16 @@ const handleZipCode = (event) => {
     }
   }
 
+  function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+  }
+
   function mostrarEndereco(dados){
     resetLoadingState();
     let resultado = document.querySelector('#resultado');
@@ -69,10 +79,10 @@ const handleZipCode = (event) => {
     } 
     
     else{
-      resultado.innerHTML = `<p>CEP: ${dados.cep}</p>
-                           <p>Endereço: ${dados.logradouro}</p>
-                           <p>Complemento: ${dados.complemento}</p>
-                           <p>Bairro: ${dados.bairro}</p>
-                           <p>Cidade: ${dados.localidade} - ${dados.uf}</p>`
+      resultado.innerHTML = `<p>CEP: ${escapeHTML(dados.cep)}</p>
+                           <p>Endereço: ${escapeHTML(dados.logradouro)}</p>
+                           <p>Complemento: ${escapeHTML(dados.complemento)}</p>
+                           <p>Bairro: ${escapeHTML(dados.bairro)}</p>
+                           <p>Cidade: ${escapeHTML(dados.localidade)} - ${escapeHTML(dados.uf)}</p>`
     }
   }
