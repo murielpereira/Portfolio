@@ -9,3 +9,6 @@
 ## 2024-05-18 - Native forms for 'Enter' key and dynamic alt attributes
 **Learning:** For standalone JS search widgets, replacing `<div>` containers with native `<form>` elements natively enables 'Enter' key submission without explicit keydown listeners, greatly improving keyboard accessibility with minimal code. Also, dynamically generated UI elements (like carrier logos) often miss `alt` attributes, making them inaccessible.
 **Action:** When implementing input widgets, use semantic `<form>` tags over divs and ensure all dynamically injected images have contextually relevant `alt` text.
+## 2026-04-28 - Native forms for 'Enter' key submission in CEP Widget
+**Learning:** In vanilla JS widgets like the CEP search, replacing a generic `<div>` wrapper with a semantic `<form>` element natively enables 'Enter' key submission without explicit keydown listeners, greatly improving keyboard accessibility with less code.
+**Action:** When implementing input widgets, use semantic `<form>` tags over divs to support native form submission via enter key.

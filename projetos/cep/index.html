@@ -23,14 +23,14 @@
         </div>
         -->
 
-        <div class="form">
+        <form class="form" onsubmit="event.preventDefault(); consultaEndereco();">
             
                 <div class="cep_box">
                     <input type="text" name="cep" id="cep" class="cep" placeholder="CEP" maxlength="9" aria-label="Digite seu CEP" onkeyup="handleZipCode(event)">
-                    <button class="pesquisa" onclick="consultaEndereco()" id="btn_pesquisar">Pesquisar</button>
+                    <button type="submit" class="pesquisa" id="btn_pesquisar">Pesquisar</button>
                 </div>
            
-        </div>
+        </form>
 
         <div id="resultado">
             <p>teste</p>

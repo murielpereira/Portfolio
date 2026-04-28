@@ -3,9 +3,6 @@
 const handleZipCode = (event) => {
     let input = event.target
     input.value = zipCodeMask(input.value)
-    if (event.key === 'Enter') {
-      consultaEndereco()
-    }
   }
   
   const zipCodeMask = (value) => {
